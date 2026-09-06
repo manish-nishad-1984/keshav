@@ -7,3 +7,6 @@ build/
 .DS_Store
 apps/api/prisma/dev.db
 apps/api/uploads/
+*.tsbuildinfo
+apps/web/vite.config.js
+apps/web/vite.config.d.ts
