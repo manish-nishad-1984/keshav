@@ -12,4 +12,12 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  build: {
+    commonjsOptions: {
+      // Workspace packages are symlinked in from outside node_modules, so
+      // Rollup's default node_modules-only CJS detection misses them,
+      // leaving their compiled CommonJS output untransformed.
+      include: [/node_modules/, /packages\/(shared|types)\/dist/],
+    },
+  },
 });
