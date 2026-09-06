@@ -1,5 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "windows" alongside the Linux build container's own "native" target: the
+  // Railpack build runs in Linux Docker, but the built output is then copied
+  // onto the Windows/IISNode host to actually run, so the generated client
+  // needs a Windows-compatible query engine binary bundled in too.
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
