@@ -6,7 +6,10 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().default(4000),
+  // Stays a string (not coerced to a number): IISNode assigns a named-pipe
+  // path here, not a TCP port, and Node's server.listen() needs the raw
+  // value either way — coercing a pipe path through Number() yields NaN.
+  PORT: z.string().default('4000'),
   API_PREFIX: z.string().default('/api/v1'),
 
   DATABASE_URL: z.string(),
