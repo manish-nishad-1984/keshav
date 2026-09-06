@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222 22% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 22% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 22% 12%;
+  --primary: 220 70% 35%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 222 22% 20%;
+  --muted: 210 20% 97%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 142 45% 94%;
+  --accent-foreground: 142 72% 20%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 91%;
+  --input: 220 13% 88%;
+  --ring: 142 72% 30%;
+  --status-neutral: 220 9% 46%;
+  --status-info: 213 82% 48%;
+  --status-progress: 262 65% 55%;
+  --status-success: 142 66% 34%;
+  --status-warning: 34 92% 44%;
+  --status-danger: 0 72% 48%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 222 24% 8%;
+  --foreground: 210 20% 96%;
+  --card: 222 22% 11%;
+  --card-foreground: 210 20% 96%;
+  --popover: 222 22% 11%;
+  --popover-foreground: 210 20% 96%;
+  --primary: 220 60% 53%;
+  --primary-foreground: 222 24% 8%;
+  --secondary: 222 18% 17%;
+  --secondary-foreground: 210 20% 92%;
+  --muted: 222 18% 15%;
+  --muted-foreground: 218 11% 62%;
+  --accent: 142 30% 18%;
+  --accent-foreground: 142 60% 78%;
+  --destructive: 0 62% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 222 16% 20%;
+  --input: 222 16% 24%;
+  --ring: 142 62% 46%;
+  --status-neutral: 218 11% 62%;
+  --status-info: 213 82% 62%;
+  --status-progress: 262 65% 70%;
+  --status-success: 142 60% 50%;
+  --status-warning: 34 92% 58%;
+  --status-danger: 0 72% 62%;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  text-rendering: optimizeLegibility;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+  @apply font-mono text-[0.8125rem];
+}
+
+.section-label {
+  @apply text-2xs font-semibold uppercase tracking-wider text-muted-foreground;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+/* Report printing: hide everything except a `.print-area` (sidebar, topbar, filters, buttons),
+   so `window.print()` on a report preview only outputs the printable report itself. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
