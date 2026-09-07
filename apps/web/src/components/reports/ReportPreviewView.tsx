@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Printer, Download, ImageOff } from 'lucide-react';
-import { apiClient } from '../../lib/api-client';
+import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -9,9 +9,6 @@ import { LoadingState } from '../ui/loading-state';
 import { REPORT_TYPES, formatMonthKey, type ReportKey } from './report-constants';
 import type { ProductionEntry } from '../production-entries/production-entry-constants';
 import type { LedgerRow } from '../payments/payment-constants';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/api\/v1\/?$/, '');
-const resolvePhotoUrl = (url: string | null) => (url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null);
 
 interface OrganizationDto {
   name: string;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Pencil, Trash2, Settings2, ImageOff } from 'lucide-react';
-import { apiClient } from '../lib/api-client';
+import { apiClient, resolvePhotoUrl } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -16,9 +16,6 @@ import { usePermissions } from '../hooks/use-permissions';
 import { ItemFormDialog } from '../components/items/ItemFormDialog';
 import { CategoryManagerDialog } from '../components/items/CategoryManagerDialog';
 import type { Item, ItemCategory } from '../components/items/item-constants';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/api\/v1\/?$/, '');
-const resolvePhotoUrl = (url: string | null) => (url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null);
 
 export const ItemsPage = () => {
   const queryClient = useQueryClient();

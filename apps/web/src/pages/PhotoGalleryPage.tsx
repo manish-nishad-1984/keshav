@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ImageOff } from 'lucide-react';
-import { apiClient } from '../lib/api-client';
+import { apiClient, resolvePhotoUrl } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -12,9 +12,6 @@ import { ProductionEntryViewDialog } from '../components/production-entries/Prod
 import type { ProductionEntry } from '../components/production-entries/production-entry-constants';
 import type { Karigar } from '../components/karigars/karigar-constants';
 import type { Item } from '../components/items/item-constants';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/api\/v1\/?$/, '');
-const resolvePhotoUrl = (url: string | null) => (url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null);
 
 export const PhotoGalleryPage = () => {
   const [date, setDate] = useState('');

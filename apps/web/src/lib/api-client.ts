@@ -1,6 +1,26 @@
 import type { ApiError, ApiSuccess, Paginated } from '@ckfast/types';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1';
+// In dev, Vite (5173/5174) and the API (4000) run on different ports, so the
+// default must be an absolute cross-origin URL. In a production build the
+// API is always served from the same origin as the frontend (see apps/api's
+// static-serving fallback in app.ts), so a same-origin relative path is both
+// correct and more robust than baking in one specific domain at build time.
+const resolveApiBase = (): string => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (import.meta.env.DEV) return 'http://localhost:4000/api/v1';
+  return '/api/v1';
+};
+
+const API_BASE = resolveApiBase();
+
+// Uploaded files (photos, logos) are served from the API's own origin at
+// /uploads/*, outside the /api/v1 prefix, so this strips that prefix back
+// off API_BASE to get a plain origin to prepend to those relative paths.
+// Resolves to '' in production (same-origin), matching API_BASE's own logic.
+const API_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '');
+
+export const resolvePhotoUrl = (url: string | null | undefined): string | null =>
+  url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null;
 
 let accessToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
@@ -27,7 +47,10 @@ class ApiRequestError extends Error {
 }
 
 const buildUrl = (path: string, params?: Record<string, unknown>) => {
-  const url = new URL(API_BASE + path);
+  // The base argument is only actually used when API_BASE is relative
+  // (production); it's ignored by URL() whenever API_BASE is already
+  // absolute (dev), so this is correct for both cases.
+  const url = new URL(API_BASE + path, window.location.origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== '') {

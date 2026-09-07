@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Pencil, User } from 'lucide-react';
-import { apiClient } from '../../lib/api-client';
+import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -12,9 +12,6 @@ import { Pagination } from '../ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { usePermissions } from '../../hooks/use-permissions';
 import type { Karigar, WorkType } from './karigar-constants';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/api\/v1\/?$/, '');
-const resolvePhotoUrl = (url: string | null) => (url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null);
 
 interface KarigarListViewProps {
   onAdd: () => void;

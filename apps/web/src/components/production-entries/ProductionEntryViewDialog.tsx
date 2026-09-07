@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2, ImageOff } from 'lucide-react';
-import { apiClient } from '../../lib/api-client';
+import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { usePermissions } from '../../hooks/use-permissions';
 import type { ProductionEntry } from './production-entry-constants';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/api\/v1\/?$/, '');
-const resolvePhotoUrl = (url: string | null) => (url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null);
 
 interface ProductionEntryViewDialogProps {
   entry: ProductionEntry | null;

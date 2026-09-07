@@ -1,13 +1,9 @@
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ImageOff, Loader2, User } from 'lucide-react';
-import { apiClient, ApiRequestError } from '../../lib/api-client';
+import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/api\/v1\/?$/, '');
-
-const resolvePhotoUrl = (url: string | null) => (url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null);
 
 interface PhotoUploadProps {
   value: string | null;

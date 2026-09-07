@@ -13,13 +13,10 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { apiClient } from '../lib/api-client';
+import { apiClient, resolvePhotoUrl } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { LoadingState } from '../components/ui/loading-state';
-
-const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/api\/v1\/?$/, '');
-const resolvePhotoUrl = (url: string | null) => (url ? (url.startsWith('http') ? url : `${API_ORIGIN}${url}`) : null);
 
 interface TopKarigar {
   karigarId: string;

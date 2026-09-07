@@ -29,7 +29,7 @@ const FEATURES = [
 
 export const AuthLayout = () => (
   <div className="grid min-h-screen lg:grid-cols-2">
-    <div className="flex flex-col justify-center px-6 py-10 sm:px-12">
+    <div className="flex flex-col justify-center px-6 py-10 sm:px-12 lg:order-2">
       <div className="mx-auto w-full max-w-sm">
         <Link to="/login" className="mb-8 flex items-center gap-2.5">
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -46,7 +46,7 @@ export const AuthLayout = () => (
       </div>
     </div>
 
-    <aside className="relative hidden overflow-hidden bg-primary lg:flex lg:flex-col lg:justify-between">
+    <aside className="relative hidden overflow-hidden bg-primary lg:order-1 lg:flex lg:flex-col lg:justify-between">
       <div
         aria-hidden
         className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-white/25 blur-3xl"
