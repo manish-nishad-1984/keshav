@@ -60,14 +60,35 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field label="Date" value={new Date(entry.date).toLocaleDateString()} />
-                <Field label="Karigar" value={`${entry.karigar.fullName} (${entry.karigar.code})`} />
+                {entry.lotNumber ? <Field label="Lot Number" value={entry.lotNumber} /> : null}
+                {entry.designNumber ? <Field label="Design Number" value={entry.designNumber} /> : null}
                 <Field label="Work Type" value={entry.workType.name} />
                 <Field label="Style No." value={entry.item.styleNo} />
                 <Field label="Item Name" value={entry.item.itemName} />
-                <Field label="Quantity" value={String(entry.quantity)} />
-                <Field label="Rate (₹)" value={Number(entry.rate).toFixed(2)} />
-                <Field label="Total Amount (₹)" value={Number(entry.totalAmount).toFixed(2)} />
               </div>
+
+              <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+                <Field label="Carrier" value={`${entry.carrier.fullName} (${entry.carrier.code})`} />
+                <Field label="Quantity" value={String(entry.carrierQuantity)} />
+                <Field label="Rate (₹)" value={Number(entry.carrierRate).toFixed(2)} />
+                <Field label="Total (₹)" value={Number(entry.carrierTotal).toFixed(2)} />
+              </div>
+
+              {entry.overlockCarrier ? (
+                <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+                  <Field label="Overlock Carrier" value={`${entry.overlockCarrier.fullName} (${entry.overlockCarrier.code})`} />
+                  <Field label="Rate (₹)" value={Number(entry.overlockRate ?? 0).toFixed(2)} />
+                  <Field label="Total (₹)" value={Number(entry.overlockTotal ?? 0).toFixed(2)} />
+                </div>
+              ) : null}
+
+              {entry.flatlockKarigar ? (
+                <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+                  <Field label="Flatlock Karigar" value={`${entry.flatlockKarigar.fullName} (${entry.flatlockKarigar.code})`} />
+                  <Field label="Rate (₹)" value={Number(entry.flatlockRate ?? 0).toFixed(2)} />
+                  <Field label="Total (₹)" value={Number(entry.flatlockTotal ?? 0).toFixed(2)} />
+                </div>
+              ) : null}
 
               {entry.remarks ? <Field label="Remarks" value={entry.remarks} /> : null}
             </DialogBody>

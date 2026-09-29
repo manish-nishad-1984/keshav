@@ -4,30 +4,54 @@ import { prisma } from '../../lib/prisma';
 const dateFilter = (dateFrom?: Date, dateTo?: Date): Prisma.ProductionEntryWhereInput['date'] | undefined =>
   dateFrom || dateTo ? { ...(dateFrom ? { gte: dateFrom } : {}), ...(dateTo ? { lte: dateTo } : {}) } : undefined;
 
+// A karigar can earn from up to three different roles on the same production entry (carrier,
+// overlock carrier, flatlock karigar) — same reasoning as payments.repository.ts's getLedger,
+// summed the same way (three separate groupBy calls merged, since there's no single column to
+// group by across all three roles).
 export const getKarigarSummary = async (organizationId: string, dateFrom?: Date, dateTo?: Date) => {
   const date = dateFilter(dateFrom, dateTo);
-  const [karigars, sums] = await Promise.all([
+  const baseWhere = { organizationId, deletedAt: null, ...(date ? { date } : {}) };
+  const [karigars, carrierSums, overlockSums, flatlockSums] = await Promise.all([
     prisma.karigar.findMany({ where: { organizationId, deletedAt: null }, orderBy: { fullName: 'asc' } }),
     prisma.productionEntry.groupBy({
-      by: ['karigarId'],
-      where: { organizationId, deletedAt: null, ...(date ? { date } : {}) },
-      _sum: { quantity: true, totalAmount: true },
+      by: ['carrierId'],
+      where: baseWhere,
+      _sum: { carrierQuantity: true, carrierTotal: true },
+    }),
+    prisma.productionEntry.groupBy({
+      by: ['overlockCarrierId'],
+      where: { ...baseWhere, overlockCarrierId: { not: null } },
+      _sum: { overlockTotal: true },
+    }),
+    prisma.productionEntry.groupBy({
+      by: ['flatlockKarigarId'],
+      where: { ...baseWhere, flatlockKarigarId: { not: null } },
+      _sum: { flatlockTotal: true },
     }),
   ]);
 
-  const sumMap = new Map(sums.map((s) => [s.karigarId, s]));
+  const quantityByKarigar = new Map<string, number>();
+  const amountByKarigar = new Map<string, number>();
+  const addAmount = (id: string | null, amount: number) => {
+    if (!id) return;
+    amountByKarigar.set(id, (amountByKarigar.get(id) ?? 0) + amount);
+  };
+  carrierSums.forEach((s) => {
+    quantityByKarigar.set(s.carrierId, Number(s._sum.carrierQuantity ?? 0));
+    addAmount(s.carrierId, Number(s._sum.carrierTotal ?? 0));
+  });
+  overlockSums.forEach((s) => addAmount(s.overlockCarrierId, Number(s._sum.overlockTotal ?? 0)));
+  flatlockSums.forEach((s) => addAmount(s.flatlockKarigarId, Number(s._sum.flatlockTotal ?? 0)));
+
   return karigars
-    .map((karigar) => {
-      const s = sumMap.get(karigar.id);
-      return {
-        karigarId: karigar.id,
-        karigarName: karigar.fullName,
-        karigarCode: karigar.code,
-        totalQuantity: s?._sum.quantity ?? 0,
-        totalAmount: Number(s?._sum.totalAmount ?? 0),
-      };
-    })
-    .filter((row) => row.totalQuantity > 0);
+    .map((karigar) => ({
+      karigarId: karigar.id,
+      karigarName: karigar.fullName,
+      karigarCode: karigar.code,
+      totalQuantity: quantityByKarigar.get(karigar.id) ?? 0,
+      totalAmount: amountByKarigar.get(karigar.id) ?? 0,
+    }))
+    .filter((row) => row.totalQuantity > 0 || row.totalAmount > 0);
 };
 
 export const getItemSummary = async (organizationId: string, dateFrom?: Date, dateTo?: Date) => {
@@ -37,7 +61,7 @@ export const getItemSummary = async (organizationId: string, dateFrom?: Date, da
     prisma.productionEntry.groupBy({
       by: ['itemId'],
       where: { organizationId, deletedAt: null, ...(date ? { date } : {}) },
-      _sum: { quantity: true, totalAmount: true },
+      _sum: { carrierQuantity: true, carrierTotal: true },
     }),
   ]);
 
@@ -49,8 +73,8 @@ export const getItemSummary = async (organizationId: string, dateFrom?: Date, da
         itemId: item.id,
         styleNo: item.styleNo,
         itemName: item.itemName,
-        totalQuantity: s?._sum.quantity ?? 0,
-        totalAmount: Number(s?._sum.totalAmount ?? 0),
+        totalQuantity: s?._sum.carrierQuantity ?? 0,
+        totalAmount: Number(s?._sum.carrierTotal ?? 0),
       };
     })
     .filter((row) => row.totalQuantity > 0);
@@ -70,8 +94,8 @@ export const getMonthlySummary = async (organizationId: string, dateFrom?: Date,
 
   const rows = await prisma.$queryRaw<{ month: string; totalQuantity: number; totalAmount: string }[]>(Prisma.sql`
     SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month,
-           SUM("quantity")::int AS "totalQuantity",
-           SUM("totalAmount")::numeric(14,2) AS "totalAmount"
+           SUM("carrierQuantity")::int AS "totalQuantity",
+           SUM("carrierTotal")::numeric(14,2) AS "totalAmount"
     FROM "production_entries"
     WHERE ${where}
     GROUP BY month

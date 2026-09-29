@@ -7,6 +7,7 @@ import { rolesRouter } from '../modules/roles/roles.routes';
 import { auditLogsRouter } from '../modules/audit-logs/audit-logs.routes';
 import { karigarsRouter } from '../modules/karigars/karigars.routes';
 import { itemsRouter } from '../modules/items/items.routes';
+import { cuttingRouter } from '../modules/cutting/cutting.routes';
 import { productionEntriesRouter } from '../modules/production-entries/production-entries.routes';
 import { paymentsRouter } from '../modules/payments/payments.routes';
 import { reportsRouter } from '../modules/reports/reports.routes';
@@ -28,6 +29,7 @@ const protectedRoutes: ProtectedRoute[] = [
   { path: '/audit-logs', router: auditLogsRouter },
   { path: '/karigars', router: karigarsRouter },
   { path: '/items', router: itemsRouter },
+  { path: '/cutting', router: cuttingRouter },
   { path: '/production-entries', router: productionEntriesRouter },
   { path: '/payments', router: paymentsRouter },
   { path: '/reports', router: reportsRouter },

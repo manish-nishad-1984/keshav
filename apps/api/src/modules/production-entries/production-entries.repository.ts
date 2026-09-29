@@ -1,18 +1,25 @@
 import { prisma } from '../../lib/prisma';
 import type { Prisma } from '@prisma/client';
 
-const includeRelations = { karigar: true, workType: true, item: { include: { category: true } } } as const;
+const includeRelations = {
+  carrier: true,
+  overlockCarrier: true,
+  flatlockKarigar: true,
+  workType: true,
+  item: { include: { category: true } },
+  cuttingEntry: true,
+} as const;
 
 export const listProductionEntries = async (
   organizationId: string,
   page: number,
   pageSize: number,
-  filters: { search?: string; karigarId?: string; itemId?: string; dateFrom?: Date; dateTo?: Date },
+  filters: { search?: string; carrierId?: string; itemId?: string; dateFrom?: Date; dateTo?: Date },
 ) => {
   const where: Prisma.ProductionEntryWhereInput = {
     organizationId,
     deletedAt: null,
-    ...(filters.karigarId ? { karigarId: filters.karigarId } : {}),
+    ...(filters.carrierId ? { carrierId: filters.carrierId } : {}),
     ...(filters.itemId ? { itemId: filters.itemId } : {}),
     ...(filters.dateFrom || filters.dateTo
       ? {
@@ -25,7 +32,8 @@ export const listProductionEntries = async (
     ...(filters.search
       ? {
           OR: [
-            { karigar: { fullName: { contains: filters.search, mode: 'insensitive' } } },
+            { lotNumber: { contains: filters.search, mode: 'insensitive' } },
+            { carrier: { fullName: { contains: filters.search, mode: 'insensitive' } } },
             { item: { styleNo: { contains: filters.search, mode: 'insensitive' } } },
             { item: { itemName: { contains: filters.search, mode: 'insensitive' } } },
           ],
@@ -50,19 +58,30 @@ export const listProductionEntries = async (
 export const findProductionEntryById = (organizationId: string, id: string) =>
   prisma.productionEntry.findFirst({ where: { id, organizationId, deletedAt: null }, include: includeRelations });
 
+interface ProductionEntryData {
+  date: Date;
+  cuttingEntryId?: string;
+  lotNumber?: string;
+  designNumber?: string;
+  workTypeId: string;
+  itemId: string;
+  carrierId: string;
+  carrierQuantity: number;
+  carrierRate: number;
+  carrierTotal: number;
+  overlockCarrierId?: string | null;
+  overlockRate?: number | null;
+  overlockTotal?: number | null;
+  flatlockKarigarId?: string | null;
+  flatlockRate?: number | null;
+  flatlockTotal?: number | null;
+  photoUrl?: string | null;
+  remarks?: string;
+}
+
 export const createProductionEntry = (
   organizationId: string,
-  data: {
-    date: Date;
-    karigarId: string;
-    workTypeId: string;
-    itemId: string;
-    quantity: number;
-    rate: number;
-    totalAmount: number;
-    photoUrl?: string;
-    remarks?: string;
-  },
+  data: ProductionEntryData,
   createdById: string | null,
 ) =>
   prisma.productionEntry.create({
@@ -72,17 +91,7 @@ export const createProductionEntry = (
 
 export const updateProductionEntry = (
   id: string,
-  data: Partial<{
-    date: Date;
-    karigarId: string;
-    workTypeId: string;
-    itemId: string;
-    quantity: number;
-    rate: number;
-    totalAmount: number;
-    photoUrl: string | null;
-    remarks: string;
-  }>,
+  data: Partial<Omit<ProductionEntryData, 'cuttingEntryId' | 'lotNumber'>>,
   updatedById: string | null,
 ) =>
   prisma.productionEntry.update({

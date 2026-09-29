@@ -109,12 +109,12 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
         .filter((e) => reportKey === 'daily-production' || e.photoUrl)
         .map((e) => [
           new Date(e.date).toLocaleDateString(),
-          e.karigar.fullName,
+          e.carrier.fullName,
           e.item.styleNo,
           e.item.itemName,
-          String(e.quantity),
-          Number(e.rate).toFixed(2),
-          Number(e.totalAmount).toFixed(2),
+          String(e.carrierQuantity),
+          Number(e.carrierRate).toFixed(2),
+          Number(e.carrierTotal).toFixed(2),
         ]);
       downloadCsv(`${reportKey}-${today}.csv`, ['Date', 'Karigar', 'Style', 'Item', 'Qty', 'Rate', 'Amount'], rows);
     } else if (reportKey === 'karigar-summary') {
@@ -156,7 +156,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
 
     if (reportKey === 'daily-production') {
       const items = entriesQuery.data?.items ?? [];
-      const total = items.reduce((sum, e) => sum + Number(e.totalAmount), 0);
+      const total = items.reduce((sum, e) => sum + Number(e.carrierTotal), 0);
       return (
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
@@ -176,12 +176,12 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
               <tr key={e.id} className="border-b border-border last:border-0">
                 <td className="px-3 py-2">{i + 1}</td>
                 <td className="px-3 py-2">{new Date(e.date).toLocaleDateString()}</td>
-                <td className="px-3 py-2">{e.karigar.fullName}</td>
+                <td className="px-3 py-2">{e.carrier.fullName}</td>
                 <td className="numeric px-3 py-2">{e.item.styleNo}</td>
                 <td className="px-3 py-2">{e.item.itemName}</td>
-                <td className="numeric px-3 py-2">{e.quantity}</td>
-                <td className="numeric px-3 py-2">{Number(e.rate).toFixed(2)}</td>
-                <td className="numeric px-3 py-2">{Number(e.totalAmount).toFixed(2)}</td>
+                <td className="numeric px-3 py-2">{e.carrierQuantity}</td>
+                <td className="numeric px-3 py-2">{Number(e.carrierRate).toFixed(2)}</td>
+                <td className="numeric px-3 py-2">{Number(e.carrierTotal).toFixed(2)}</td>
               </tr>
             ))}
             {!items.length ? (
@@ -238,11 +238,11 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                     </div>
                   </td>
                   <td className="px-3 py-2">{new Date(e.date).toLocaleDateString()}</td>
-                  <td className="px-3 py-2">{e.karigar.fullName}</td>
+                  <td className="px-3 py-2">{e.carrier.fullName}</td>
                   <td className="numeric px-3 py-2">{e.item.styleNo}</td>
                   <td className="px-3 py-2">{e.item.itemName}</td>
-                  <td className="numeric px-3 py-2">{e.quantity}</td>
-                  <td className="numeric px-3 py-2">{Number(e.totalAmount).toFixed(2)}</td>
+                  <td className="numeric px-3 py-2">{e.carrierQuantity}</td>
+                  <td className="numeric px-3 py-2">{Number(e.carrierTotal).toFixed(2)}</td>
                 </tr>
               );
             })}

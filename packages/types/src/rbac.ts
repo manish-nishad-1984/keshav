@@ -22,6 +22,7 @@ export const MODULE_PERMISSIONS = {
   company_settings: ['view', 'update', 'manage'],
   karigars: [...CRUD, 'export', 'manage'],
   items: [...CRUD, 'export', 'manage'],
+  cutting: [...CRUD, 'export', 'manage'],
   production_entries: [...CRUD, 'export'],
   production_history: ['view', 'export'],
   photo_gallery: ['view'],

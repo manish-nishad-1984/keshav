@@ -44,6 +44,17 @@ export const MODULES: ModuleDefinition[] = [
     description: 'Workers who stitch, cut, finish and pack garments.',
   },
   {
+    key: 'cutting',
+    label: 'Cutting',
+    singular: 'Cutting Entry',
+    path: '/cutting',
+    icon: 'Scissors',
+    group: 'general',
+    order: 12,
+    permission: 'cutting:view',
+    description: 'Fabric cutting lots — the starting point of production.',
+  },
+  {
     key: 'production_entries',
     label: 'Daily Entry',
     singular: 'Production Entry',

@@ -36,11 +36,11 @@ export const getCounts = async (organizationId: string) => {
     prisma.karigar.count({ where: { organizationId, deletedAt: null, isActive: true } }),
     prisma.productionEntry.aggregate({
       where: { organizationId, deletedAt: null, date: today },
-      _sum: { quantity: true, totalAmount: true },
+      _sum: { carrierQuantity: true, carrierTotal: true },
     }),
     prisma.productionEntry.aggregate({
       where: { organizationId, deletedAt: null },
-      _sum: { totalAmount: true },
+      _sum: { carrierTotal: true },
     }),
     prisma.payment.aggregate({
       where: { organizationId, deletedAt: null },
@@ -48,13 +48,13 @@ export const getCounts = async (organizationId: string) => {
     }),
   ]);
 
-  const totalProduced = Number(allTimeProduction._sum.totalAmount ?? 0);
+  const totalProduced = Number(allTimeProduction._sum.carrierTotal ?? 0);
   const totalPaid = Number(allTimePayments._sum.amount ?? 0);
 
   return {
     totalKarigars,
-    todayPieces: todayAgg._sum.quantity ?? 0,
-    todayAmount: Number(todayAgg._sum.totalAmount ?? 0),
+    todayPieces: todayAgg._sum.carrierQuantity ?? 0,
+    todayAmount: Number(todayAgg._sum.carrierTotal ?? 0),
     pendingPayment: Math.max(totalProduced - totalPaid, 0),
   };
 };
@@ -67,8 +67,8 @@ export const getProductionTrend = async (organizationId: string) => {
 
   const rows = await prisma.$queryRaw<{ day: string; quantity: number; amount: string }[]>`
     SELECT to_char("date", 'YYYY-MM-DD') AS day,
-           SUM("quantity")::int AS quantity,
-           SUM("totalAmount")::numeric(14,2) AS amount
+           SUM("carrierQuantity")::int AS quantity,
+           SUM("carrierTotal")::numeric(14,2) AS amount
     FROM "production_entries"
     WHERE "organizationId" = ${organizationId}::uuid
       AND "deletedAt" IS NULL
@@ -92,30 +92,30 @@ export const getTopKarigars = async (organizationId: string, limit = 5) => {
   const month = startOfMonth();
 
   const sums = await prisma.productionEntry.groupBy({
-    by: ['karigarId'],
+    by: ['carrierId'],
     where: { organizationId, deletedAt: null, date: { gte: month } },
-    _sum: { quantity: true, totalAmount: true },
-    orderBy: { _sum: { totalAmount: 'desc' } },
+    _sum: { carrierQuantity: true, carrierTotal: true },
+    orderBy: { _sum: { carrierTotal: 'desc' } },
     take: limit,
   });
 
   if (sums.length === 0) return [];
 
   const karigars = await prisma.karigar.findMany({
-    where: { id: { in: sums.map((s) => s.karigarId) } },
+    where: { id: { in: sums.map((s) => s.carrierId) } },
     select: { id: true, fullName: true, code: true, photoUrl: true },
   });
   const karigarMap = new Map(karigars.map((k) => [k.id, k]));
 
   return sums.map((s) => {
-    const karigar = karigarMap.get(s.karigarId);
+    const karigar = karigarMap.get(s.carrierId);
     return {
-      karigarId: s.karigarId,
+      karigarId: s.carrierId,
       karigarName: karigar?.fullName ?? 'Unknown',
       karigarCode: karigar?.code ?? '',
       photoUrl: karigar?.photoUrl ?? null,
-      totalQuantity: s._sum.quantity ?? 0,
-      totalAmount: Number(s._sum.totalAmount ?? 0),
+      totalQuantity: s._sum.carrierQuantity ?? 0,
+      totalAmount: Number(s._sum.carrierTotal ?? 0),
     };
   });
 };
@@ -126,7 +126,7 @@ export const getWorkTypeBreakdown = async (organizationId: string) => {
   const sums = await prisma.productionEntry.groupBy({
     by: ['workTypeId'],
     where: { organizationId, deletedAt: null, date: { gte: month } },
-    _sum: { quantity: true },
+    _sum: { carrierQuantity: true },
   });
 
   if (sums.length === 0) return [];
@@ -141,7 +141,7 @@ export const getWorkTypeBreakdown = async (organizationId: string) => {
     .map((s) => ({
       workTypeId: s.workTypeId,
       workTypeName: nameMap.get(s.workTypeId) ?? 'Unknown',
-      totalQuantity: s._sum.quantity ?? 0,
+      totalQuantity: s._sum.carrierQuantity ?? 0,
     }))
     .sort((a, b) => b.totalQuantity - a.totalQuantity);
 };

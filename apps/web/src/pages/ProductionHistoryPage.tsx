@@ -41,7 +41,7 @@ export const ProductionHistoryPage = () => {
   const filters = {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
-    karigarId: karigarId === 'ALL' ? undefined : karigarId,
+    carrierId: karigarId === 'ALL' ? undefined : karigarId,
     itemId: itemId === 'ALL' ? undefined : itemId,
   };
 
@@ -54,18 +54,19 @@ export const ProductionHistoryPage = () => {
     setIsExporting(true);
     try {
       const all = await apiClient.list<ProductionEntry>('/production-entries', { page: 1, pageSize: 1000, ...filters });
-      const header = ['Date', 'Karigar', 'Code', 'Work Type', 'Style No', 'Item Name', 'Qty', 'Rate', 'Amount', 'Remarks'];
+      const header = ['Date', 'Lot Number', 'Carrier', 'Code', 'Work Type', 'Style No', 'Item Name', 'Qty', 'Rate', 'Amount', 'Remarks'];
       const rows = all.items.map((entry) =>
         [
           new Date(entry.date).toLocaleDateString(),
-          entry.karigar.fullName,
-          entry.karigar.code,
+          entry.lotNumber ?? '',
+          entry.carrier.fullName,
+          entry.carrier.code,
           entry.workType.name,
           entry.item.styleNo,
           entry.item.itemName,
-          String(entry.quantity),
-          Number(entry.rate).toFixed(2),
-          Number(entry.totalAmount).toFixed(2),
+          String(entry.carrierQuantity),
+          Number(entry.carrierRate).toFixed(2),
+          Number(entry.carrierTotal).toFixed(2),
           entry.remarks ?? '',
         ].map(toCsvValue),
       );
@@ -180,12 +181,12 @@ export const ProductionHistoryPage = () => {
                   return (
                     <tr key={entry.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-2.5 text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</td>
-                      <td className="px-4 py-2.5 font-medium">{entry.karigar.fullName}</td>
+                      <td className="px-4 py-2.5 font-medium">{entry.carrier.fullName}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground">{entry.item.styleNo}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
-                      <td className="numeric px-4 py-2.5 text-muted-foreground">{entry.quantity}</td>
-                      <td className="numeric px-4 py-2.5 text-muted-foreground">{Number(entry.rate).toFixed(2)}</td>
-                      <td className="numeric px-4 py-2.5 font-medium">{Number(entry.totalAmount).toFixed(2)}</td>
+                      <td className="numeric px-4 py-2.5 text-muted-foreground">{entry.carrierQuantity}</td>
+                      <td className="numeric px-4 py-2.5 text-muted-foreground">{Number(entry.carrierRate).toFixed(2)}</td>
+                      <td className="numeric px-4 py-2.5 font-medium">{Number(entry.carrierTotal).toFixed(2)}</td>
                       <td className="px-4 py-2">
                         <div className="flex size-9 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
                           {photoUrl ? (

@@ -10,6 +10,7 @@ import { RolesPage } from '../pages/RolesPage';
 import { AuditLogsPage } from '../pages/AuditLogsPage';
 import { KarigarsPage } from '../pages/KarigarsPage';
 import { ItemsPage } from '../pages/ItemsPage';
+import { CuttingPage } from '../pages/CuttingPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { ProductionEntryPage } from '../pages/ProductionEntryPage';
 import { ProductionHistoryPage } from '../pages/ProductionHistoryPage';
@@ -26,6 +27,7 @@ const MODULE_PAGES: Partial<Record<ModuleKey, ComponentType>> = {
   audit_logs: AuditLogsPage,
   karigars: KarigarsPage,
   items: ItemsPage,
+  cutting: CuttingPage,
   company_settings: SettingsPage,
   production_entries: ProductionEntryPage,
   production_history: ProductionHistoryPage,
