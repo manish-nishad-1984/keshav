@@ -20,7 +20,6 @@ export const createCuttingEntrySchema = z.object({
   lotNumber: z.string().min(1),
   date: z.coerce.date(),
   patternTypeId: z.string().uuid(),
-  characterId: z.string().uuid(),
   isOnline: z.boolean(),
   itemId: z.string().uuid(),
   partyName: z.string().min(1),
@@ -34,7 +33,6 @@ export type CreateCuttingEntryInput = z.infer<typeof createCuttingEntrySchema>;
 export const updateCuttingEntrySchema = z.object({
   date: z.coerce.date().optional(),
   patternTypeId: z.string().uuid().optional(),
-  characterId: z.string().uuid().optional(),
   isOnline: z.boolean().optional(),
   itemId: z.string().uuid().optional(),
   partyName: z.string().min(1).optional(),

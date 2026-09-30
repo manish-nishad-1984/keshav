@@ -18,12 +18,9 @@ export const updatePatternType = (
   updatedById: string | null,
 ) => prisma.patternType.update({ where: { id }, data: { ...data, updatedById: updatedById ?? undefined } });
 
-// A pattern type is referenced by two separate columns on CuttingEntry (patternTypeId and
-// characterId, both "Pattern Type" pickers in the UI) — count both, including soft-deleted
-// cutting entries, since CuttingEntry's FKs to this table have no cascade/set-null.
+// Counts soft-deleted cutting entries too, since CuttingEntry's FK to this table has no
+// cascade/set-null.
 export const countCuttingEntriesWithPatternType = async (patternTypeId: string) =>
-  prisma.cuttingEntry.count({
-    where: { OR: [{ patternTypeId }, { characterId: patternTypeId }] },
-  });
+  prisma.cuttingEntry.count({ where: { patternTypeId } });
 
 export const deletePatternType = (id: string) => prisma.patternType.delete({ where: { id } });

@@ -31,10 +31,9 @@ export const getCuttingEntryByLotNumber = async (organizationId: string, lotNumb
   return entry;
 };
 
-const validateReferences = (organizationId: string, input: { patternTypeId?: string; characterId?: string; itemId?: string; colorId?: string }) =>
+const validateReferences = (organizationId: string, input: { patternTypeId?: string; itemId?: string; colorId?: string }) =>
   Promise.all([
     input.patternTypeId ? getPatternType(organizationId, input.patternTypeId) : Promise.resolve(),
-    input.characterId ? getPatternType(organizationId, input.characterId) : Promise.resolve(),
     input.itemId ? getItem(organizationId, input.itemId) : Promise.resolve(),
     input.colorId ? getColor(organizationId, input.colorId) : Promise.resolve(),
   ]);

@@ -3,7 +3,6 @@ import type { Prisma } from '@prisma/client';
 
 const includeRelations = {
   patternType: true,
-  character: true,
   item: { include: { category: true } },
   color: true,
   lines: { orderBy: { createdAt: 'asc' } },
@@ -66,7 +65,6 @@ interface CuttingEntryHeaderData {
   lotNumber: string;
   date: Date;
   patternTypeId: string;
-  characterId: string;
   isOnline: boolean;
   itemId: string;
   partyName: string;

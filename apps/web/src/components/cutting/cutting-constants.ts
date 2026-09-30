@@ -36,7 +36,6 @@ export interface CuttingEntry {
   lotNumber: string;
   date: string;
   patternTypeId: string;
-  characterId: string;
   isOnline: boolean;
   itemId: string;
   partyName: string;
@@ -45,7 +44,6 @@ export interface CuttingEntry {
   colorId: string;
   totalAmount: string;
   patternType: PatternType;
-  character: PatternType;
   item: { id: string; styleNo: string; itemName: string };
   color: Color;
   lines: CuttingEntryLine[];

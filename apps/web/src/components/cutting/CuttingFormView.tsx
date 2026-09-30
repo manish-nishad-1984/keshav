@@ -28,18 +28,33 @@ const toDateInputValue = (value: string) => value.slice(0, 10);
 const lineTotal = (line: CuttingEntryLineInput) =>
   typeof line.quantity === 'number' && typeof line.rate === 'number' ? line.quantity * line.rate : 0;
 
+const formatAmount = (value: number) =>
+  value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const toNumberOrEmpty = (value: string): number | '' => (value === '' ? '' : Number(value));
+
+// Shared column template for the size header row and each size row (sm and up). Below sm each
+// row collapses to a stacked mini-card: Size + delete on top, Quantity / Rate / Total beneath.
+const SIZE_GRID =
+  'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2rem] gap-x-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2rem]';
+
+// Select + trailing icon button rendered as one joined control.
+const joinedTrigger = 'min-w-0 flex-1 rounded-r-none';
+const joinedButton = 'shrink-0 rounded-l-none border-l-0 text-muted-foreground shadow-sm hover:text-foreground';
+
 export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProps) => {
   const isEdit = Boolean(entry);
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [patternManagerOpen, setPatternManagerOpen] = useState(false);
   const [colorManagerOpen, setColorManagerOpen] = useState(false);
+  // Index of a just-added size row, so its Size input takes focus when it mounts.
+  const [focusLineIndex, setFocusLineIndex] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     lotNumber: '',
     date: '',
     patternTypeId: '',
-    characterId: '',
     isOnline: true,
     itemId: '',
     partyName: '',
@@ -67,12 +82,12 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
 
   useEffect(() => {
     setError(null);
+    setFocusLineIndex(null);
     if (entry) {
       setForm({
         lotNumber: entry.lotNumber,
         date: toDateInputValue(entry.date),
         patternTypeId: entry.patternTypeId,
-        characterId: entry.characterId,
         isOnline: entry.isOnline,
         itemId: entry.itemId,
         partyName: entry.partyName,
@@ -86,7 +101,6 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
         lotNumber: '',
         date: '',
         patternTypeId: '',
-        characterId: '',
         isOnline: true,
         itemId: '',
         partyName: '',
@@ -99,11 +113,15 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
   }, [entry]);
 
   const grandTotal = lines.reduce((sum, l) => sum + lineTotal(l), 0);
+  const totalQuantity = lines.reduce((sum, l) => sum + (typeof l.quantity === 'number' ? l.quantity : 0), 0);
 
   const updateLine = (index: number, patch: Partial<CuttingEntryLineInput>) =>
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
 
-  const addLine = () => setLines((prev) => [...prev, { ...emptyLine }]);
+  const addLine = () => {
+    setFocusLineIndex(lines.length);
+    setLines((prev) => [...prev, { ...emptyLine }]);
+  };
   const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
 
   const mutation = useMutation({
@@ -111,7 +129,6 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
       const payload = {
         date: form.date,
         patternTypeId: form.patternTypeId,
-        characterId: form.characterId,
         isOnline: form.isOnline,
         itemId: form.itemId,
         partyName: form.partyName,
@@ -136,7 +153,6 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
     form.lotNumber &&
     form.date &&
     form.patternTypeId &&
-    form.characterId &&
     form.itemId &&
     form.partyName &&
     form.averageValue !== '' &&
@@ -147,7 +163,7 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
   return (
     <PageLayout title="Cutting Entry" description="Fabric cutting lots — the starting point of production.">
       <Card>
-        <CardContent>
+        <CardContent className="p-4 sm:p-5">
           <form
             className="space-y-5"
             onSubmit={(e) => {
@@ -157,28 +173,38 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
           >
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <FormField label="Lot Number" required hint={isEdit ? 'Cannot be changed after creation.' : undefined}>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+              <FormField
+                label="Lot Number"
+                required
+                htmlFor="cutting-lot"
+                hint={isEdit ? 'Cannot be changed after creation.' : undefined}
+              >
                 <Input
+                  id="cutting-lot"
                   required
                   disabled={isEdit}
                   autoFocus={!isEdit}
+                  autoComplete="off"
                   value={form.lotNumber}
                   onChange={(e) => setForm((f) => ({ ...f, lotNumber: e.target.value }))}
                 />
               </FormField>
 
-              <FormField label="Date" required>
-                <Input type="date" required value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
+              <FormField label="Date" required htmlFor="cutting-date">
+                <Input
+                  id="cutting-date"
+                  type="date"
+                  required
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                />
               </FormField>
 
-              <FormField label="Pattern Type" required>
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={form.patternTypeId}
-                    onValueChange={(v) => setForm((f) => ({ ...f, patternTypeId: v }))}
-                  >
-                    <SelectTrigger className="flex-1">
+              <FormField label="Pattern Type" required htmlFor="cutting-pattern">
+                <div className="flex">
+                  <Select value={form.patternTypeId} onValueChange={(v) => setForm((f) => ({ ...f, patternTypeId: v }))}>
+                    <SelectTrigger id="cutting-pattern" className={joinedTrigger}>
                       <SelectValue placeholder="Select pattern type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -189,58 +215,43 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setPatternManagerOpen(true)}>
-                    <Settings2 />
-                  </Button>
-                </div>
-              </FormField>
-
-              <FormField label="Character" required hint="Same pattern-type list, used as a second classification.">
-                <div className="flex items-center gap-2">
-                  <Select value={form.characterId} onValueChange={(v) => setForm((f) => ({ ...f, characterId: v }))}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select character" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activePatternTypes.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setPatternManagerOpen(true)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className={joinedButton}
+                    aria-label="Manage pattern types"
+                    title="Manage pattern types"
+                    onClick={() => setPatternManagerOpen(true)}
+                  >
                     <Settings2 />
                   </Button>
                 </div>
               </FormField>
 
               <FormField label="Online / Offline" required>
-                <div className="flex h-9 items-center gap-4">
-                  <label className="flex cursor-pointer items-center gap-1.5 text-sm">
-                    <input
-                      type="radio"
-                      name="isOnline"
-                      checked={form.isOnline}
-                      onChange={() => setForm((f) => ({ ...f, isOnline: true }))}
-                    />
-                    Online
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-1.5 text-sm">
-                    <input
-                      type="radio"
-                      name="isOnline"
-                      checked={!form.isOnline}
-                      onChange={() => setForm((f) => ({ ...f, isOnline: false }))}
-                    />
-                    Offline
-                  </label>
+                <div role="radiogroup" aria-label="Online / Offline" className="flex h-9 items-center gap-5">
+                  {[
+                    { label: 'Online', value: true },
+                    { label: 'Offline', value: false },
+                  ].map((option) => (
+                    <label key={option.label} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="isOnline"
+                        className="size-4 cursor-pointer accent-primary"
+                        checked={form.isOnline === option.value}
+                        onChange={() => setForm((f) => ({ ...f, isOnline: option.value }))}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
                 </div>
               </FormField>
 
-              <FormField label="Item" required>
+              <FormField label="Item" required htmlFor="cutting-item">
                 <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
-                  <SelectTrigger>
+                  <SelectTrigger id="cutting-item">
                     <SelectValue placeholder="Select item" />
                   </SelectTrigger>
                   <SelectContent>
@@ -253,29 +264,62 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                 </Select>
               </FormField>
 
-              <FormField label="Party Name" required>
+              <FormField label="Color" required htmlFor="cutting-color">
+                <div className="flex">
+                  <Select value={form.colorId} onValueChange={(v) => setForm((f) => ({ ...f, colorId: v }))}>
+                    <SelectTrigger id="cutting-color" className={joinedTrigger}>
+                      <SelectValue placeholder="Select color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeColors.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className={joinedButton}
+                    aria-label="Manage colors"
+                    title="Manage colors"
+                    onClick={() => setColorManagerOpen(true)}
+                  >
+                    <Settings2 />
+                  </Button>
+                </div>
+              </FormField>
+
+              {/* Spans two columns on desktop so the last row has no empty cell. */}
+              <FormField label="Party Name" required htmlFor="cutting-party" className="lg:col-span-2">
                 <Input
+                  id="cutting-party"
                   required
                   value={form.partyName}
                   onChange={(e) => setForm((f) => ({ ...f, partyName: e.target.value }))}
                 />
               </FormField>
 
-              <FormField label="Average" required>
-                <div className="flex items-center gap-2">
+              <FormField label="Average" required htmlFor="cutting-average">
+                <div className="flex">
                   <Input
+                    id="cutting-average"
                     type="number"
                     step="0.01"
+                    min={0}
+                    inputMode="decimal"
                     required
-                    className="numeric"
+                    className="numeric min-w-0 flex-1 rounded-r-none text-right"
                     value={form.averageValue}
-                    onChange={(e) => setForm((f) => ({ ...f, averageValue: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onChange={(e) => setForm((f) => ({ ...f, averageValue: toNumberOrEmpty(e.target.value) }))}
                   />
                   <Select
                     value={form.averageUnit}
                     onValueChange={(v) => setForm((f) => ({ ...f, averageUnit: v as AverageUnit }))}
                   >
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger aria-label="Average unit" className="w-28 shrink-0 rounded-l-none border-l-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -288,106 +332,110 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                   </Select>
                 </div>
               </FormField>
-
-              <FormField label="Color" required>
-                <div className="flex items-center gap-2">
-                  <Select value={form.colorId} onValueChange={(v) => setForm((f) => ({ ...f, colorId: v }))}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeColors.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setColorManagerOpen(true)}>
-                    <Settings2 />
-                  </Button>
-                </div>
-              </FormField>
             </div>
 
-            <div className="border-t border-border pt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Sizes</h3>
+            <section aria-labelledby="cutting-sizes-heading" className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 id="cutting-sizes-heading" className="text-sm font-semibold">
+                  Sizes
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{lines.length}</span>
+                </h3>
                 <Button type="button" variant="outline" size="sm" onClick={addLine}>
                   <Plus />
-                  Add size
+                  Add Size
                 </Button>
               </div>
-              <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Size</th>
-                      <th className="px-3 py-2 font-medium">Quantity</th>
-                      <th className="px-3 py-2 font-medium">Rate</th>
-                      <th className="px-3 py-2 font-medium">Total</th>
-                      <th className="px-3 py-2 font-medium" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((line, index) => (
-                      <tr key={index} className="border-b border-border last:border-0">
-                        <td className="px-3 py-2">
-                          <Input
-                            required
-                            className="h-8"
-                            value={line.size}
-                            onChange={(e) => updateLine(index, { size: e.target.value })}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            required
-                            type="number"
-                            className="numeric h-8"
-                            value={line.quantity}
-                            onChange={(e) => updateLine(index, { quantity: e.target.value === '' ? '' : Number(e.target.value) })}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input
-                            required
-                            type="number"
-                            step="0.01"
-                            className="numeric h-8"
-                            value={line.rate}
-                            onChange={(e) => updateLine(index, { rate: e.target.value === '' ? '' : Number(e.target.value) })}
-                          />
-                        </td>
-                        <td className="numeric px-3 py-2 text-muted-foreground">{lineTotal(line).toFixed(2)}</td>
-                        <td className="px-2 py-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            disabled={lines.length === 1}
-                            onClick={() => removeLine(index)}
-                          >
-                            <Trash2 />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              <div className={`${SIZE_GRID} hidden border-b border-border pb-1.5 section-label sm:grid`}>
+                <span>Size</span>
+                <span className="text-right">Quantity</span>
+                <span className="text-right">Rate</span>
+                <span className="text-right">Total</span>
+                <span className="sr-only">Remove</span>
               </div>
 
-              <FormField label="Total" className="mt-4 max-w-xs">
-                <Input disabled className="numeric" value={grandTotal.toFixed(2)} />
-              </FormField>
-            </div>
+              <div className="space-y-2 sm:space-y-1.5">
+                {lines.map((line, index) => (
+                  <div
+                    key={index}
+                    className={`${SIZE_GRID} items-end gap-y-2 rounded-md border border-border p-2 sm:items-center sm:rounded-none sm:border-0 sm:p-0`}
+                  >
+                    <label className="col-span-3 space-y-1 sm:col-span-1 sm:space-y-0">
+                      <span className="text-2xs text-muted-foreground sm:sr-only">Size {index + 1}</span>
+                      <Input
+                        required
+                        className="h-8"
+                        autoFocus={index === focusLineIndex}
+                        value={line.size}
+                        onChange={(e) => updateLine(index, { size: e.target.value })}
+                      />
+                    </label>
+                    <label className="space-y-1 sm:space-y-0">
+                      <span className="text-2xs text-muted-foreground sm:sr-only">Quantity</span>
+                      <Input
+                        required
+                        type="number"
+                        min={1}
+                        step={1}
+                        inputMode="numeric"
+                        className="numeric h-8 text-right"
+                        value={line.quantity}
+                        onChange={(e) => updateLine(index, { quantity: toNumberOrEmpty(e.target.value) })}
+                      />
+                    </label>
+                    <label className="space-y-1 sm:space-y-0">
+                      <span className="text-2xs text-muted-foreground sm:sr-only">Rate</span>
+                      <Input
+                        required
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        inputMode="decimal"
+                        className="numeric h-8 text-right"
+                        value={line.rate}
+                        onChange={(e) => updateLine(index, { rate: toNumberOrEmpty(e.target.value) })}
+                      />
+                    </label>
+                    <div className="space-y-1 text-right sm:space-y-0">
+                      <span className="block text-2xs text-muted-foreground sm:hidden">Total</span>
+                      <output className="numeric flex h-8 items-center justify-end pr-1 text-muted-foreground">
+                        {formatAmount(lineTotal(line))}
+                      </output>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="col-start-4 row-start-1 size-8 self-end text-muted-foreground hover:text-destructive sm:col-start-5 sm:self-center [&_svg]:size-3.5"
+                      aria-label={`Remove size ${index + 1}`}
+                      disabled={lines.length === 1}
+                      onClick={() => removeLine(index)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                ))}
+              </div>
 
-            <div className="flex items-center gap-2 border-t border-border pt-4">
-              <Button type="submit" loading={mutation.isPending} disabled={!canSubmit}>
-                Save
-              </Button>
-              <Button type="button" variant="outline" onClick={onCancel}>
+              <div className="flex items-center justify-between gap-4 rounded-md bg-muted px-3 py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  {lines.length} {lines.length === 1 ? 'size' : 'sizes'} · {totalQuantity.toLocaleString('en-IN')} pcs
+                </span>
+                <div className="text-right">
+                  <div className="text-2xs font-medium uppercase tracking-wider text-muted-foreground">Total</div>
+                  <output aria-live="polite" className="numeric block text-base font-semibold text-foreground">
+                    ₹{formatAmount(grandTotal)}
+                  </output>
+                </div>
+              </div>
+            </section>
+
+            <div className="flex gap-2 border-t border-border pt-4 sm:justify-end">
+              <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={onCancel}>
                 Cancel
+              </Button>
+              <Button type="submit" className="flex-1 sm:min-w-24 sm:flex-none" loading={mutation.isPending} disabled={!canSubmit}>
+                Save
               </Button>
             </div>
           </form>

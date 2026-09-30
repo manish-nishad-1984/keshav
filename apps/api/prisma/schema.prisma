@@ -363,9 +363,8 @@ model PatternType {
   createdById    String?  @db.Uuid
   updatedById    String?  @db.Uuid
 
-  organization              Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  cuttingEntriesAsPattern   CuttingEntry[] @relation("CuttingEntryPatternType")
-  cuttingEntriesAsCharacter CuttingEntry[] @relation("CuttingEntryCharacter")
+  organization            Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cuttingEntriesAsPattern CuttingEntry[] @relation("CuttingEntryPatternType")
 
   @@unique([organizationId, name])
   @@map("pattern_types")
@@ -476,7 +475,6 @@ model CuttingEntry {
   lotNumber      String
   date           DateTime    @db.Date
   patternTypeId  String      @db.Uuid
-  characterId    String      @db.Uuid
   isOnline       Boolean
   itemId         String      @db.Uuid
   partyName      String
@@ -494,7 +492,6 @@ model CuttingEntry {
 
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patternType       PatternType        @relation("CuttingEntryPatternType", fields: [patternTypeId], references: [id])
-  character         PatternType        @relation("CuttingEntryCharacter", fields: [characterId], references: [id])
   item              Item               @relation(fields: [itemId], references: [id])
   color             Color              @relation(fields: [colorId], references: [id])
   lines             CuttingEntryLine[]
