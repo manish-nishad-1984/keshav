@@ -5,6 +5,7 @@ import { PageLayout } from '../components/layout/PageLayout';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { LoadingState } from '../components/ui/loading-state';
+import { formatDateTime } from '../lib/date';
 
 interface AuditLogRow {
   id: string;
@@ -41,7 +42,7 @@ export const AuditLogsPage = () => {
                 {(data as Paginated<AuditLogRow> | undefined)?.items.map((entry) => (
                   <tr key={entry.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-2.5 numeric text-muted-foreground">
-                      {new Date(entry.createdAt).toLocaleString()}
+                      {formatDateTime(entry.createdAt)}
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge variant="info">{entry.action}</Badge>

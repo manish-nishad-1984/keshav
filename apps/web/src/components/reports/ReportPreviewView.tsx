@@ -6,9 +6,11 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { LoadingState } from '../ui/loading-state';
+import { DatePicker } from '../ui/date-picker';
 import { REPORT_TYPES, formatMonthKey, type ReportKey } from './report-constants';
 import type { ProductionEntry } from '../production-entries/production-entry-constants';
 import type { LedgerRow } from '../payments/payment-constants';
+import { formatDate, localIsoDate } from '../../lib/date';
 
 interface OrganizationDto {
   name: string;
@@ -103,12 +105,12 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
     ledgerQuery.isLoading;
 
   const handleExport = () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatDate(localIsoDate());
     if (reportKey === 'daily-production' || reportKey === 'photo-report') {
       const rows = (entriesQuery.data?.items ?? [])
         .filter((e) => reportKey === 'daily-production' || e.photoUrl)
         .map((e) => [
-          new Date(e.date).toLocaleDateString(),
+          formatDate(e.date),
           e.carrier.fullName,
           e.item.styleNo,
           e.item.itemName,
@@ -175,7 +177,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
             {items.map((e, i) => (
               <tr key={e.id} className="border-b border-border last:border-0">
                 <td className="px-3 py-2">{i + 1}</td>
-                <td className="px-3 py-2">{new Date(e.date).toLocaleDateString()}</td>
+                <td className="px-3 py-2">{formatDate(e.date)}</td>
                 <td className="px-3 py-2">{e.carrier.fullName}</td>
                 <td className="numeric px-3 py-2">{e.item.styleNo}</td>
                 <td className="px-3 py-2">{e.item.itemName}</td>
@@ -237,7 +239,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-2">{new Date(e.date).toLocaleDateString()}</td>
+                  <td className="px-3 py-2">{formatDate(e.date)}</td>
                   <td className="px-3 py-2">{e.carrier.fullName}</td>
                   <td className="numeric px-3 py-2">{e.item.styleNo}</td>
                   <td className="px-3 py-2">{e.item.itemName}</td>
@@ -459,9 +461,9 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
         <div className="flex flex-wrap items-center gap-2">
           {definition.usesDateRange ? (
             <>
-              <Input type="date" className="w-40" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <DatePicker aria-label="From date" className="w-40" max={dateTo || undefined} value={dateFrom} onChange={setDateFrom} />
               <span className="text-xs text-muted-foreground">to</span>
-              <Input type="date" className="w-40" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <DatePicker aria-label="To date" className="w-40" min={dateFrom || undefined} value={dateTo} onChange={setDateTo} />
             </>
           ) : null}
           <Button variant="outline" onClick={handleExport}>
@@ -481,7 +483,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
           <p className="text-sm font-medium text-muted-foreground">{definition.title}</p>
           {definition.usesDateRange && (dateFrom || dateTo) ? (
             <p className="text-2xs text-muted-foreground">
-              From: {dateFrom || '—'} To: {dateTo || '—'}
+              From: {formatDate(dateFrom) || '—'} To: {formatDate(dateTo) || '—'}
             </p>
           ) : null}
         </div>

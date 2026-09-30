@@ -11,6 +11,7 @@ import { LoadingState } from '../ui/loading-state';
 import { Pagination } from '../ui/pagination';
 import { usePermissions } from '../../hooks/use-permissions';
 import type { CuttingEntry } from './cutting-constants';
+import { formatDate } from '../../lib/date';
 
 interface CuttingListViewProps {
   onAdd: () => void;
@@ -80,7 +81,7 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                 {data?.items.map((entry) => (
                   <tr key={entry.id} className="border-b border-border last:border-0">
                     <td className="numeric px-4 py-2.5 font-medium">{entry.lotNumber}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{formatDate(entry.date)}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{entry.partyName}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{entry.color.name}</td>

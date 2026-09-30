@@ -9,11 +9,13 @@ import { Input } from '../components/ui/input';
 import { LoadingState } from '../components/ui/loading-state';
 import { Pagination } from '../components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 import { usePermissions } from '../hooks/use-permissions';
 import { ProductionEntryViewDialog } from '../components/production-entries/ProductionEntryViewDialog';
 import type { ProductionEntry } from '../components/production-entries/production-entry-constants';
 import type { Karigar } from '../components/karigars/karigar-constants';
 import type { Item } from '../components/items/item-constants';
+import { formatDate, localIsoDate } from '../lib/date';
 
 const toCsvValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
@@ -57,7 +59,7 @@ export const ProductionHistoryPage = () => {
       const header = ['Date', 'Lot Number', 'Carrier', 'Code', 'Work Type', 'Style No', 'Item Name', 'Qty', 'Rate', 'Amount', 'Remarks'];
       const rows = all.items.map((entry) =>
         [
-          new Date(entry.date).toLocaleDateString(),
+          formatDate(entry.date),
           entry.lotNumber ?? '',
           entry.carrier.fullName,
           entry.carrier.code,
@@ -75,7 +77,7 @@ export const ProductionHistoryPage = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `production-history-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.download = `production-history-${formatDate(localIsoDate())}.csv`;
       link.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -98,23 +100,25 @@ export const ProductionHistoryPage = () => {
     >
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-          <Input
-            type="date"
+          <DatePicker
+            aria-label="From date"
             className="w-40"
+            max={dateTo || undefined}
             value={dateFrom}
-            onChange={(e) => {
+            onChange={(value) => {
               setPage(1);
-              setDateFrom(e.target.value);
+              setDateFrom(value);
             }}
           />
           <span className="text-xs text-muted-foreground">to</span>
-          <Input
-            type="date"
+          <DatePicker
+            aria-label="To date"
             className="w-40"
+            min={dateFrom || undefined}
             value={dateTo}
-            onChange={(e) => {
+            onChange={(value) => {
               setPage(1);
-              setDateTo(e.target.value);
+              setDateTo(value);
             }}
           />
           <Select
@@ -180,7 +184,7 @@ export const ProductionHistoryPage = () => {
                   const photoUrl = resolvePhotoUrl(entry.photoUrl);
                   return (
                     <tr key={entry.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-2.5 text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{formatDate(entry.date)}</td>
                       <td className="px-4 py-2.5 font-medium">{entry.carrier.fullName}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground">{entry.item.styleNo}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>

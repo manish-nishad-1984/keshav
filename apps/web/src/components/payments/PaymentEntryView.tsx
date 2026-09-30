@@ -8,10 +8,12 @@ import { Textarea } from '../ui/textarea';
 import { FormField } from '../ui/form-field';
 import { FormAlert } from '../ui/form-alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DatePicker } from '../ui/date-picker';
 import type { Karigar } from '../karigars/karigar-constants';
 import { PAYMENT_MODES, PAYMENT_MODE_LABELS, type LedgerRow } from './payment-constants';
+import { localIsoDate } from '../../lib/date';
 
-const todayInputValue = () => new Date().toISOString().slice(0, 10);
+const todayInputValue = () => localIsoDate();
 
 const emptyForm = {
   date: todayInputValue(),
@@ -77,12 +79,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Date" required>
-              <Input
-                type="date"
-                required
-                value={form.date}
-                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-              />
+              <DatePicker required value={form.date} onChange={(date) => setForm((f) => ({ ...f, date }))} />
             </FormField>
 
             <FormField label="Karigar" required>

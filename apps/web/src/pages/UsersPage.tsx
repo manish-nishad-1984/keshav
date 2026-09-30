@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import { formatDateTime } from '../lib/date';
 
 interface UserRow extends UserFormValue {
   status: string;
@@ -189,7 +190,7 @@ export const UsersPage = () => {
                       <StatusBadge status={user.status} />
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
-                      {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}
+                      {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Never'}
                     </td>
                     <td className="px-2 py-2.5 text-right">
                       <ActionMenu items={rowActions(user)} />

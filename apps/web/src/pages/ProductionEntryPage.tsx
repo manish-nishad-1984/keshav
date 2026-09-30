@@ -10,13 +10,15 @@ import { FormField } from '../components/ui/form-field';
 import { FormAlert } from '../components/ui/form-alert';
 import { HelpTip } from '../components/ui/help-tip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 import { PhotoUpload } from '../components/common/PhotoUpload';
 import { cn } from '../lib/utils';
 import type { Karigar, WorkType } from '../components/karigars/karigar-constants';
 import type { Item } from '../components/items/item-constants';
 import type { CuttingEntry } from '../components/cutting/cutting-constants';
+import { localIsoDate } from '../lib/date';
 
-const todayInputValue = () => new Date().toISOString().slice(0, 10);
+const todayInputValue = () => localIsoDate();
 
 const emptyForm = {
   date: todayInputValue(),
@@ -203,13 +205,12 @@ export const ProductionEntryPage = () => {
             {/* Row 1 — entry header */}
             <div className={cn(ROW, 'grid-cols-2 lg:grid-cols-4')}>
               <FormField label="Date" required htmlFor="pe-date" className={FIELD}>
-                <Input
+                <DatePicker
                   id="pe-date"
-                  type="date"
                   required
-                  className={CONTROL}
+                  inputClassName={CONTROL}
                   value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  onChange={(date) => setForm((f) => ({ ...f, date }))}
                 />
               </FormField>
 

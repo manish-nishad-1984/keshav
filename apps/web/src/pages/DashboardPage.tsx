@@ -17,6 +17,7 @@ import { apiClient, resolvePhotoUrl } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { LoadingState } from '../components/ui/loading-state';
+import { formatDate } from '../lib/date';
 
 interface TopKarigar {
   karigarId: string;
@@ -51,14 +52,10 @@ interface DashboardSummary {
 
 const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
-// `day` is a plain "YYYY-MM-DD" string from the API (see dashboard.repository.ts) — parsed
-// manually rather than via `new Date(...)` to avoid the raw-SQL/local-timezone pitfall documented
-// there.
-const formatDayLabel = (day: string) => {
-  const [, month, date] = day.split('-').map(Number);
-  const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${date} ${MONTH_SHORT[month - 1]}`;
-};
+// `day` is a plain "YYYY-MM-DD" string from the API (see dashboard.repository.ts) — never parsed
+// via `new Date(...)`, to avoid the raw-SQL/local-timezone pitfall documented there. Axis ticks
+// use a short DD-MM; the tooltip shows the full DD-MM-YYYY.
+const formatDayLabel = (day: string) => formatDate(day).slice(0, 5);
 
 const PIE_COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#65a30d'];
 
@@ -109,7 +106,7 @@ export const DashboardPage = () => {
                       <XAxis dataKey="day" tickFormatter={formatDayLabel} tick={{ fontSize: 12 }} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={36} />
                       <Tooltip
-                        labelFormatter={(label) => formatDayLabel(String(label))}
+                        labelFormatter={(label) => formatDate(String(label))}
                         formatter={(value) => [value as number, 'Pieces']}
                       />
                       <Line type="monotone" dataKey="quantity" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />

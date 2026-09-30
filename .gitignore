@@ -13,3 +13,5 @@ apps/web/vite.config.d.ts
 
 # Claude Code personal settings
 .claude/settings.local.json
+fix-live.ps1
+web.config.fix

@@ -9,6 +9,7 @@ import { Textarea } from '../ui/textarea';
 import { FormField } from '../ui/form-field';
 import { FormAlert } from '../ui/form-alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DatePicker } from '../ui/date-picker';
 import { PhotoUpload } from '../common/PhotoUpload';
 import type { Karigar, WorkType } from './karigar-constants';
 
@@ -147,11 +148,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
                 </Select>
               </FormField>
               <FormField label="Join Date">
-                <Input
-                  type="date"
-                  value={form.joinDate}
-                  onChange={(e) => setForm((f) => ({ ...f, joinDate: e.target.value }))}
-                />
+                <DatePicker value={form.joinDate} onChange={(joinDate) => setForm((f) => ({ ...f, joinDate }))} />
               </FormField>
               <FormField label="Status">
                 <Select

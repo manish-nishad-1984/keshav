@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { usePermissions } from '../../hooks/use-permissions';
 import type { ProductionEntry } from './production-entry-constants';
+import { formatDate } from '../../lib/date';
 
 interface ProductionEntryViewDialogProps {
   entry: ProductionEntry | null;
@@ -59,7 +60,7 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Date" value={new Date(entry.date).toLocaleDateString()} />
+                <Field label="Date" value={formatDate(entry.date)} />
                 {entry.lotNumber ? <Field label="Lot Number" value={entry.lotNumber} /> : null}
                 {entry.designNumber ? <Field label="Design Number" value={entry.designNumber} /> : null}
                 <Field label="Work Type" value={entry.workType.name} />

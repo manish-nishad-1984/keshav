@@ -11,6 +11,7 @@ import { FormField } from '../ui/form-field';
 import { FormAlert } from '../ui/form-alert';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { usePermissions } from '../../hooks/use-permissions';
+import { formatDate, formatDateTime, localIsoDate } from '../../lib/date';
 
 interface BackupHistoryRow {
   id: string;
@@ -65,7 +66,7 @@ export const BackupRestoreTab = () => {
   const backupMutation = useMutation({
     mutationFn: () => apiClient.post('/backups/export'),
     onSuccess: (payload) => {
-      downloadJson(`ckfast-backup-${new Date().toISOString().slice(0, 10)}.json`, payload);
+      downloadJson(`ckfast-backup-${formatDate(localIsoDate())}.json`, payload);
       setNotice('Backup created and downloaded.');
       setError(null);
       void queryClient.invalidateQueries({ queryKey: ['backups', 'history'] });
@@ -213,7 +214,7 @@ export const BackupRestoreTab = () => {
                 history.map((row) => (
                   <div key={row.id} className="flex items-center justify-between gap-2 px-4 py-2.5 text-sm">
                     <div>
-                      <p className="font-medium">{new Date(row.createdAt).toLocaleString()}</p>
+                      <p className="font-medium">{formatDateTime(row.createdAt)}</p>
                       <p className="text-2xs text-muted-foreground">
                         {row.triggeredBy === 'AUTO' ? 'Automatic' : 'Manual'} · {formatSize(row.sizeBytes)}
                       </p>

@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { LoadingState } from '../ui/loading-state';
 import { PAYMENT_MODE_LABELS, type LedgerRow, type Payment } from './payment-constants';
+import { formatDate } from '../../lib/date';
 
 interface KarigarPaymentHistoryDialogProps {
   karigar: LedgerRow | null;
@@ -59,7 +60,7 @@ export const KarigarPaymentHistoryDialog = ({ karigar, onOpenChange }: KarigarPa
                 <tbody>
                   {data?.items.map((payment) => (
                     <tr key={payment.id} className="border-b border-border last:border-0">
-                      <td className="px-3 py-2 text-muted-foreground">{new Date(payment.date).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{formatDate(payment.date)}</td>
                       <td className="numeric px-3 py-2 font-medium">{Number(payment.amount).toFixed(2)}</td>
                       <td className="px-3 py-2">
                         <Badge variant="muted">{PAYMENT_MODE_LABELS[payment.paymentMode]}</Badge>

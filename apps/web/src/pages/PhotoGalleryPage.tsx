@@ -8,10 +8,12 @@ import { Input } from '../components/ui/input';
 import { LoadingState } from '../components/ui/loading-state';
 import { Pagination } from '../components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { DatePicker } from '../components/ui/date-picker';
 import { ProductionEntryViewDialog } from '../components/production-entries/ProductionEntryViewDialog';
 import type { ProductionEntry } from '../components/production-entries/production-entry-constants';
 import type { Karigar } from '../components/karigars/karigar-constants';
 import type { Item } from '../components/items/item-constants';
+import { formatDate } from '../lib/date';
 
 export const PhotoGalleryPage = () => {
   const [date, setDate] = useState('');
@@ -47,13 +49,13 @@ export const PhotoGalleryPage = () => {
     <PageLayout title="Photo Gallery" description="Browse production photos by date, karigar, or item.">
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-          <Input
-            type="date"
+          <DatePicker
+            aria-label="Filter by date"
             className="w-40"
             value={date}
-            onChange={(e) => {
+            onChange={(value) => {
               setPage(1);
-              setDate(e.target.value);
+              setDate(value);
             }}
           />
           <Select
@@ -124,7 +126,7 @@ export const PhotoGalleryPage = () => {
                   </div>
                   <div className="px-2 py-1.5">
                     <p className="numeric text-xs font-medium">{entry.item.styleNo}</p>
-                    <p className="text-2xs text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</p>
+                    <p className="text-2xs text-muted-foreground">{formatDate(entry.date)}</p>
                   </div>
                 </button>
               );

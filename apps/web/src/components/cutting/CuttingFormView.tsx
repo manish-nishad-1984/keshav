@@ -9,6 +9,7 @@ import { Input } from '../ui/input';
 import { FormField } from '../ui/form-field';
 import { FormAlert } from '../ui/form-alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DatePicker } from '../ui/date-picker';
 import { PatternTypeManagerDialog } from './PatternTypeManagerDialog';
 import { ColorManagerDialog } from './ColorManagerDialog';
 import type { Item } from '../items/item-constants';
@@ -192,12 +193,11 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
               </FormField>
 
               <FormField label="Date" required htmlFor="cutting-date">
-                <Input
+                <DatePicker
                   id="cutting-date"
-                  type="date"
                   required
                   value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  onChange={(date) => setForm((f) => ({ ...f, date }))}
                 />
               </FormField>
 
