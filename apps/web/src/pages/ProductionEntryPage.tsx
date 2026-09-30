@@ -8,8 +8,10 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { FormField } from '../components/ui/form-field';
 import { FormAlert } from '../components/ui/form-alert';
+import { HelpTip } from '../components/ui/help-tip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { PhotoUpload } from '../components/common/PhotoUpload';
+import { cn } from '../lib/utils';
 import type { Karigar, WorkType } from '../components/karigars/karigar-constants';
 import type { Item } from '../components/items/item-constants';
 import type { CuttingEntry } from '../components/cutting/cutting-constants';
@@ -32,6 +34,21 @@ const emptyForm = {
   photoUrl: null as string | null,
   remarks: '',
 };
+
+// Layout tokens for this dense daily-entry form: 44px tap targets on mobile, 36px on desktop,
+// and a 4px label gap so the whole form fits a 1366×768 viewport without scrolling.
+const ROW = 'grid gap-x-3 gap-y-2.5';
+const FIELD = 'min-w-0 space-y-1';
+const CONTROL = 'h-11 sm:h-9';
+const ACTION = cn(CONTROL, 'px-2 sm:px-4');
+const NUMERIC = cn(CONTROL, 'numeric text-right');
+// Calculated totals are read-only rather than disabled so they keep full text contrast; they
+// stay out of the tab order as before.
+const TOTAL_PROPS = {
+  readOnly: true,
+  tabIndex: -1,
+  className: cn(NUMERIC, 'cursor-default bg-muted/50 text-foreground focus-visible:ring-0'),
+} as const;
 
 // A short debounce keeps the lot lookup from firing a request on every keystroke.
 const useDebouncedValue = <T,>(value: T, delayMs: number) => {
@@ -67,7 +84,7 @@ export const ProductionEntryPage = () => {
   const activeItems = items?.items.filter((i) => i.isActive) ?? [];
 
   const debouncedLotNumber = useDebouncedValue(form.lotNumber.trim(), 400);
-  const { data: matchedLot } = useQuery({
+  const { data: matchedLot, isFetching: lotFetching } = useQuery({
     queryKey: ['cutting-entry-by-lot', debouncedLotNumber],
     queryFn: () => apiClient.get<CuttingEntry>(`/cutting/lot/${encodeURIComponent(debouncedLotNumber)}`),
     enabled: debouncedLotNumber.length > 0,
@@ -76,12 +93,14 @@ export const ProductionEntryPage = () => {
   // A lot number match is authoritative for the item — locked, not just pre-filled, so the
   // production entry can't drift from what was actually cut under that lot.
   const itemLocked = Boolean(matchedLot);
+  const lotLookupPending = form.lotNumber.trim() !== debouncedLotNumber || lotFetching;
 
   useEffect(() => {
     if (matchedLot) setForm((f) => ({ ...f, itemId: matchedLot.itemId }));
   }, [matchedLot]);
 
   const selectedItem = activeItems.find((i) => i.id === form.itemId);
+  const lockedItemName = selectedItem?.itemName ?? matchedLot?.item.itemName ?? '';
 
   const carrierTotal = useMemo(() => {
     const quantity = Number(form.carrierQuantity) || 0;
@@ -152,12 +171,27 @@ export const ProductionEntryPage = () => {
     });
   };
 
+  // Shown only once a lot number is typed; the always-on explanation lives in the HelpTip.
+  const lotStatus = !form.lotNumber.trim()
+    ? null
+    : lotLookupPending
+      ? { className: 'text-muted-foreground', text: 'Checking lot…' }
+      : matchedLot
+        ? { className: 'font-medium text-status-success', text: 'Matched — item locked from this lot.' }
+        : { className: 'text-status-warning', text: 'No matching cutting entry — select item manually.' };
+
+  const karigarOptions = activeKarigars.map((karigar) => (
+    <SelectItem key={karigar.id} value={karigar.id}>
+      {karigar.fullName} ({karigar.code})
+    </SelectItem>
+  ));
+
   return (
-    <PageLayout title="Daily Production Entry" description="Log today's production per karigar and item.">
+    <PageLayout className="space-y-3" title="Daily Production Entry" description="Log today's production per karigar and item.">
       <Card>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4">
           <form
-            className="space-y-5"
+            className="space-y-2.5"
             onSubmit={(e) => {
               e.preventDefault();
               save('full');
@@ -166,11 +200,14 @@ export const ProductionEntryPage = () => {
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
             {saved ? <FormAlert tone="success">Production entry saved.</FormAlert> : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Date" required>
+            {/* Row 1 — entry header */}
+            <div className={cn(ROW, 'grid-cols-2 lg:grid-cols-4')}>
+              <FormField label="Date" required htmlFor="pe-date" className={FIELD}>
                 <Input
+                  id="pe-date"
                   type="date"
                   required
+                  className={CONTROL}
                   value={form.date}
                   onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
                 />
@@ -178,27 +215,37 @@ export const ProductionEntryPage = () => {
 
               <FormField
                 label="Lot Number"
-                hint={
-                  form.lotNumber && !matchedLot
-                    ? 'No matching cutting entry — item must be selected manually.'
-                    : matchedLot
-                      ? 'Matched — item is locked from this lot.'
-                      : 'Optional. Matches a Cutting entry and locks its item.'
-                }
+                htmlFor="pe-lot"
+                className={FIELD}
+                labelAddon={<HelpTip label="About lot number" text="Optional. Matches a Cutting entry and locks its item." />}
               >
-                <Input value={form.lotNumber} onChange={(e) => setForm((f) => ({ ...f, lotNumber: e.target.value }))} />
+                <Input
+                  id="pe-lot"
+                  autoComplete="off"
+                  aria-describedby={lotStatus ? 'pe-lot-status' : undefined}
+                  className={CONTROL}
+                  value={form.lotNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, lotNumber: e.target.value }))}
+                />
+                {lotStatus ? (
+                  <p id="pe-lot-status" role="status" className={cn('text-2xs', lotStatus.className)}>
+                    {lotStatus.text}
+                  </p>
+                ) : null}
               </FormField>
 
-              <FormField label="Design Number">
+              <FormField label="Design Number" htmlFor="pe-design" className={FIELD}>
                 <Input
+                  id="pe-design"
+                  className={CONTROL}
                   value={form.designNumber}
                   onChange={(e) => setForm((f) => ({ ...f, designNumber: e.target.value }))}
                 />
               </FormField>
 
-              <FormField label="Work Type" required>
+              <FormField label="Work Type" required htmlFor="pe-work-type" className={FIELD}>
                 <Select value={form.workTypeId} onValueChange={(v) => setForm((f) => ({ ...f, workTypeId: v }))}>
-                  <SelectTrigger>
+                  <SelectTrigger id="pe-work-type" className={CONTROL}>
                     <SelectValue placeholder="Select work type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -210,13 +257,26 @@ export const ProductionEntryPage = () => {
                   </SelectContent>
                 </Select>
               </FormField>
+            </div>
 
-              <FormField label="Item Name" required>
+            {/* Row 2 — item and main karigar; this quantity drives all three totals */}
+            <div
+              className={cn(
+                ROW,
+                'grid-cols-2 sm:grid-cols-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]',
+              )}
+            >
+              <FormField
+                label="Item Name"
+                required
+                htmlFor="pe-item"
+                className={cn(FIELD, 'col-span-2 sm:col-span-3 lg:col-span-1')}
+              >
                 {itemLocked ? (
-                  <Input disabled value={selectedItem?.itemName ?? matchedLot?.item.itemName ?? ''} />
+                  <Input id="pe-item" disabled title={lockedItemName} className={CONTROL} value={lockedItemName} />
                 ) : (
                   <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
-                    <SelectTrigger>
+                    <SelectTrigger id="pe-item" className={CONTROL}>
                       <SelectValue placeholder="Select item" />
                     </SelectTrigger>
                     <SelectContent>
@@ -229,143 +289,155 @@ export const ProductionEntryPage = () => {
                   </Select>
                 )}
               </FormField>
+
+              <FormField
+                label="Karigar"
+                required
+                htmlFor="pe-karigar"
+                className={cn(FIELD, 'col-span-2 sm:col-span-3 lg:col-span-1')}
+              >
+                <Select value={form.carrierId} onValueChange={handleCarrierChange}>
+                  <SelectTrigger id="pe-karigar" className={CONTROL}>
+                    <SelectValue placeholder="Select karigar" />
+                  </SelectTrigger>
+                  <SelectContent>{karigarOptions}</SelectContent>
+                </Select>
+              </FormField>
+
+              <FormField label="Quantity (PCS)" required htmlFor="pe-qty" className={cn(FIELD, 'sm:col-span-2 lg:col-span-1')}>
+                <Input
+                  id="pe-qty"
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  required
+                  className={NUMERIC}
+                  value={form.carrierQuantity}
+                  onChange={(e) => setForm((f) => ({ ...f, carrierQuantity: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Rate (₹)" required htmlFor="pe-rate" className={cn(FIELD, 'sm:col-span-2 lg:col-span-1')}>
+                <Input
+                  id="pe-rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  required
+                  aria-label="Karigar Rate (₹)"
+                  className={NUMERIC}
+                  value={form.carrierRate}
+                  onChange={(e) => setForm((f) => ({ ...f, carrierRate: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Total (₹)" htmlFor="pe-total" className={cn(FIELD, 'col-span-2 lg:col-span-1')}>
+                <Input id="pe-total" aria-label="Karigar Total (₹)" {...TOTAL_PROPS} value={carrierTotal.toFixed(2)} />
+              </FormField>
             </div>
 
-            <div className="border-t border-border pt-4">
-              <h3 className="mb-3 text-sm font-semibold">Carrier</h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <FormField label="Carrier" required>
-                  <Select value={form.carrierId} onValueChange={handleCarrierChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select karigar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeKarigars.map((karigar) => (
-                        <SelectItem key={karigar.id} value={karigar.id}>
-                          {karigar.fullName} ({karigar.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-                <FormField label="Quantity (PCS)" required>
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    required
-                    className="numeric"
-                    value={form.carrierQuantity}
-                    onChange={(e) => setForm((f) => ({ ...f, carrierQuantity: e.target.value }))}
-                  />
-                </FormField>
-                <FormField label="Rate (₹)" required>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    required
-                    className="numeric"
-                    value={form.carrierRate}
-                    onChange={(e) => setForm((f) => ({ ...f, carrierRate: e.target.value }))}
-                  />
-                </FormField>
-                <FormField label="Total (₹)">
-                  <Input disabled className="numeric" value={carrierTotal.toFixed(2)} />
-                </FormField>
-              </div>
+            {/* Row 3 — overlock and flatlock karigars (three fields each), sharing the quantity above */}
+            <div
+              className={cn(
+                ROW,
+                'grid-cols-2 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]',
+              )}
+            >
+              <FormField label="Overlock Karigar" htmlFor="pe-overlock" className={cn(FIELD, 'col-span-2 sm:col-span-1')}>
+                <Select value={form.overlockCarrierId} onValueChange={(v) => setForm((f) => ({ ...f, overlockCarrierId: v }))}>
+                  <SelectTrigger id="pe-overlock" className={CONTROL}>
+                    <SelectValue placeholder="Select karigar" />
+                  </SelectTrigger>
+                  <SelectContent>{karigarOptions}</SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Rate (₹)" htmlFor="pe-overlock-rate" className={FIELD}>
+                <Input
+                  id="pe-overlock-rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  aria-label="Overlock Karigar Rate (₹)"
+                  className={NUMERIC}
+                  value={form.overlockRate}
+                  onChange={(e) => setForm((f) => ({ ...f, overlockRate: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Total (₹)" htmlFor="pe-overlock-total" className={FIELD}>
+                <Input
+                  id="pe-overlock-total"
+                  aria-label="Overlock Karigar Total (₹)"
+                  {...TOTAL_PROPS}
+                  value={overlockTotal.toFixed(2)}
+                />
+              </FormField>
+
+              <FormField label="Flatlock Karigar" htmlFor="pe-flatlock" className={cn(FIELD, 'col-span-2 sm:col-span-1')}>
+                <Select value={form.flatlockKarigarId} onValueChange={(v) => setForm((f) => ({ ...f, flatlockKarigarId: v }))}>
+                  <SelectTrigger id="pe-flatlock" className={CONTROL}>
+                    <SelectValue placeholder="Select karigar" />
+                  </SelectTrigger>
+                  <SelectContent>{karigarOptions}</SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Rate (₹)" htmlFor="pe-flatlock-rate" className={FIELD}>
+                <Input
+                  id="pe-flatlock-rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputMode="decimal"
+                  aria-label="Flatlock Karigar Rate (₹)"
+                  className={NUMERIC}
+                  value={form.flatlockRate}
+                  onChange={(e) => setForm((f) => ({ ...f, flatlockRate: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Total (₹)" htmlFor="pe-flatlock-total" className={FIELD}>
+                <Input
+                  id="pe-flatlock-total"
+                  aria-label="Flatlock Karigar Total (₹)"
+                  {...TOTAL_PROPS}
+                  value={flatlockTotal.toFixed(2)}
+                />
+              </FormField>
             </div>
 
-            <div className="border-t border-border pt-4">
-              <h3 className="mb-3 text-sm font-semibold">Overlock Carrier</h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <FormField label="Overlock Carrier">
-                  <Select
-                    value={form.overlockCarrierId}
-                    onValueChange={(v) => setForm((f) => ({ ...f, overlockCarrierId: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select karigar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeKarigars.map((karigar) => (
-                        <SelectItem key={karigar.id} value={karigar.id}>
-                          {karigar.fullName} ({karigar.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-                <FormField label="Rate (₹)">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="numeric"
-                    value={form.overlockRate}
-                    onChange={(e) => setForm((f) => ({ ...f, overlockRate: e.target.value }))}
-                  />
-                </FormField>
-                <FormField label="Total (₹)">
-                  <Input disabled className="numeric" value={overlockTotal.toFixed(2)} />
-                </FormField>
-              </div>
+            {/* Row 4 — photo and remarks */}
+            <div className={cn(ROW, 'grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)]')}>
+              <FormField label="Photo Upload" required htmlFor="pe-photo" className={FIELD}>
+                <PhotoUpload
+                  id="pe-photo"
+                  size="sm"
+                  value={form.photoUrl}
+                  onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))}
+                />
+              </FormField>
+
+              <FormField label="Remarks" htmlFor="pe-remarks" className={FIELD}>
+                <Textarea
+                  id="pe-remarks"
+                  rows={2}
+                  className="min-h-14 resize-y"
+                  value={form.remarks}
+                  onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
+                />
+              </FormField>
             </div>
 
-            <div className="border-t border-border pt-4">
-              <h3 className="mb-3 text-sm font-semibold">Flatlock Karigar</h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <FormField label="Flatlock Karigar">
-                  <Select
-                    value={form.flatlockKarigarId}
-                    onValueChange={(v) => setForm((f) => ({ ...f, flatlockKarigarId: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select karigar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeKarigars.map((karigar) => (
-                        <SelectItem key={karigar.id} value={karigar.id}>
-                          {karigar.fullName} ({karigar.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-                <FormField label="Rate (₹)">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="numeric"
-                    value={form.flatlockRate}
-                    onChange={(e) => setForm((f) => ({ ...f, flatlockRate: e.target.value }))}
-                  />
-                </FormField>
-                <FormField label="Total (₹)">
-                  <Input disabled className="numeric" value={flatlockTotal.toFixed(2)} />
-                </FormField>
-              </div>
-            </div>
-
-            <FormField label="Photo Upload" required>
-              <PhotoUpload value={form.photoUrl} onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))} />
-            </FormField>
-
-            <FormField label="Remarks">
-              <Textarea value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} />
-            </FormField>
-
-            <div className="flex items-center gap-2 border-t border-border pt-4">
-              <Button type="submit" loading={mutation.isPending} disabled={!isValid}>
+            {/* Row 5 — actions */}
+            <div className="grid grid-cols-3 gap-2 pt-1.5 sm:flex sm:items-center">
+              <Button type="submit" className={ACTION} loading={mutation.isPending} disabled={!isValid}>
                 Save Entry
               </Button>
-              <Button type="button" variant="outline" onClick={() => setForm(emptyForm)}>
+              <Button type="button" variant="outline" className={ACTION} onClick={() => setForm(emptyForm)}>
                 Clear
               </Button>
               <Button
                 type="button"
                 variant="outline"
+                className={ACTION}
                 loading={mutation.isPending}
                 disabled={!isValid}
                 onClick={() => save('keepDate')}

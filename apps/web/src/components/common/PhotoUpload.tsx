@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ImageOff, Loader2, User } from 'lucide-react';
+import { ImageIcon, ImageOff, Loader2, User } from 'lucide-react';
 import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
@@ -8,12 +8,16 @@ import { cn } from '../../lib/utils';
 interface PhotoUploadProps {
   value: string | null;
   onChange: (url: string) => void;
+  /** 'sm' renders a compact 56px square thumbnail for dense entry forms. */
+  size?: 'default' | 'sm';
+  id?: string;
   className?: string;
 }
 
-export const PhotoUpload = ({ value, onChange, className }: PhotoUploadProps) => {
+export const PhotoUpload = ({ value, onChange, size = 'default', id, className }: PhotoUploadProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const compact = size === 'sm';
 
   const mutation = useMutation({
     mutationFn: (file: File) => apiClient.upload<{ url: string }>('/uploads', file),
@@ -25,25 +29,35 @@ export const PhotoUpload = ({ value, onChange, className }: PhotoUploadProps) =>
   });
 
   const photoUrl = resolvePhotoUrl(value);
+  const iconClass = compact ? 'size-5' : 'size-6';
 
   return (
-    <div className={cn('flex items-center gap-3', className)}>
-      <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-muted-foreground">
+    <div className={cn('flex items-center', compact ? 'gap-2.5' : 'gap-3', className)}>
+      <div
+        className={cn(
+          'flex shrink-0 items-center justify-center overflow-hidden border border-border bg-muted text-muted-foreground',
+          compact ? 'size-14 rounded-md' : 'size-20 rounded-full',
+        )}
+      >
         {mutation.isPending ? (
-          <Loader2 className="size-6 animate-spin" />
+          <Loader2 className={cn(iconClass, 'animate-spin')} />
         ) : photoUrl ? (
-          <img src={photoUrl} alt="" className="size-full object-cover" />
+          <img src={photoUrl} alt={compact ? 'Uploaded photo preview' : ''} className="size-full object-cover" />
         ) : error ? (
-          <ImageOff className="size-6" />
+          <ImageOff className={iconClass} />
+        ) : compact ? (
+          <ImageIcon className={iconClass} />
         ) : (
           <User className="size-8" />
         )}
       </div>
-      <div className="space-y-1">
+      <div className="min-w-0 space-y-1">
         <Button
+          id={id}
           type="button"
           variant="outline"
           size="sm"
+          className={compact ? 'h-11 sm:h-8' : undefined}
           onClick={() => inputRef.current?.click()}
           disabled={mutation.isPending}
         >
