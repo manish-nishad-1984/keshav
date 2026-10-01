@@ -32,7 +32,7 @@ const SectionTabs = () => {
                   'relative -mb-px flex h-11 items-center border-b-2 px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:h-9',
                   isActive
                     ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                    : 'border-transparent text-foreground-soft hover:border-input hover:text-foreground',
                 )
               }
             >
@@ -73,7 +73,7 @@ export const PageLayout = ({ title, description, actions, tabs, children, classN
     <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
       <div className="min-w-0">
         <Breadcrumb />
-        <h1 className="text-lg font-semibold leading-7 tracking-tight sm:text-xl">{title}</h1>
+        <h1 className="text-lg font-semibold leading-7 tracking-tight text-foreground sm:text-xl">{title}</h1>
         {description ? <p className="truncate text-xs text-muted-foreground sm:text-[13px]">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -117,7 +117,7 @@ export const PageTabs = <T extends string>({ items, value, onChange, label }: Pa
           '-mb-px flex h-11 shrink-0 items-center border-b-2 px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:h-9',
           value === item.key
             ? 'border-primary text-primary'
-            : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+            : 'border-transparent text-foreground-soft hover:border-input hover:text-foreground',
         )}
       >
         {item.label}

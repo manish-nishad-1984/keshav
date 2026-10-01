@@ -165,7 +165,7 @@ export const RoleFormDialog = ({ open, onOpenChange, role }: RoleFormDialogProps
             <div className="space-y-2">
               <p className="section-label">Permissions</p>
               <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-left text-sm">
+                <table className="data-table w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted/40 text-2xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 font-medium">Module</th>
@@ -179,7 +179,7 @@ export const RoleFormDialog = ({ open, onOpenChange, role }: RoleFormDialogProps
                   <tbody>
                     {groupedModules.map(({ group, modules }) => (
                       <Fragment key={group.key}>
-                        <tr className="bg-muted/20">
+                        <tr className="data-table-group">
                           <td colSpan={ACTIONS.length + 1} className="px-3 py-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
                             {group.label}
                           </td>

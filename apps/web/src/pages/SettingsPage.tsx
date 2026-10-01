@@ -35,8 +35,8 @@ export const SettingsPage = () => {
                 className={cn(
                   'shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:py-3',
                   tab === t.key
-                    ? 'bg-accent text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    ? 'bg-sidebar-active font-semibold text-primary'
+                    : 'text-foreground-soft hover:bg-accent hover:text-primary',
                 )}
               >
                 {t.label}

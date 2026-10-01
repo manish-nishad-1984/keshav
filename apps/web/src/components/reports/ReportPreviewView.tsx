@@ -160,7 +160,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
       const items = entriesQuery.data?.items ?? [];
       const total = items.reduce((sum, e) => sum + Number(e.carrierTotal), 0);
       return (
-        <table className="w-full text-left text-sm">
+        <table className="data-table w-full text-left text-sm">
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Sr.</th>
@@ -211,7 +211,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
     if (reportKey === 'photo-report') {
       const items = (entriesQuery.data?.items ?? []).filter((e) => e.photoUrl);
       return (
-        <table className="w-full text-left text-sm">
+        <table className="data-table w-full text-left text-sm">
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Sr.</th>
@@ -264,7 +264,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
       const rows = karigarSummaryQuery.data ?? [];
       const total = rows.reduce((sum, r) => sum + r.totalAmount, 0);
       return (
-        <table className="w-full text-left text-sm">
+        <table className="data-table w-full text-left text-sm">
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Sr.</th>
@@ -310,7 +310,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
       const rows = itemSummaryQuery.data ?? [];
       const total = rows.reduce((sum, r) => sum + r.totalAmount, 0);
       return (
-        <table className="w-full text-left text-sm">
+        <table className="data-table w-full text-left text-sm">
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Sr.</th>
@@ -356,7 +356,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
       const rows = monthlySummaryQuery.data ?? [];
       const total = rows.reduce((sum, r) => sum + r.totalAmount, 0);
       return (
-        <table className="w-full text-left text-sm">
+        <table className="data-table w-full text-left text-sm">
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Sr.</th>
@@ -407,7 +407,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
       { totalAmount: 0, paidAmount: 0, pending: 0 },
     );
     return (
-      <table className="w-full text-left text-sm">
+      <table className="data-table w-full text-left text-sm">
         <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
           <tr>
             <th className="px-3 py-2 font-medium">Sr.</th>

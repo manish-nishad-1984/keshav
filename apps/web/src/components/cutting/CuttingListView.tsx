@@ -64,7 +64,7 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
           <LoadingState variant="page" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="data-table w-full text-left text-sm">
               <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2 font-medium">Lot No.</th>

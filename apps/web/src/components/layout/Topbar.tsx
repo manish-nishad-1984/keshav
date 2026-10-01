@@ -1,18 +1,17 @@
 import { Link } from 'react-router-dom';
-import { ChevronDown, LogOut, Menu, Monitor, Moon, Search, Settings, Sun } from 'lucide-react';
+import { Check, ChevronDown, LogOut, Menu, Search, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { OPEN_COMMAND_PALETTE_EVENT } from '../common/CommandPalette';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { useNavigation } from '../../lib/navigation';
-import { useUiStore, type Theme } from '../../store/ui.store';
+import { useUiStore } from '../../store/ui.store';
+import { PALETTES, THEMES } from '../../lib/themes';
 import { cn } from '../../lib/utils';
 
 const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 const SHORTCUT = isMac ? '⌘K' : 'Ctrl+K';
 
-const NEXT_THEME: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' };
-const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: Monitor };
-const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' };
+const menuHeading = 'px-2 pb-1 pt-1.5 text-2xs font-semibold uppercase tracking-wider text-muted-foreground';
 
 // Topbar icon buttons: 44px tap target on mobile, 36px on desktop.
 const iconButton =
@@ -34,9 +33,10 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
   const navCollapsed = useUiStore((state) => state.navCollapsed);
   const theme = useUiStore((state) => state.theme);
   const setTheme = useUiStore((state) => state.setTheme);
+  const palette = useUiStore((state) => state.palette);
+  const setPalette = useUiStore((state) => state.setPalette);
   const { activeModule, settingsModule, canSeeSettings } = useNavigation();
   const onSettings = Boolean(settingsModule && activeModule?.key === settingsModule.key);
-  const ThemeIcon = THEME_ICON[theme];
 
   return (
     <header className="sticky top-0 z-30 flex h-topbar shrink-0 items-center gap-1 bg-primary px-1.5 text-primary-foreground shadow-sm sm:gap-2 sm:px-3">
@@ -101,21 +101,62 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
               <ChevronDown className="size-4 text-primary-foreground/80" strokeWidth={1.75} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-60">
+          <DropdownMenuContent className="w-64">
             <div className="px-2 py-1.5">
               <p className="truncate text-sm font-medium">{user?.fullName}</p>
               <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setTheme(NEXT_THEME[theme]);
-              }}
-            >
-              <ThemeIcon />
-              Theme: {THEME_LABEL[theme]}
-            </DropdownMenuItem>
+            {/* Appearance: mode and colour are independent; the menu stays open while choosing. */}
+            <p className={menuHeading}>Mode</p>
+            <div role="group" aria-label="Mode" className="grid grid-cols-4 gap-1 px-1 pb-1">
+              {THEMES.map(({ key, label, icon: Icon }) => (
+                <DropdownMenuItem
+                  key={key}
+                  role="menuitemradio"
+                  aria-checked={theme === key}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setTheme(key);
+                  }}
+                  className={cn(
+                    'flex-col gap-1 border px-1 py-1.5 text-2xs font-medium',
+                    theme === key ? 'border-primary bg-accent text-primary' : 'border-transparent text-foreground-soft',
+                  )}
+                >
+                  <Icon />
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </div>
+            <p className={menuHeading}>Colour</p>
+            <div role="group" aria-label="Colour" className="grid grid-cols-4 gap-1 px-1 pb-1.5">
+              {PALETTES.map(({ key, label, swatch }) => (
+                <DropdownMenuItem
+                  key={key}
+                  role="menuitemradio"
+                  aria-checked={palette === key}
+                  aria-label={label}
+                  title={label}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setPalette(key);
+                  }}
+                  className="justify-center py-1.5"
+                >
+                  <span
+                    className={cn(
+                      'flex size-7 items-center justify-center rounded-full text-white ring-offset-2 ring-offset-popover',
+                      palette === key && 'ring-2 ring-foreground/40',
+                    )}
+                    style={{ backgroundColor: swatch }}
+                  >
+                    {palette === key ? <Check strokeWidth={2.5} /> : null}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => void logout()}>
               <LogOut />
               Sign out

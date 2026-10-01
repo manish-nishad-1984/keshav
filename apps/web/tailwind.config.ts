@@ -11,9 +11,21 @@ export default {
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        foreground: {
+          DEFAULT: 'hsl(var(--foreground))',
+          soft: 'hsl(var(--foreground-soft))',
+        },
+        'input-hover': 'hsl(var(--input-hover))',
+        'input-foreground': 'hsl(var(--input-foreground))',
+        placeholder: 'hsl(var(--placeholder))',
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar))',
+          border: 'hsl(var(--sidebar-border))',
+          active: 'hsl(var(--sidebar-active))',
+        },
         primary: {
           DEFAULT: 'hsl(var(--primary))',
+          hover: 'hsl(var(--primary-hover))',
           foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
@@ -45,17 +57,20 @@ export default {
           info: 'hsl(var(--status-info))',
           progress: 'hsl(var(--status-progress))',
           success: 'hsl(var(--status-success))',
+          'success-soft': 'hsl(var(--status-success-soft))',
           warning: 'hsl(var(--status-warning))',
           danger: 'hsl(var(--status-danger))',
+          'danger-soft': 'hsl(var(--status-danger-soft))',
         },
       },
       borderRadius: {
+        card: '10px',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
       },
       fontSize: {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
@@ -66,7 +81,7 @@ export default {
         topbar: '3.5rem',
       },
       boxShadow: {
-        card: '0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)',
+        card: '0 2px 8px rgb(15 23 42 / 0.05)',
         popover: '0 12px 32px -8px rgb(16 24 40 / 0.18)',
       },
     },

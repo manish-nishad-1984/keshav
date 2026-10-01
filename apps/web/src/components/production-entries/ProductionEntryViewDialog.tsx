@@ -68,7 +68,7 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
               </div>
 
               <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-left text-sm">
+                <table className="data-table w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted/50 text-2xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-3 py-1.5 font-medium">Role</th>

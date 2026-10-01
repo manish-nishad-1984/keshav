@@ -30,14 +30,16 @@ const NavContent = ({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
               aria-expanded={!collapsed && hasChildren ? showChildren : undefined}
               title={collapsed ? section.label : undefined}
               className={cn(
-                'flex rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'relative flex rounded-md transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 collapsed
                   ? 'flex-col items-center gap-1 px-1 py-2.5 text-2xs font-medium'
                   : 'items-center gap-3 px-3 py-2.5 text-sm font-medium',
-                active ? 'bg-accent font-semibold text-primary' : 'text-foreground/80 hover:bg-muted hover:text-foreground',
+                active
+                  ? 'bg-sidebar-active font-semibold text-primary before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-primary'
+                  : 'text-foreground-soft hover:bg-accent hover:text-primary',
               )}
             >
-              <Icon className={cn('shrink-0', collapsed ? 'size-5' : 'size-[18px]')} strokeWidth={active ? 2 : 1.6} />
+              <Icon className={cn('shrink-0', collapsed ? 'size-5' : 'size-[18px]')} strokeWidth={active ? 1.9 : 1.6} />
               <span className={cn(collapsed ? 'w-full truncate text-center leading-tight' : 'flex-1 truncate')}>{section.label}</span>
               {!collapsed && hasChildren ? (
                 <ChevronRight
@@ -49,7 +51,7 @@ const NavContent = ({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
             </Link>
 
             {showChildren ? (
-              <ul className="mb-1 ml-[1.6rem] mt-0.5 space-y-0.5 border-l border-border pl-3">
+              <ul className="mb-1 ml-[1.6rem] mt-0.5 space-y-0.5 border-l border-sidebar-border pl-3">
                 {section.modules.map((module) => {
                   const current = module.key === activeModule?.key;
                   return (
@@ -60,7 +62,7 @@ const NavContent = ({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
                         aria-current={current ? 'page' : undefined}
                         className={cn(
                           'block truncate rounded-md px-2.5 py-1.5 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-lg:py-2.5',
-                          current ? 'font-semibold text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          current ? 'bg-sidebar-active/60 font-semibold text-primary' : 'text-foreground-soft hover:bg-accent hover:text-primary',
                         )}
                       >
                         {shortLabel(module)}
@@ -89,7 +91,7 @@ export const Sidebar = ({ mobileOpen, onMobileOpenChange }: SidebarProps) => {
     <>
       <aside
         className={cn(
-          'sticky top-topbar hidden h-[calc(100vh-theme(spacing.topbar))] shrink-0 overflow-y-auto border-r border-border bg-card transition-[width] duration-150 lg:block',
+          'sticky top-topbar hidden h-[calc(100vh-theme(spacing.topbar))] shrink-0 overflow-y-auto border-r border-sidebar-border bg-sidebar transition-[width] duration-150 lg:block',
           collapsed ? 'w-sidebar-collapsed' : 'w-sidebar',
         )}
       >
@@ -102,7 +104,7 @@ export const Sidebar = ({ mobileOpen, onMobileOpenChange }: SidebarProps) => {
           <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-foreground/30 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 lg:hidden" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
-            className="fixed inset-y-0 left-0 z-50 flex w-[17rem] max-w-[85vw] flex-col bg-card shadow-popover duration-150 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left lg:hidden"
+            className="fixed inset-y-0 left-0 z-50 flex w-[17rem] max-w-[85vw] flex-col bg-sidebar shadow-popover duration-150 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left lg:hidden"
           >
             <div className="flex h-topbar shrink-0 items-center justify-between bg-primary pl-4 pr-1 text-primary-foreground">
               <DialogPrimitive.Title className="text-base font-bold tracking-wide">

@@ -2,61 +2,198 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens (HSL channels). Visual layers, back to front:
+   coloured topbar → workspace (--background) → surfaces (--card) → tinted inputs (--muted)
+   → table headers (--table-header).
+
+   Two independent choices, both set on <html> by ui.store:
+   - mode: :root = Light, .theme-comfort = Comfort (default, lower glare), .dark = Dark
+   - colour palette ([data-palette], see the end of this block): sets only the brand hue
+     (--brand-*: topbar, buttons, active states) and the surface tint (--tint-*: workspace,
+     sidebar, inputs, tables). Every mode derives its tokens from these, so any colour works
+     with any mode. Surface saturations are multiples of --tint-s (blue = 30%). */
 :root {
-  --background: 210 25% 97.5%;
-  --foreground: 222 22% 12%;
+  --brand-h: 206;
+  --brand-s: 92.5%;
+  --brand-l: 41.6%; /* #0877CC KESHAV blue */
+  --brand-hover-l: 36.7%; /* #0668B5 */
+  --tint-h: 212;
+  --tint-s: 30%;
+
+  --background: var(--tint-h) calc(var(--tint-s) * 1.55) 94.1%; /* #E9F0F7 workspace */
+  --foreground: 221 39.3% 11%; /* #111827 */
+  --foreground-soft: var(--tint-h) calc(var(--tint-s) * 0.64) 34.5%; /* #475569 nav, tabs, icons */
   --card: 0 0% 100%;
-  --card-foreground: 222 22% 12%;
+  --card-foreground: 221 39.3% 11%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 22% 12%;
-  --primary: 211 88% 42%;
+  --popover-foreground: 221 39.3% 11%;
+  --primary: var(--brand-h) var(--brand-s) var(--brand-l);
+  --primary-hover: var(--brand-h) var(--brand-s) var(--brand-hover-l);
   --primary-foreground: 0 0% 100%;
-  --secondary: 214 24% 94%;
-  --secondary-foreground: 222 22% 20%;
-  --muted: 210 33% 97.5%;
-  --muted-foreground: 220 9% 46%;
-  --accent: 211 90% 95%;
-  --accent-foreground: 211 80% 30%;
-  --destructive: 0 72% 45%;
+  --secondary: var(--tint-h) calc(var(--tint-s) * 1.07) 91.5%;
+  --secondary-foreground: 217 32.6% 17.5%;
+  --muted: var(--tint-h) calc(var(--tint-s) * 1.33) 96.1%; /* #F1F5F9 input fill */
+  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.54) 46.9%; /* #64748B */
+  --accent: var(--brand-h) calc(var(--brand-s) * 0.76) 94.7%; /* #E8F2FB hover surface */
+  --accent-foreground: var(--brand-h) var(--brand-s) var(--brand-l);
+  --destructive: 4 74.3% 48.8%;
   --destructive-foreground: 0 0% 100%;
-  --border: 220 13% 91%;
-  --input: 214 16% 85%;
-  --ring: 211 88% 48%;
-  --status-neutral: 220 9% 46%;
-  --status-info: 213 82% 48%;
+  --border: var(--tint-h) calc(var(--tint-s) * 1.15) 88.6%; /* #D8E2EC */
+  --input: var(--tint-h) calc(var(--tint-s) * 0.9) 83.9%; /* #CBD5E1 */
+  --input-hover: var(--tint-h) calc(var(--tint-s) * 1.28) 94.9%; /* #EDF2F7 */
+  --input-foreground: 217 32.6% 17.5%; /* #1E293B */
+  --placeholder: var(--tint-h) calc(var(--tint-s) * 0.43) 54.5%; /* #7C899A */
+  --ring: var(--brand-h) calc(var(--brand-s) * 0.88) calc(var(--brand-l) + 5%); /* #1683D8 focus */
+  --table-header: var(--tint-h) calc(var(--tint-s) * 1.46) 93.7%; /* #E8EFF6 */
+  --table-stripe: var(--tint-h) calc(var(--tint-s) * 1.33) 98%; /* #F8FAFC */
+  --table-hover: var(--brand-h) calc(var(--brand-s) * 0.81) 95.3%; /* #EAF4FC */
+  --table-border: var(--tint-h) calc(var(--tint-s) * 1) 89.4%; /* #DCE4EC */
+  --table-total: var(--brand-h) calc(var(--brand-s) * 0.68) 91.6%; /* #DCEAF7 */
+  --table-total-foreground: 222 47.4% 11.2%; /* #0F172A */
+  --sidebar: var(--tint-h) calc(var(--tint-s) * 1.33) 98%; /* #F8FAFC */
+  --sidebar-border: var(--tint-h) calc(var(--tint-s) * 1) 88.2%; /* #D8E1EA */
+  --sidebar-active: var(--brand-h) var(--brand-s) 93.1%; /* #DCEEFF */
+  --status-neutral: 215 16.3% 46.9%;
+  --status-info: 206 92.5% 41.6%;
   --status-progress: 262 65% 55%;
-  --status-success: 142 66% 34%;
-  --status-warning: 34 92% 44%;
-  --status-danger: 0 72% 48%;
-  --radius: 0.375rem;
+  --status-success: 149 71.2% 30%; /* #16834A */
+  --status-success-soft: 147 52.2% 91%; /* #DCF4E7 */
+  --status-warning: 34 92% 40%;
+  --status-danger: 4 74.3% 48.8%; /* #D92D20 */
+  --status-danger-soft: 0 84.6% 94.9%; /* #FDE7E7 */
+  --radius: 0.375rem; /* 6px controls; cards use rounded-card (10px) */
+}
+
+/* Comfort (default): same layers as Light, but a deeper workspace, off-white surfaces and
+   slightly softer text contrast — less glare over a long working day. */
+.theme-comfort {
+  --background: var(--tint-h) var(--tint-s) 88.5%; /* blue: #D9E2EC */
+  --foreground: var(--tint-h) calc(var(--tint-s) * 0.93) 15%;
+  --foreground-soft: var(--tint-h) calc(var(--tint-s) * 0.67) 32%;
+  --card: var(--tint-h) var(--tint-s) 98%;
+  --card-foreground: var(--tint-h) calc(var(--tint-s) * 0.93) 15%;
+  --popover: var(--tint-h) var(--tint-s) 98.5%;
+  --popover-foreground: var(--tint-h) calc(var(--tint-s) * 0.93) 15%;
+  --secondary: var(--tint-h) calc(var(--tint-s) * 0.8) 88%;
+  --muted: var(--tint-h) calc(var(--tint-s) * 0.93) 93.5%; /* input fill */
+  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.53) 42%;
+  --accent: var(--brand-h) calc(var(--brand-s) * 0.6) 91%;
+  --border: var(--tint-h) calc(var(--tint-s) * 0.8) 83%;
+  --input: var(--tint-h) calc(var(--tint-s) * 0.67) 76%;
+  --input-hover: var(--tint-h) calc(var(--tint-s) * 0.93) 91%;
+  --placeholder: var(--tint-h) calc(var(--tint-s) * 0.4) 50%;
+  --table-header: var(--tint-h) calc(var(--tint-s) * 1.07) 89%;
+  --table-stripe: var(--tint-h) calc(var(--tint-s) * 0.93) 95.5%;
+  --table-hover: var(--brand-h) calc(var(--brand-s) * 0.65) 91.5%;
+  --table-border: var(--tint-h) calc(var(--tint-s) * 0.73) 85%;
+  --table-total: var(--brand-h) calc(var(--brand-s) * 0.52) 85.5%;
+  --sidebar: var(--tint-h) calc(var(--tint-s) * 0.93) 94.5%;
+  --sidebar-border: var(--tint-h) calc(var(--tint-s) * 0.73) 82%;
+  --sidebar-active: var(--brand-h) calc(var(--brand-s) * 0.76) 88%;
+  --status-success-soft: 147 42% 87%;
+  --status-danger-soft: 0 70% 92%;
 }
 
 .dark {
-  --background: 222 24% 8%;
+  --background: var(--tint-h) 24% 8%;
   --foreground: 210 20% 96%;
-  --card: 222 22% 11%;
+  --card: var(--tint-h) 22% 11%;
   --card-foreground: 210 20% 96%;
-  --popover: 222 22% 11%;
+  --popover: var(--tint-h) 22% 11%;
   --popover-foreground: 210 20% 96%;
-  --primary: 211 85% 58%;
-  --primary-foreground: 222 24% 8%;
-  --secondary: 222 18% 17%;
+  --primary: var(--brand-h) calc(var(--brand-s) * 0.92) 60%;
+  --primary-hover: var(--brand-h) calc(var(--brand-s) * 0.92) 67%;
+  --primary-foreground: var(--tint-h) 24% 8%;
+  --secondary: var(--tint-h) 18% 17%;
   --secondary-foreground: 210 20% 92%;
-  --muted: 222 18% 15%;
+  --muted: var(--tint-h) 18% 15%;
   --muted-foreground: 218 11% 62%;
-  --accent: 211 45% 20%;
-  --accent-foreground: 211 90% 82%;
+  --accent: var(--brand-h) calc(var(--brand-s) * 0.5) 20%;
+  --accent-foreground: var(--brand-h) var(--brand-s) 82%;
   --destructive: 0 62% 52%;
   --destructive-foreground: 0 0% 100%;
-  --border: 222 16% 20%;
-  --input: 222 16% 24%;
-  --ring: 211 85% 60%;
+  --border: var(--tint-h) 16% 20%;
+  --input: var(--tint-h) 16% 24%;
+  --ring: var(--brand-h) calc(var(--brand-s) * 0.92) 62%;
   --status-neutral: 218 11% 62%;
   --status-info: 213 82% 62%;
   --status-progress: 262 65% 70%;
   --status-success: 142 60% 50%;
   --status-warning: 34 92% 58%;
   --status-danger: 0 72% 62%;
+  --foreground-soft: 215 15% 75%;
+  --input-hover: var(--tint-h) 18% 18%;
+  --input-foreground: 210 20% 96%;
+  --placeholder: 218 11% 55%;
+  --table-header: var(--tint-h) 18% 15%;
+  --table-stripe: var(--tint-h) 20% 12.5%;
+  --table-hover: var(--brand-h) calc(var(--brand-s) * 0.38) 17%;
+  --table-border: var(--tint-h) 16% 19%;
+  --table-total: var(--brand-h) calc(var(--brand-s) * 0.38) 19%;
+  --table-total-foreground: 210 20% 96%;
+  --sidebar: var(--tint-h) 22% 10%;
+  --sidebar-border: var(--tint-h) 16% 20%;
+  --sidebar-active: var(--brand-h) calc(var(--brand-s) * 0.5) 20%;
+  --status-success-soft: 142 40% 16%;
+  --status-danger-soft: 0 45% 18%;
+}
+
+/* Colour palettes. Blue (KESHAV) is the :root default. Keep in sync with PALETTES in lib/themes.ts. */
+[data-palette='teal'] {
+  --brand-h: 180;
+  --brand-s: 82%;
+  --brand-l: 29%;
+  --brand-hover-l: 24%;
+  --tint-h: 186;
+  --tint-s: 22%;
+}
+[data-palette='green'] {
+  --brand-h: 152;
+  --brand-s: 68%;
+  --brand-l: 31%;
+  --brand-hover-l: 26%;
+  --tint-h: 150;
+  --tint-s: 16%;
+}
+[data-palette='indigo'] {
+  --brand-h: 234;
+  --brand-s: 60%;
+  --brand-l: 52%;
+  --brand-hover-l: 45%;
+  --tint-h: 228;
+  --tint-s: 26%;
+}
+[data-palette='purple'] {
+  --brand-h: 268;
+  --brand-s: 52%;
+  --brand-l: 49%;
+  --brand-hover-l: 42%;
+  --tint-h: 262;
+  --tint-s: 20%;
+}
+[data-palette='maroon'] {
+  --brand-h: 346;
+  --brand-s: 64%;
+  --brand-l: 37%;
+  --brand-hover-l: 31%;
+  --tint-h: 340;
+  --tint-s: 14%;
+}
+[data-palette='saffron'] {
+  --brand-h: 24;
+  --brand-s: 86%;
+  --brand-l: 40%;
+  --brand-hover-l: 35%;
+  --tint-h: 32;
+  --tint-s: 22%;
+}
+[data-palette='graphite'] {
+  --brand-h: 215;
+  --brand-s: 25%;
+  --brand-l: 30%;
+  --brand-hover-l: 24%;
+  --tint-h: 215;
+  --tint-s: 14%;
 }
 
 body {
@@ -71,6 +208,34 @@ body {
 
 .section-label {
   @apply text-2xs font-semibold uppercase tracking-wider text-muted-foreground;
+}
+
+/* Shared data-table look. Tables are hand-written per screen, so they opt in with
+   `className="data-table …"`; the selectors below out-rank the per-cell utility classes. */
+.data-table thead {
+  background-color: hsl(var(--table-header));
+}
+.data-table thead th {
+  color: hsl(var(--foreground-soft));
+  font-weight: 600;
+}
+.data-table tr {
+  border-color: hsl(var(--table-border));
+}
+.data-table tbody tr:nth-child(even) {
+  background-color: hsl(var(--table-stripe));
+}
+.data-table tbody tr:hover {
+  background-color: hsl(var(--table-hover));
+}
+/* Group heading rows inside a table body (e.g. role permissions): no stripe or hover tint. */
+.data-table tbody tr.data-table-group {
+  background-color: hsl(var(--table-header) / 0.6);
+}
+.data-table tfoot tr {
+  background-color: hsl(var(--table-total));
+  color: hsl(var(--table-total-foreground));
+  font-weight: 600;
 }
 
 * {

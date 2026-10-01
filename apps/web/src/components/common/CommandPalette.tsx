@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Command } from 'cmdk';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { NAV_GROUPS, getModulesByGroup } from '@ckfast/shared';
 import { resolveIcon } from '../../lib/icons';
 import { usePermissions } from '../../hooks/use-permissions';
 import { useAuth } from '../../context/AuthContext';
-import { useUiStore, type Theme } from '../../store/ui.store';
+import { useUiStore } from '../../store/ui.store';
+import { nextTheme, themeMeta } from '../../lib/themes';
 
 export const OPEN_COMMAND_PALETTE_EVENT = 'ckfast:open-command-palette';
 
-const NEXT_THEME: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' };
-const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: Monitor };
 
 export const CommandPalette = () => {
   const [open, setOpen] = useState(false);
@@ -42,7 +41,7 @@ export const CommandPalette = () => {
     action();
   };
 
-  const ThemeIcon = THEME_ICON[theme];
+  const ThemeIcon = themeMeta(theme).icon;
 
   return (
     <Command.Dialog
@@ -103,7 +102,7 @@ export const CommandPalette = () => {
         >
           <Command.Item
             value="Toggle theme"
-            onSelect={() => runAndClose(() => setTheme(NEXT_THEME[theme]))}
+            onSelect={() => runAndClose(() => setTheme(nextTheme(theme)))}
             className="flex cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-sm outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
           >
             <ThemeIcon className="size-4 shrink-0 text-muted-foreground" />
