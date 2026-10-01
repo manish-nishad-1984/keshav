@@ -24,7 +24,7 @@ interface DatePickerProps extends Pick<AriaAttributes, 'aria-label' | 'aria-desc
   inputClassName?: string;
 }
 
-// DD-MM-YYYY date field: type it (dashes are inserted automatically) or pick from the calendar.
+// DD/MM/YYYY date field: type it (slashes are inserted automatically) or pick from the calendar.
 // The value passed in/out stays ISO "YYYY-MM-DD", which is what the API expects.
 export const DatePicker = ({
   id,
@@ -35,7 +35,7 @@ export const DatePicker = ({
   min,
   max,
   clearable = !required,
-  placeholder = 'DD-MM-YYYY',
+  placeholder = 'DD/MM/YYYY',
   className,
   inputClassName,
   ...aria
@@ -88,7 +88,7 @@ export const DatePicker = ({
             required={required}
             disabled={disabled}
             maxLength={10}
-            className={cn('pr-9 tabular-nums', inputClassName)}
+            className={cn('pr-10 tabular-nums', inputClassName)}
             value={text}
             onChange={(e) => handleType(e.target.value)}
             onClick={() => !open && openCalendar(false)}
@@ -114,9 +114,9 @@ export const DatePicker = ({
                 if (open) setOpen(false);
                 else openCalendar(true);
               }}
-              className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-primary focus-visible:text-primary focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+              className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-primary focus-visible:text-primary focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
             >
-              <CalendarDays className="size-4" />
+              <CalendarDays className="size-4" strokeWidth={1.75} />
             </button>
           </Popover.Trigger>
         </div>
@@ -135,11 +135,13 @@ export const DatePicker = ({
           onEscapeKeyDown={() => {
             refocusInputRef.current = true;
           }}
-          // Clicks on the text field itself shouldn't count as "outside" and close the calendar.
+          // Clicks on the text field itself, or inside the calendar's month/year dropdowns (which
+          // render in their own portal), shouldn't count as "outside" and close the calendar.
           onInteractOutside={(e) => {
-            if (wrapperRef.current?.contains(e.target as Node)) e.preventDefault();
+            const target = e.target as Element | null;
+            if (wrapperRef.current?.contains(target) || target?.closest?.('[role="listbox"]')) e.preventDefault();
           }}
-          className="z-50 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-popover data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className="z-50 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-popover data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
           <Calendar
             value={value}

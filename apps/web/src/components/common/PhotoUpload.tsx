@@ -8,7 +8,7 @@ import { cn } from '../../lib/utils';
 interface PhotoUploadProps {
   value: string | null;
   onChange: (url: string) => void;
-  /** 'sm' renders a compact 56px square thumbnail for dense entry forms. */
+  /** 'sm' renders a compact 56px square thumbnail with the upload action beside it. */
   size?: 'default' | 'sm';
   id?: string;
   className?: string;
@@ -64,7 +64,14 @@ export const PhotoUpload = ({ value, onChange, size = 'default', id, className }
           {compact ? <Upload /> : null}
           {compact && !value ? 'Upload Photo' : 'Change Photo'}
         </Button>
-        {error ? <p className="text-2xs text-destructive">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="text-2xs text-destructive">
+            {error}
+          </p>
+        ) : compact ? (
+          // Mirrors the server's /uploads limits (uploads.routes.ts).
+          <p className="text-2xs text-muted-foreground">JPG, PNG or WEBP · max 5 MB</p>
+        ) : null}
         <input
           ref={inputRef}
           type="file"

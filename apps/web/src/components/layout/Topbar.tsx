@@ -1,18 +1,22 @@
 import { Link } from 'react-router-dom';
-import { ChevronDown, LogOut, Menu, Search, Settings } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Monitor, Moon, Search, Settings, Sun } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { ThemeToggle } from '../common/ThemeToggle';
 import { OPEN_COMMAND_PALETTE_EVENT } from '../common/CommandPalette';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { shortLabel, useNavigation } from '../../lib/navigation';
-import { useUiStore } from '../../store/ui.store';
+import { useNavigation } from '../../lib/navigation';
+import { useUiStore, type Theme } from '../../store/ui.store';
 import { cn } from '../../lib/utils';
 
 const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
+const SHORTCUT = isMac ? '⌘K' : 'Ctrl+K';
+
+const NEXT_THEME: Record<Theme, Theme> = { light: 'dark', dark: 'system', system: 'light' };
+const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: Monitor };
+const THEME_LABEL: Record<Theme, string> = { light: 'Light', dark: 'Dark', system: 'System' };
 
 // Topbar icon buttons: 44px tap target on mobile, 36px on desktop.
 const iconButton =
-  'inline-flex size-11 items-center justify-center rounded-md text-primary-foreground/90 transition-colors duration-150 hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70 sm:size-9 [&_svg]:size-[18px]';
+  'inline-flex size-11 items-center justify-center rounded-md text-primary-foreground/90 transition-colors duration-150 hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70 sm:size-9 [&_svg]:size-5';
 
 const initials = (name?: string) =>
   (name ?? '')
@@ -22,73 +26,56 @@ const initials = (name?: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join('') || '?';
 
+const openSearch = () => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT));
+
 export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
   const { user, logout } = useAuth();
-  const toggleNavExpanded = useUiStore((state) => state.toggleNavExpanded);
-  const navExpanded = useUiStore((state) => state.navExpanded);
-  const { activeSection, activeModule, settingsModule, canSeeSettings } = useNavigation();
+  const toggleNavCollapsed = useUiStore((state) => state.toggleNavCollapsed);
+  const navCollapsed = useUiStore((state) => state.navCollapsed);
+  const theme = useUiStore((state) => state.theme);
+  const setTheme = useUiStore((state) => state.setTheme);
+  const { activeModule, settingsModule, canSeeSettings } = useNavigation();
   const onSettings = Boolean(settingsModule && activeModule?.key === settingsModule.key);
-
-  const crumbs =
-    activeSection && activeModule
-      ? activeSection.modules.length > 1
-        ? [activeSection.label, shortLabel(activeModule)]
-        : [activeModule.label]
-      : activeModule
-        ? [activeModule.label]
-        : [];
+  const ThemeIcon = THEME_ICON[theme];
 
   return (
     <header className="sticky top-0 z-30 flex h-topbar shrink-0 items-center gap-1 bg-primary px-1.5 text-primary-foreground shadow-sm sm:gap-2 sm:px-3">
       <button type="button" aria-label="Open navigation" className={cn(iconButton, 'lg:hidden')} onClick={onOpenMobile}>
-        <Menu />
+        <Menu strokeWidth={1.75} />
       </button>
       <button
         type="button"
-        aria-label={navExpanded ? 'Collapse navigation' : 'Expand navigation'}
-        aria-expanded={navExpanded}
+        aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+        aria-expanded={!navCollapsed}
         className={cn(iconButton, 'hidden lg:inline-flex')}
-        onClick={toggleNavExpanded}
+        onClick={toggleNavCollapsed}
       >
-        <Menu />
+        <Menu strokeWidth={1.75} />
       </button>
 
       <Link
         to="/dashboard"
-        className="rounded-md px-1.5 text-base font-bold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
+        className="flex items-baseline gap-2 rounded-md px-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
       >
-        KESHAV
+        <span className="text-lg font-bold tracking-wide">KESHAV</span>
+        <span className="hidden text-sm text-primary-foreground/80 sm:inline">Trading & Co</span>
       </Link>
 
-      {crumbs.length ? (
-        <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center border-l border-primary-foreground/25 pl-3 text-sm md:flex">
-          <ol className="flex min-w-0 items-center gap-1.5">
-            {crumbs.map((crumb, i) => (
-              <li key={crumb} className="flex min-w-0 items-center gap-1.5">
-                {i > 0 ? <span className="text-primary-foreground/60">/</span> : null}
-                <span
-                  aria-current={i === crumbs.length - 1 ? 'page' : undefined}
-                  className={cn('truncate', i === crumbs.length - 1 ? 'text-primary-foreground' : 'text-primary-foreground/80')}
-                >
-                  {crumb}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      ) : null}
-
-      <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+      <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5">
+        {/* Opens the existing command palette (Ctrl/⌘+K). */}
         <button
           type="button"
-          aria-label={`Search (${isMac ? '⌘K' : 'Ctrl+K'})`}
-          title={`Search (${isMac ? '⌘K' : 'Ctrl+K'})`}
-          className={iconButton}
-          onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
+          onClick={openSearch}
+          className="hidden h-9 w-64 items-center gap-2 rounded-md border border-primary-foreground/25 bg-primary-foreground/10 px-3 text-sm text-primary-foreground/75 transition-colors duration-150 hover:bg-primary-foreground/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70 md:flex"
         >
-          <Search />
+          <Search className="size-4" strokeWidth={1.75} />
+          <span className="flex-1 text-left">Search anything…</span>
+          <kbd className="rounded border border-primary-foreground/30 px-1.5 text-2xs">{SHORTCUT}</kbd>
         </button>
-        <ThemeToggle className={iconButton} />
+        <button type="button" aria-label={`Search (${SHORTCUT})`} className={cn(iconButton, 'md:hidden')} onClick={openSearch}>
+          <Search strokeWidth={1.75} />
+        </button>
+
         {canSeeSettings && settingsModule ? (
           <Link
             to={settingsModule.path}
@@ -97,7 +84,7 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
             aria-current={onSettings ? 'page' : undefined}
             className={cn(iconButton, onSettings && 'bg-primary-foreground/15 text-primary-foreground')}
           >
-            <Settings />
+            <Settings strokeWidth={1.75} />
           </Link>
         ) : null}
 
@@ -106,20 +93,29 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
             <button
               type="button"
               aria-label="Account menu"
-              className="ml-1 flex h-11 items-center gap-1 rounded-md pl-1 pr-1.5 transition-colors duration-150 hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70 sm:h-9"
+              className="flex h-11 items-center gap-1.5 rounded-md pl-1 pr-1.5 transition-colors duration-150 hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70 sm:h-9"
             >
-              <span className="flex size-8 items-center justify-center rounded-full bg-primary-foreground/20 text-xs font-semibold">
+              <span className="flex size-8 items-center justify-center rounded-full bg-primary-foreground text-xs font-bold text-primary">
                 {initials(user?.fullName)}
               </span>
-              <ChevronDown className="size-4 text-primary-foreground/80" />
+              <ChevronDown className="size-4 text-primary-foreground/80" strokeWidth={1.75} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
+          <DropdownMenuContent className="w-60">
             <div className="px-2 py-1.5">
               <p className="truncate text-sm font-medium">{user?.fullName}</p>
               <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
             </div>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setTheme(NEXT_THEME[theme]);
+              }}
+            >
+              <ThemeIcon />
+              Theme: {THEME_LABEL[theme]}
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void logout()}>
               <LogOut />
               Sign out

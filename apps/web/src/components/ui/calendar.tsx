@@ -2,14 +2,15 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { daysInMonth, localIsoDate, parseIsoDate, toIsoDate } from '../../lib/date';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-// Sunday-first with Sunday tinted, like an Indian wall calendar.
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Monday-first week.
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-type View = 'days' | 'months' | 'years';
+/** 0 = Monday … 6 = Sunday. */
+const mondayIndex = (year: number, month: number, day: number) => (new Date(year, month - 1, day).getDay() + 6) % 7;
 
 const shiftDays = (iso: string, days: number) => {
   const p = parseIsoDate(iso)!;
@@ -25,6 +26,11 @@ const shiftMonths = (iso: string, months: number) => {
   return toIsoDate(year, month, Math.min(p.day, daysInMonth(year, month)));
 };
 
+const setMonthYear = (iso: string, year: number, month: number) => {
+  const p = parseIsoDate(iso)!;
+  return toIsoDate(year, month, Math.min(p.day, daysInMonth(year, month)));
+};
+
 interface CalendarProps {
   /** Selected date, ISO "YYYY-MM-DD" or ''. */
   value: string;
@@ -37,10 +43,12 @@ interface CalendarProps {
   onClear?: () => void;
 }
 
+const navButton =
+  'flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
 export const Calendar = ({ value, onSelect, min, max, autoFocus, onClear }: CalendarProps) => {
   const today = localIsoDate();
   const [focusIso, setFocusIso] = useState(() => (parseIsoDate(value) ? value.slice(0, 10) : today));
-  const [view, setView] = useState<View>('days');
   const gridRef = useRef<HTMLDivElement>(null);
   const moveFocusRef = useRef(Boolean(autoFocus));
 
@@ -53,21 +61,22 @@ export const Calendar = ({ value, onSelect, min, max, autoFocus, onClear }: Cale
     if (!moveFocusRef.current) return;
     moveFocusRef.current = false;
     gridRef.current?.querySelector<HTMLButtonElement>('[data-focused="true"]')?.focus();
-  }, [focusIso, view]);
+  }, [focusIso]);
 
   const moveTo = (iso: string) => {
     moveFocusRef.current = true;
     setFocusIso(iso);
   };
 
-  const onDayKeyDown = (e: KeyboardEvent) => {
+  const onGridKeyDown = (e: KeyboardEvent) => {
+    const weekday = mondayIndex(focus.year, focus.month, focus.day);
     const moves: Record<string, () => string> = {
       ArrowLeft: () => shiftDays(focusIso, -1),
       ArrowRight: () => shiftDays(focusIso, 1),
       ArrowUp: () => shiftDays(focusIso, -7),
       ArrowDown: () => shiftDays(focusIso, 7),
-      Home: () => shiftDays(focusIso, -new Date(focus.year, focus.month - 1, focus.day).getDay()),
-      End: () => shiftDays(focusIso, 6 - new Date(focus.year, focus.month - 1, focus.day).getDay()),
+      Home: () => shiftDays(focusIso, -weekday),
+      End: () => shiftDays(focusIso, 6 - weekday),
       PageUp: () => shiftMonths(focusIso, e.shiftKey ? -12 : -1),
       PageDown: () => shiftMonths(focusIso, e.shiftKey ? 12 : 1),
     };
@@ -78,166 +87,106 @@ export const Calendar = ({ value, onSelect, min, max, autoFocus, onClear }: Cale
     }
   };
 
-  // ── header ────────────────────────────────────────────────────────────────
-  const yearPageStart = focus.year - (focus.year % 12);
-  const title =
-    view === 'days' ? `${MONTHS[focus.month - 1]} ${focus.year}` : view === 'months' ? `${focus.year}` : `${yearPageStart} – ${yearPageStart + 11}`;
-  const step = (dir: -1 | 1) =>
-    setFocusIso(view === 'days' ? shiftMonths(focusIso, dir) : shiftMonths(focusIso, dir * (view === 'months' ? 12 : 144)));
-  const stepLabel = view === 'days' ? 'month' : view === 'months' ? 'year' : '12 years';
+  // Year dropdown covers min/max when given, else a practical window around today and the
+  // focused year (so old join dates stay reachable).
+  const thisYear = new Date().getFullYear();
+  const firstYear = Math.min(min ? Number(min.slice(0, 4)) : thisYear - 30, focus.year);
+  const lastYear = Math.max(max ? Number(max.slice(0, 4)) : thisYear + 5, focus.year);
+  const years = Array.from({ length: lastYear - firstYear + 1 }, (_, i) => lastYear - i);
 
-  // ── day grid ──────────────────────────────────────────────────────────────
   const firstOfMonth = toIsoDate(focus.year, focus.month, 1);
-  const gridStart = shiftDays(firstOfMonth, -new Date(focus.year, focus.month - 1, 1).getDay());
+  const gridStart = shiftDays(firstOfMonth, -mondayIndex(focus.year, focus.month, 1));
   const cells = Array.from({ length: 42 }, (_, i) => shiftDays(gridStart, i));
 
   return (
-    <div className="w-[17.5rem] select-none">
-      <div className="mb-2 flex items-center justify-between gap-1">
-        <button
-          type="button"
-          aria-label={`Previous ${stepLabel}`}
-          onClick={() => step(-1)}
-          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ChevronLeft className="size-4" />
+    <div className="w-[18.5rem] select-none">
+      <div className="mb-3 flex items-center gap-1.5">
+        <button type="button" aria-label="Previous month" onClick={() => setFocusIso(shiftMonths(focusIso, -1))} className={navButton}>
+          <ChevronLeft className="size-4" strokeWidth={1.75} />
         </button>
-        <button
-          type="button"
-          aria-live="polite"
-          disabled={view === 'years'}
-          onClick={() => setView(view === 'days' ? 'months' : 'years')}
-          className="rounded-lg px-2.5 py-1 text-sm font-semibold transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:hover:bg-transparent"
-        >
-          {title}
-        </button>
-        <button
-          type="button"
-          aria-label={`Next ${stepLabel}`}
-          onClick={() => step(1)}
-          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </div>
-
-      <div ref={gridRef}>
-        {view === 'days' ? (
-          <div role="grid" aria-label={`${MONTHS[focus.month - 1]} ${focus.year}`} onKeyDown={onDayKeyDown}>
-            <div role="row" className="mb-1 grid grid-cols-7">
-              {WEEKDAYS.map((d, i) => (
-                <span
-                  key={d}
-                  role="columnheader"
-                  aria-label={WEEKDAY_NAMES[i]}
-                  className={cn(
-                    'py-1 text-center text-2xs font-semibold uppercase tracking-wider',
-                    i === 0 ? 'text-destructive/80' : 'text-muted-foreground',
-                  )}
-                >
-                  {d}
-                </span>
-              ))}
-            </div>
-            {Array.from({ length: 6 }, (_, row) => (
-              <div role="row" key={row} className="grid grid-cols-7 gap-0.5">
-                {cells.slice(row * 7, row * 7 + 7).map((iso, col) => {
-                  const p = parseIsoDate(iso)!;
-                  const inMonth = p.month === focus.month;
-                  const isSelected = iso === selectedIso;
-                  const isToday = iso === today;
-                  const disabled = isDisabled(iso);
-                  const isFocused = iso === focusIso;
-                  return (
-                    <div role="gridcell" key={iso} aria-selected={isSelected} className="flex justify-center py-0.5">
-                      <button
-                        type="button"
-                        tabIndex={isFocused ? 0 : -1}
-                        data-focused={isFocused}
-                        disabled={disabled}
-                        aria-label={`${WEEKDAY_NAMES[col]}, ${p.day} ${MONTHS[p.month - 1]} ${p.year}${isToday ? ' (today)' : ''}`}
-                        aria-current={isToday ? 'date' : undefined}
-                        onClick={() => onSelect(iso)}
-                        // Only sync focus within the visible month: re-rendering the grid for an
-                        // adjacent-month day on mousedown would swallow the click that follows.
-                        onFocus={() => inMonth && setFocusIso(iso)}
-                        className={cn(
-                          'relative flex size-9 items-center justify-center rounded-lg text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                          !isSelected && 'hover:bg-primary/10 hover:text-primary',
-                          !inMonth && !isSelected && 'text-muted-foreground/45',
-                          inMonth && !isSelected && col === 0 && 'text-destructive/80',
-                          isToday && !isSelected && 'font-semibold text-primary ring-1 ring-inset ring-primary/40',
-                          isSelected && 'bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary/90',
-                          disabled && 'pointer-events-none opacity-30',
-                        )}
-                      >
-                        {p.day}
-                        {isToday && !isSelected ? (
-                          <span className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary" />
-                        ) : null}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+        <Select value={String(focus.month)} onValueChange={(v) => setFocusIso(setMonthYear(focusIso, focus.year, Number(v)))}>
+          <SelectTrigger aria-label="Month" className="h-8 flex-1 bg-card px-2.5 text-[13px] font-medium max-sm:h-10">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-64">
+            {MONTHS.map((name, i) => (
+              <SelectItem key={name} value={String(i + 1)}>
+                {name}
+              </SelectItem>
             ))}
-          </div>
-        ) : view === 'months' ? (
-          <div className="grid grid-cols-3 gap-1.5 py-1">
-            {MONTHS_SHORT.map((label, i) => {
-              const isCurrent = i + 1 === focus.month;
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  data-focused={isCurrent}
-                  onClick={() => {
-                    const month = i + 1;
-                    moveTo(toIsoDate(focus.year, month, Math.min(focus.day, daysInMonth(focus.year, month))));
-                    setView('days');
-                  }}
-                  className={cn(
-                    'h-11 rounded-lg text-sm transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    isCurrent && 'bg-primary font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5 py-1">
-            {Array.from({ length: 12 }, (_, i) => yearPageStart + i).map((year) => {
-              const isCurrent = year === focus.year;
-              return (
-                <button
-                  key={year}
-                  type="button"
-                  data-focused={isCurrent}
-                  onClick={() => {
-                    moveTo(toIsoDate(year, focus.month, Math.min(focus.day, daysInMonth(year, focus.month))));
-                    setView('months');
-                  }}
-                  className={cn(
-                    'h-11 rounded-lg text-sm tabular-nums transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    isCurrent && 'bg-primary font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
-                  )}
-                >
-                  {year}
-                </button>
-              );
-            })}
-          </div>
-        )}
+          </SelectContent>
+        </Select>
+        <Select value={String(focus.year)} onValueChange={(v) => setFocusIso(setMonthYear(focusIso, Number(v), focus.month))}>
+          <SelectTrigger aria-label="Year" className="h-8 w-[5.75rem] shrink-0 bg-card px-2.5 text-[13px] font-medium max-sm:h-10">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-64">
+            {years.map((year) => (
+              <SelectItem key={year} value={String(year)}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <button type="button" aria-label="Next month" onClick={() => setFocusIso(shiftMonths(focusIso, 1))} className={navButton}>
+          <ChevronRight className="size-4" strokeWidth={1.75} />
+        </button>
       </div>
 
-      <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
+      <div ref={gridRef} role="grid" aria-label={`${MONTHS[focus.month - 1]} ${focus.year}`} onKeyDown={onGridKeyDown}>
+        <div role="row" className="mb-1 grid grid-cols-7">
+          {WEEKDAYS.map((d, i) => (
+            <span key={d} role="columnheader" aria-label={WEEKDAY_NAMES[i]} className="py-1 text-center text-xs font-medium text-muted-foreground">
+              {d}
+            </span>
+          ))}
+        </div>
+        {Array.from({ length: 6 }, (_, row) => (
+          <div role="row" key={row} className="grid grid-cols-7">
+            {cells.slice(row * 7, row * 7 + 7).map((iso, col) => {
+              const p = parseIsoDate(iso)!;
+              const inMonth = p.month === focus.month;
+              const isSelected = iso === selectedIso;
+              const isToday = iso === today;
+              const disabled = isDisabled(iso);
+              const isFocused = iso === focusIso;
+              return (
+                <div role="gridcell" key={iso} aria-selected={isSelected} className="flex justify-center p-0.5">
+                  <button
+                    type="button"
+                    tabIndex={isFocused ? 0 : -1}
+                    data-focused={isFocused}
+                    disabled={disabled}
+                    aria-label={`${WEEKDAY_NAMES[col]}, ${p.day} ${MONTHS[p.month - 1]} ${p.year}${isToday ? ' (today)' : ''}`}
+                    aria-current={isToday ? 'date' : undefined}
+                    onClick={() => onSelect(iso)}
+                    // Only sync focus within the visible month: re-rendering the grid for an
+                    // adjacent-month day on mousedown would swallow the click that follows.
+                    onFocus={() => inMonth && setFocusIso(iso)}
+                    className={cn(
+                      'flex size-9 items-center justify-center rounded-md text-sm tabular-nums transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                      isSelected
+                        ? 'bg-primary font-semibold text-primary-foreground shadow-sm hover:bg-primary/90'
+                        : cn('hover:bg-accent hover:text-primary', inMonth ? 'text-foreground' : 'text-muted-foreground/50'),
+                      isToday && !isSelected && 'font-semibold text-primary ring-1 ring-inset ring-primary/50',
+                      disabled && 'pointer-events-none opacity-30',
+                    )}
+                  >
+                    {p.day}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between pt-1">
         <button
           type="button"
           disabled={isDisabled(today)}
           onClick={() => onSelect(today)}
-          className="rounded-md px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+          className="rounded-md px-2 py-1 text-sm font-semibold text-primary transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
         >
           Today
         </button>
@@ -245,7 +194,7 @@ export const Calendar = ({ value, onSelect, min, max, autoFocus, onClear }: Cale
           <button
             type="button"
             onClick={onClear}
-            className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Clear
           </button>

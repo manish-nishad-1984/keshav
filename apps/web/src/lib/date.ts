@@ -1,4 +1,4 @@
-// App-wide date formatting: every date shown to the user is DD-MM-YYYY.
+// App-wide date formatting: every date shown to the user is DD/MM/YYYY.
 //
 // Two kinds of value flow through the app:
 //  - Date-only fields (production/cutting/payment date, join date) arrive from the API as
@@ -8,7 +8,7 @@
 //  - Timestamps (createdAt, lastLoginAt) are real instants, shown in the viewer's local time.
 //
 // Inside forms, date values stay in ISO "YYYY-MM-DD" (what the API expects); only the display
-// and the typed text are DD-MM-YYYY.
+// and the typed text are DD/MM/YYYY.
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -28,32 +28,35 @@ export const parseIsoDate = (value: string | null | undefined) => {
   return { year, month, day };
 };
 
-/** Date-only value → "DD-MM-YYYY" ('' when empty/invalid). */
+/** Date-only value → "DD/MM/YYYY" ('' when empty/invalid). */
 export const formatDate = (value: string | null | undefined) => {
   const parts = parseIsoDate(value);
-  return parts ? `${pad(parts.day)}-${pad(parts.month)}-${parts.year}` : '';
+  return parts ? `${pad(parts.day)}/${pad(parts.month)}/${parts.year}` : '';
 };
 
-/** Timestamp → "DD-MM-YYYY HH:mm" in local time. */
+/** Timestamp → "DD/MM/YYYY HH:mm" in local time. */
 export const formatDateTime = (value: string | Date | null | undefined) => {
   if (!value) return '';
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return '';
-  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-/** Typed "DD-MM-YYYY" → ISO "YYYY-MM-DD", or null if incomplete/invalid. */
+/** Typed "DD/MM/YYYY" → ISO "YYYY-MM-DD", or null if incomplete/invalid. */
 export const parseDisplayDate = (text: string) => {
-  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(text.trim());
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text.trim());
   if (!match) return null;
   const iso = toIsoDate(Number(match[3]), Number(match[2]), Number(match[1]));
   return parseIsoDate(iso) ? iso : null;
 };
 
-/** Formats raw keystrokes as DD-MM-YYYY, inserting the dashes automatically. */
+/** Formats raw keystrokes as DD/MM/YYYY, inserting the slashes automatically. */
 export const maskDisplayDate = (text: string) => {
   const digits = text.replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 };
+
+/** Today as "DD-MM-YYYY" for download filenames (slashes aren't allowed in file names). */
+export const fileDateStamp = () => formatDate(localIsoDate()).replace(/\//g, '-');

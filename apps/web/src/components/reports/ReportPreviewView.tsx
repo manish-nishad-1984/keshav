@@ -10,7 +10,7 @@ import { DatePicker } from '../ui/date-picker';
 import { REPORT_TYPES, formatMonthKey, type ReportKey } from './report-constants';
 import type { ProductionEntry } from '../production-entries/production-entry-constants';
 import type { LedgerRow } from '../payments/payment-constants';
-import { formatDate, localIsoDate } from '../../lib/date';
+import { formatDate, fileDateStamp } from '../../lib/date';
 
 interface OrganizationDto {
   name: string;
@@ -105,7 +105,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
     ledgerQuery.isLoading;
 
   const handleExport = () => {
-    const today = formatDate(localIsoDate());
+    const today = fileDateStamp();
     if (reportKey === 'daily-production' || reportKey === 'photo-report') {
       const rows = (entriesQuery.data?.items ?? [])
         .filter((e) => reportKey === 'daily-production' || e.photoUrl)

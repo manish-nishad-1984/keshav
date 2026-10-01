@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Save } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
@@ -187,6 +188,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
 
             <div className="flex items-center gap-2 pt-1">
               <Button type="submit" loading={mutation.isPending} disabled={!form.workTypeId}>
+                <Save />
                 Save
               </Button>
               <Button type="button" variant="outline" onClick={onCancel}>

@@ -6,9 +6,9 @@ export type Theme = 'light' | 'dark' | 'system';
 interface UiState {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  /** Desktop sidebar: false = narrow icon rail, true = expanded with labels and child links. */
-  navExpanded: boolean;
-  toggleNavExpanded: () => void;
+  /** Desktop sidebar: true = narrow icon rail (default), false = expanded with labels and child links. */
+  navCollapsed: boolean;
+  toggleNavCollapsed: () => void;
 }
 
 const applyTheme = (theme: Theme): void => {
@@ -25,12 +25,24 @@ export const useUiStore = create<UiState>()(
         applyTheme(theme);
         set({ theme });
       },
-      navExpanded: false,
-      toggleNavExpanded: () => set((state) => ({ navExpanded: !state.navExpanded })),
+      navCollapsed: true,
+      toggleNavCollapsed: () => set((state) => ({ navCollapsed: !state.navCollapsed })),
     }),
     {
       name: 'ckfast-ui',
-      partialize: (state) => ({ theme: state.theme, navExpanded: state.navExpanded }),
+      partialize: (state) => ({ theme: state.theme, navCollapsed: state.navCollapsed }),
+      // Keep any preference the user already saved. One build stored it inverted as
+      // `navExpanded`; translate that rather than resetting it. Nothing saved → the default rail.
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<Pick<UiState, 'theme' | 'navCollapsed'>> & { navExpanded?: boolean };
+        const navCollapsed =
+          typeof saved.navCollapsed === 'boolean'
+            ? saved.navCollapsed
+            : typeof saved.navExpanded === 'boolean'
+              ? !saved.navExpanded
+              : current.navCollapsed;
+        return { ...current, ...(saved.theme ? { theme: saved.theme } : {}), navCollapsed };
+      },
       onRehydrateStorage: () => (state) => {
         if (state) applyTheme(state.theme);
       },

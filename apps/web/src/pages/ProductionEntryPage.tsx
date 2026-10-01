@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { FilePlus2, RotateCcw, Save } from 'lucide-react';
 import { apiClient, ApiRequestError } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent } from '../components/ui/card';
@@ -49,7 +50,7 @@ const NUMERIC = 'numeric text-right';
 const TOTAL_PROPS = {
   readOnly: true,
   tabIndex: -1,
-  className: cn(NUMERIC, 'cursor-default bg-muted/50 text-foreground focus-visible:ring-0'),
+  className: cn(NUMERIC, 'cursor-default text-foreground'),
 } as const;
 
 // A short debounce keeps the lot lookup from firing a request on every keystroke.
@@ -373,7 +374,11 @@ export const ProductionEntryPage = () => {
                 />
               </FormField>
 
-              <FormField label="Flatlock Karigar" htmlFor="pe-flatlock" className={cn(FIELD, 'col-span-2 sm:col-span-1')}>
+              <FormField
+                label="Flatlock Karigar"
+                htmlFor="pe-flatlock"
+                className={cn(FIELD, 'col-span-2 sm:col-span-1')}
+              >
                 <Select value={form.flatlockKarigarId} onValueChange={(v) => setForm((f) => ({ ...f, flatlockKarigarId: v }))}>
                   <SelectTrigger id="pe-flatlock">
                     <SelectValue placeholder="Select karigar" />
@@ -405,7 +410,7 @@ export const ProductionEntryPage = () => {
             </div>
 
             {/* Row 4 — photo and remarks */}
-            <div className={cn(ROW, 'grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)]')}>
+            <div className={cn(ROW, 'grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]')}>
               <FormField label="Photo Upload" required htmlFor="pe-photo" className={FIELD}>
                 <PhotoUpload
                   id="pe-photo"
@@ -419,6 +424,7 @@ export const ProductionEntryPage = () => {
                 <Textarea
                   id="pe-remarks"
                   rows={2}
+                  placeholder="Enter remarks (optional)"
                   className="min-h-14 resize-y"
                   value={form.remarks}
                   onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
@@ -427,11 +433,13 @@ export const ProductionEntryPage = () => {
             </div>
 
             {/* Row 5 — actions */}
-            <div className="grid grid-cols-3 gap-2 pt-1.5 sm:flex sm:items-center">
+            <div className="grid grid-cols-3 gap-2 pt-1 sm:flex sm:items-center">
               <Button type="submit" className={ACTION} loading={mutation.isPending} disabled={!isValid}>
+                <Save />
                 Save Entry
               </Button>
               <Button type="button" variant="outline" className={ACTION} onClick={() => setForm(emptyForm)}>
+                <RotateCcw />
                 Clear
               </Button>
               <Button
@@ -442,6 +450,7 @@ export const ProductionEntryPage = () => {
                 disabled={!isValid}
                 onClick={() => save('keepDate')}
               >
+                <FilePlus2 />
                 Save & New
               </Button>
             </div>

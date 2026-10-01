@@ -11,7 +11,7 @@ import { FormField } from '../ui/form-field';
 import { FormAlert } from '../ui/form-alert';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { usePermissions } from '../../hooks/use-permissions';
-import { formatDate, formatDateTime, localIsoDate } from '../../lib/date';
+import { formatDate, formatDateTime, fileDateStamp } from '../../lib/date';
 
 interface BackupHistoryRow {
   id: string;
@@ -66,7 +66,7 @@ export const BackupRestoreTab = () => {
   const backupMutation = useMutation({
     mutationFn: () => apiClient.post('/backups/export'),
     onSuccess: (payload) => {
-      downloadJson(`ckfast-backup-${formatDate(localIsoDate())}.json`, payload);
+      downloadJson(`ckfast-backup-${fileDateStamp()}.json`, payload);
       setNotice('Backup created and downloaded.');
       setError(null);
       void queryClient.invalidateQueries({ queryKey: ['backups', 'history'] });

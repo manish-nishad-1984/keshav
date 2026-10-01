@@ -63,7 +63,7 @@ export default {
       spacing: {
         sidebar: '14rem',
         'sidebar-collapsed': '5.5rem',
-        topbar: '3.25rem',
+        topbar: '3.5rem',
       },
       boxShadow: {
         card: '0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)',

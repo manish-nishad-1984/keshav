@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { shortLabel, useNavigation } from '../../lib/navigation';
 import { cn } from '../../lib/utils';
 
@@ -45,10 +45,34 @@ const SectionTabs = () => {
   );
 };
 
+// "Production / Daily Entry" — only for sections with several pages; a single-page section's
+// breadcrumb would just repeat the title.
+const Breadcrumb = () => {
+  const { activeSection, activeModule } = useNavigation();
+  if (!activeSection || !activeModule || activeSection.modules.length < 2) return null;
+
+  return (
+    <nav aria-label="Breadcrumb" className="mb-0.5">
+      <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <li>
+          <Link to={activeSection.modules[0].path} className="rounded hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {activeSection.label}
+          </Link>
+        </li>
+        <li aria-hidden>/</li>
+        <li aria-current="page" className="font-medium text-foreground">
+          {shortLabel(activeModule)}
+        </li>
+      </ol>
+    </nav>
+  );
+};
+
 export const PageLayout = ({ title, description, actions, tabs, children, className }: PageLayoutProps) => (
   <div className={cn('space-y-3', className)}>
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+    <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
       <div className="min-w-0">
+        <Breadcrumb />
         <h1 className="text-lg font-semibold leading-7 tracking-tight sm:text-xl">{title}</h1>
         {description ? <p className="truncate text-xs text-muted-foreground sm:text-[13px]">{description}</p> : null}
       </div>

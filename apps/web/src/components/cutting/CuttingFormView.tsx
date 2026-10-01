@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Settings2, Plus, Trash2 } from 'lucide-react';
+import { Settings2, Plus, Save, Trash2 } from 'lucide-react';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card, CardContent } from '../ui/card';
@@ -239,7 +239,7 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                       <input
                         type="radio"
                         name="isOnline"
-                        className="size-4 cursor-pointer accent-primary"
+                        className="size-4 shrink-0 cursor-pointer appearance-none rounded-full border border-input bg-card transition-[border-color,border-width] duration-150 checked:border-[5px] checked:border-primary hover:border-primary/60 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/20"
                         checked={form.isOnline === option.value}
                         onChange={() => setForm((f) => ({ ...f, isOnline: option.value }))}
                       />
@@ -435,6 +435,7 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                 Cancel
               </Button>
               <Button type="submit" className="flex-1 sm:min-w-24 sm:flex-none" loading={mutation.isPending} disabled={!canSubmit}>
+                <Save />
                 Save
               </Button>
             </div>

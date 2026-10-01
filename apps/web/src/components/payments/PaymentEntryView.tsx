@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Save } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { Card, CardContent } from '../ui/card';
@@ -151,6 +152,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
 
           <div className="flex items-center gap-2 pt-1">
             <Button type="submit" loading={mutation.isPending} disabled={!isValid}>
+              <Save />
               Save Payment
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>

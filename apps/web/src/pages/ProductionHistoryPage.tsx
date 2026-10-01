@@ -15,7 +15,7 @@ import { ProductionEntryViewDialog } from '../components/production-entries/Prod
 import type { ProductionEntry } from '../components/production-entries/production-entry-constants';
 import type { Karigar } from '../components/karigars/karigar-constants';
 import type { Item } from '../components/items/item-constants';
-import { formatDate, localIsoDate } from '../lib/date';
+import { formatDate, fileDateStamp } from '../lib/date';
 
 const toCsvValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
@@ -77,7 +77,7 @@ export const ProductionHistoryPage = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `production-history-${formatDate(localIsoDate())}.csv`;
+      link.download = `production-history-${fileDateStamp()}.csv`;
       link.click();
       URL.revokeObjectURL(url);
     } finally {
