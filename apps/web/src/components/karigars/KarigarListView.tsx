@@ -82,7 +82,7 @@ export const KarigarListView = ({ onAdd, onEdit }: KarigarListViewProps) => {
               setWorkTypeId(v);
             }}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -144,7 +144,7 @@ export const KarigarListView = ({ onAdd, onEdit }: KarigarListViewProps) => {
                         </button>
                       </td>
                       <td className="px-2 py-2.5">
-                        <Button variant="ghost" size="icon" disabled={!canUpdate} onClick={() => onEdit(karigar)}>
+                        <Button variant="ghost" size="icon" aria-label={`Edit ${karigar.fullName}`} disabled={!canUpdate} onClick={() => onEdit(karigar)}>
                           <Pencil />
                         </Button>
                       </td>

@@ -6,6 +6,9 @@ export type Theme = 'light' | 'dark' | 'system';
 interface UiState {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  /** Desktop sidebar: false = narrow icon rail, true = expanded with labels and child links. */
+  navExpanded: boolean;
+  toggleNavExpanded: () => void;
 }
 
 const applyTheme = (theme: Theme): void => {
@@ -22,12 +25,12 @@ export const useUiStore = create<UiState>()(
         applyTheme(theme);
         set({ theme });
       },
-      // sidebarCollapsed / density / expandedNavGroups can live in this same store later —
-      // it's a general "shell preferences" store, not theme-only.
+      navExpanded: false,
+      toggleNavExpanded: () => set((state) => ({ navExpanded: !state.navExpanded })),
     }),
     {
       name: 'ckfast-ui',
-      partialize: (state) => ({ theme: state.theme }),
+      partialize: (state) => ({ theme: state.theme, navExpanded: state.navExpanded }),
       onRehydrateStorage: () => (state) => {
         if (state) applyTheme(state.theme);
       },

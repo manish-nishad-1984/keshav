@@ -101,9 +101,9 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
   return (
     <PageLayout title="Add / Edit Karigar" description="Workers who stitch, cut, finish and pack garments.">
       <Card>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4">
           <form
-            className="space-y-5"
+            className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault();
               mutation.mutate();
@@ -111,9 +111,15 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
           >
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-            <PhotoUpload value={form.photoUrl} onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))} />
+            {/* Photo beside the identity fields on desktop; stacked on mobile. */}
+            <div className="grid gap-x-5 gap-y-3 md:grid-cols-[auto_minmax(0,1fr)]">
+              <PhotoUpload
+                className="md:flex-col md:items-start md:pt-5"
+                value={form.photoUrl}
+                onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))}
+              />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
               <FormField label="Karigar Name" required>
                 <Input
                   required
@@ -164,17 +170,22 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
                   </SelectContent>
                 </Select>
               </FormField>
+              <FormField label="Address" className="sm:col-span-2 lg:col-span-3">
+                <Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
+              </FormField>
+            </div>
             </div>
 
-            <FormField label="Address">
-              <Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
-            </FormField>
-
             <FormField label="Remarks">
-              <Textarea value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} />
+              <Textarea
+                rows={2}
+                className="min-h-14 resize-y"
+                value={form.remarks}
+                onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
+              />
             </FormField>
 
-            <div className="flex items-center gap-2 border-t border-border pt-4">
+            <div className="flex items-center gap-2 pt-1">
               <Button type="submit" loading={mutation.isPending} disabled={!form.workTypeId}>
                 Save
               </Button>

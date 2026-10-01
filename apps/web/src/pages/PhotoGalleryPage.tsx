@@ -51,7 +51,7 @@ export const PhotoGalleryPage = () => {
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
           <DatePicker
             aria-label="Filter by date"
-            className="w-40"
+            className="w-full sm:w-40"
             value={date}
             onChange={(value) => {
               setPage(1);
@@ -65,7 +65,7 @@ export const PhotoGalleryPage = () => {
               setKarigarId(v);
             }}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -84,7 +84,7 @@ export const PhotoGalleryPage = () => {
               setItemId(v);
             }}
           >
-            <SelectTrigger className="w-52">
+            <SelectTrigger className="w-full sm:w-52">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

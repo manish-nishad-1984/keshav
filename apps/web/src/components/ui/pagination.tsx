@@ -21,7 +21,7 @@ export const Pagination = ({ meta, onPageChange, className }: PaginationProps) =
   if (meta.totalPages <= 1) return null;
 
   return (
-    <div className={cn('flex items-center justify-between gap-3 px-4 py-3', className)}>
+    <div className={cn('flex flex-wrap items-center justify-between gap-2 px-4 py-2.5', className)}>
       <p className="text-2xs text-muted-foreground">
         Showing {(meta.page - 1) * meta.pageSize + 1}–{Math.min(meta.page * meta.pageSize, meta.total)} of {meta.total}{' '}
         entries
@@ -30,7 +30,7 @@ export const Pagination = ({ meta, onPageChange, className }: PaginationProps) =
         <Button
           variant="outline"
           size="icon"
-          className="size-8"
+          className="size-8 max-sm:size-10"
           disabled={!meta.hasPrev}
           onClick={() => onPageChange(meta.page - 1)}
         >
@@ -41,7 +41,7 @@ export const Pagination = ({ meta, onPageChange, className }: PaginationProps) =
             key={p}
             variant={p === meta.page ? 'default' : 'outline'}
             size="icon"
-            className="size-8"
+            className="size-8 max-sm:size-10"
             onClick={() => onPageChange(p)}
           >
             {p}
@@ -50,7 +50,7 @@ export const Pagination = ({ meta, onPageChange, className }: PaginationProps) =
         <Button
           variant="outline"
           size="icon"
-          className="size-8"
+          className="size-8 max-sm:size-10"
           disabled={!meta.hasNext}
           onClick={() => onPageChange(meta.page + 1)}
         >

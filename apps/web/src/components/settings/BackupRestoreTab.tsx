@@ -189,7 +189,7 @@ export const BackupRestoreTab = () => {
                 Enable auto backup (daily)
               </Label>
             </div>
-            <FormField label="Backup Time" className="w-40">
+            <FormField label="Backup Time" className="w-full sm:w-40">
               <Input
                 type="time"
                 disabled={!canManage || !settings?.autoBackupEnabled}

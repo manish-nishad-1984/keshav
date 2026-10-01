@@ -77,8 +77,8 @@ export const DashboardPage = () => {
       {isLoading ? (
         <LoadingState variant="page" />
       ) : (
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {TILES.map((tile) => (
               <Card key={tile.key}>
                 <CardHeader className="flex-row items-center justify-between border-b-0 pb-0">
@@ -92,7 +92,7 @@ export const DashboardPage = () => {
             ))}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <Card>
               <CardHeader>
                 <CardTitle>Production Trend</CardTitle>

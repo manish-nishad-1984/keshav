@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { PageLayout } from '../components/layout/PageLayout';
-import { cn } from '../lib/utils';
+import { PageLayout, PageTabs } from '../components/layout/PageLayout';
 import { KarigarLedgerView } from '../components/payments/KarigarLedgerView';
 import { PaymentEntryView } from '../components/payments/PaymentEntryView';
 
@@ -14,21 +13,15 @@ export const PaymentsPage = () => {
       title="Payment / Ledger"
       description="Per-karigar payment ledger and payment entries."
       tabs={
-        <div className="inline-flex rounded-md border border-border bg-muted p-1">
-          {(['ledger', 'entry'] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={cn(
-                'rounded-sm px-3 py-1.5 text-xs font-medium transition-colors',
-                tab === key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {key === 'ledger' ? 'Karigar Ledger' : 'Payment Entry'}
-            </button>
-          ))}
-        </div>
+        <PageTabs
+          label="Payments"
+          value={tab}
+          onChange={setTab}
+          items={[
+            { key: 'ledger', label: 'Karigar Ledger' },
+            { key: 'entry', label: 'Payment Entry' },
+          ]}
+        />
       }
     >
       {tab === 'ledger' ? (

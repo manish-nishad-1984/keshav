@@ -37,13 +37,13 @@ const emptyForm = {
   remarks: '',
 };
 
-// Layout tokens for this dense daily-entry form: 44px tap targets on mobile, 36px on desktop,
-// and a 4px label gap so the whole form fits a 1366×768 viewport without scrolling.
+// Layout tokens for this dense daily-entry form: a 4px label gap and 10–12px row gaps keep the
+// whole form within a 1366×768 viewport. Control heights (36px desktop / 44px mobile) come from
+// the shared primitives.
 const ROW = 'grid gap-x-3 gap-y-2.5';
 const FIELD = 'min-w-0 space-y-1';
-const CONTROL = 'h-11 sm:h-9';
-const ACTION = cn(CONTROL, 'px-2 sm:px-4');
-const NUMERIC = cn(CONTROL, 'numeric text-right');
+const ACTION = 'max-sm:px-2';
+const NUMERIC = 'numeric text-right';
 // Calculated totals are read-only rather than disabled so they keep full text contrast; they
 // stay out of the tab order as before.
 const TOTAL_PROPS = {
@@ -189,7 +189,7 @@ export const ProductionEntryPage = () => {
   ));
 
   return (
-    <PageLayout className="space-y-3" title="Daily Production Entry" description="Log today's production per karigar and item.">
+    <PageLayout title="Daily Production Entry" description="Log today's production per karigar and item.">
       <Card>
         <CardContent className="p-3 sm:p-4">
           <form
@@ -208,7 +208,6 @@ export const ProductionEntryPage = () => {
                 <DatePicker
                   id="pe-date"
                   required
-                  inputClassName={CONTROL}
                   value={form.date}
                   onChange={(date) => setForm((f) => ({ ...f, date }))}
                 />
@@ -224,7 +223,7 @@ export const ProductionEntryPage = () => {
                   id="pe-lot"
                   autoComplete="off"
                   aria-describedby={lotStatus ? 'pe-lot-status' : undefined}
-                  className={CONTROL}
+                 
                   value={form.lotNumber}
                   onChange={(e) => setForm((f) => ({ ...f, lotNumber: e.target.value }))}
                 />
@@ -238,7 +237,7 @@ export const ProductionEntryPage = () => {
               <FormField label="Design Number" htmlFor="pe-design" className={FIELD}>
                 <Input
                   id="pe-design"
-                  className={CONTROL}
+                 
                   value={form.designNumber}
                   onChange={(e) => setForm((f) => ({ ...f, designNumber: e.target.value }))}
                 />
@@ -246,7 +245,7 @@ export const ProductionEntryPage = () => {
 
               <FormField label="Work Type" required htmlFor="pe-work-type" className={FIELD}>
                 <Select value={form.workTypeId} onValueChange={(v) => setForm((f) => ({ ...f, workTypeId: v }))}>
-                  <SelectTrigger id="pe-work-type" className={CONTROL}>
+                  <SelectTrigger id="pe-work-type">
                     <SelectValue placeholder="Select work type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -274,10 +273,10 @@ export const ProductionEntryPage = () => {
                 className={cn(FIELD, 'col-span-2 sm:col-span-3 lg:col-span-1')}
               >
                 {itemLocked ? (
-                  <Input id="pe-item" disabled title={lockedItemName} className={CONTROL} value={lockedItemName} />
+                  <Input id="pe-item" disabled title={lockedItemName} value={lockedItemName} />
                 ) : (
                   <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
-                    <SelectTrigger id="pe-item" className={CONTROL}>
+                    <SelectTrigger id="pe-item">
                       <SelectValue placeholder="Select item" />
                     </SelectTrigger>
                     <SelectContent>
@@ -298,7 +297,7 @@ export const ProductionEntryPage = () => {
                 className={cn(FIELD, 'col-span-2 sm:col-span-3 lg:col-span-1')}
               >
                 <Select value={form.carrierId} onValueChange={handleCarrierChange}>
-                  <SelectTrigger id="pe-karigar" className={CONTROL}>
+                  <SelectTrigger id="pe-karigar">
                     <SelectValue placeholder="Select karigar" />
                   </SelectTrigger>
                   <SelectContent>{karigarOptions}</SelectContent>
@@ -346,7 +345,7 @@ export const ProductionEntryPage = () => {
             >
               <FormField label="Overlock Karigar" htmlFor="pe-overlock" className={cn(FIELD, 'col-span-2 sm:col-span-1')}>
                 <Select value={form.overlockCarrierId} onValueChange={(v) => setForm((f) => ({ ...f, overlockCarrierId: v }))}>
-                  <SelectTrigger id="pe-overlock" className={CONTROL}>
+                  <SelectTrigger id="pe-overlock">
                     <SelectValue placeholder="Select karigar" />
                   </SelectTrigger>
                   <SelectContent>{karigarOptions}</SelectContent>
@@ -376,7 +375,7 @@ export const ProductionEntryPage = () => {
 
               <FormField label="Flatlock Karigar" htmlFor="pe-flatlock" className={cn(FIELD, 'col-span-2 sm:col-span-1')}>
                 <Select value={form.flatlockKarigarId} onValueChange={(v) => setForm((f) => ({ ...f, flatlockKarigarId: v }))}>
-                  <SelectTrigger id="pe-flatlock" className={CONTROL}>
+                  <SelectTrigger id="pe-flatlock">
                     <SelectValue placeholder="Select karigar" />
                   </SelectTrigger>
                   <SelectContent>{karigarOptions}</SelectContent>

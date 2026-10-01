@@ -67,9 +67,9 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
 
   return (
     <Card>
-      <CardContent>
+      <CardContent className="p-3 sm:p-4">
         <form
-          className="space-y-5"
+          className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             mutation.mutate();
@@ -77,7 +77,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
         >
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)]">
             <FormField label="Date" required>
               <DatePicker required value={form.date} onChange={(date) => setForm((f) => ({ ...f, date }))} />
             </FormField>
@@ -98,7 +98,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
             </FormField>
 
             <FormField label="Total Due Amount (₹)">
-              <Input disabled className="numeric" value={(selectedLedgerRow?.pending ?? 0).toFixed(2)} />
+              <Input disabled className="numeric text-right" value={(selectedLedgerRow?.pending ?? 0).toFixed(2)} />
             </FormField>
 
             <FormField label="Payment Amount (₹)" required>
@@ -107,7 +107,8 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
                 min="0.01"
                 step="0.01"
                 required
-                className="numeric"
+                inputMode="decimal"
+                className="numeric text-right"
                 value={form.amount}
                 onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               />
@@ -140,10 +141,15 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
           </div>
 
           <FormField label="Remarks">
-            <Textarea value={form.remarks} onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))} />
+            <Textarea
+              rows={2}
+              className="min-h-14 resize-y"
+              value={form.remarks}
+              onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
+            />
           </FormField>
 
-          <div className="flex items-center gap-2 border-t border-border pt-4">
+          <div className="flex items-center gap-2 pt-1">
             <Button type="submit" loading={mutation.isPending} disabled={!isValid}>
               Save Payment
             </Button>

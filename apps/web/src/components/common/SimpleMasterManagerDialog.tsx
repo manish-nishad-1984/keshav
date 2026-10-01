@@ -137,7 +137,7 @@ export const SimpleMasterManagerDialog = ({
                         >
                           <Check />
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setRenamingId(null)}>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setRenamingId(null)} aria-label="Cancel">
                           <X />
                         </Button>
                       </>
@@ -160,10 +160,10 @@ export const SimpleMasterManagerDialog = ({
                             setRenamingId(item.id);
                             setRenameValue(item.name);
                           }}
-                        >
+                         aria-label="Edit">
                           <Pencil />
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteTarget(item)}>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteTarget(item)} aria-label="Delete">
                           <Trash2 />
                         </Button>
                       </>

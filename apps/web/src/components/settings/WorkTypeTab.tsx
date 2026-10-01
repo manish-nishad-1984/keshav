@@ -108,7 +108,7 @@ export const WorkTypeTab = () => {
                       >
                         <Check />
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setRenamingId(null)}>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setRenamingId(null)} aria-label="Cancel">
                         <X />
                       </Button>
                     </>
@@ -134,10 +134,10 @@ export const WorkTypeTab = () => {
                               setRenamingId(workType.id);
                               setRenameValue(workType.name);
                             }}
-                          >
+                           aria-label="Edit">
                             <Pencil />
                           </Button>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteTarget(workType)}>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => setDeleteTarget(workType)} aria-label="Delete">
                             <Trash2 />
                           </Button>
                         </>

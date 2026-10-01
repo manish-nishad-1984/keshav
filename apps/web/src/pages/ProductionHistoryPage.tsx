@@ -102,7 +102,7 @@ export const ProductionHistoryPage = () => {
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
           <DatePicker
             aria-label="From date"
-            className="w-40"
+            className="w-full sm:w-40"
             max={dateTo || undefined}
             value={dateFrom}
             onChange={(value) => {
@@ -113,7 +113,7 @@ export const ProductionHistoryPage = () => {
           <span className="text-xs text-muted-foreground">to</span>
           <DatePicker
             aria-label="To date"
-            className="w-40"
+            className="w-full sm:w-40"
             min={dateFrom || undefined}
             value={dateTo}
             onChange={(value) => {
@@ -128,7 +128,7 @@ export const ProductionHistoryPage = () => {
               setKarigarId(v);
             }}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -147,7 +147,7 @@ export const ProductionHistoryPage = () => {
               setItemId(v);
             }}
           >
-            <SelectTrigger className="w-52">
+            <SelectTrigger className="w-full sm:w-52">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -172,9 +172,9 @@ export const ProductionHistoryPage = () => {
                   <th className="px-4 py-2 font-medium">Karigar</th>
                   <th className="px-4 py-2 font-medium">Style</th>
                   <th className="px-4 py-2 font-medium">Item</th>
-                  <th className="px-4 py-2 font-medium">Qty</th>
-                  <th className="px-4 py-2 font-medium">Rate</th>
-                  <th className="px-4 py-2 font-medium">Amount</th>
+                  <th className="px-4 py-2 font-medium text-right">Qty</th>
+                  <th className="px-4 py-2 font-medium text-right">Rate</th>
+                  <th className="px-4 py-2 font-medium text-right">Amount</th>
                   <th className="px-4 py-2 font-medium">Photo</th>
                   <th className="px-4 py-2" />
                 </tr>
@@ -188,9 +188,9 @@ export const ProductionHistoryPage = () => {
                       <td className="px-4 py-2.5 font-medium">{entry.carrier.fullName}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground">{entry.item.styleNo}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
-                      <td className="numeric px-4 py-2.5 text-muted-foreground">{entry.carrierQuantity}</td>
-                      <td className="numeric px-4 py-2.5 text-muted-foreground">{Number(entry.carrierRate).toFixed(2)}</td>
-                      <td className="numeric px-4 py-2.5 font-medium">{Number(entry.carrierTotal).toFixed(2)}</td>
+                      <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{entry.carrierQuantity}</td>
+                      <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{Number(entry.carrierRate).toFixed(2)}</td>
+                      <td className="numeric px-4 py-2.5 font-medium text-right">{Number(entry.carrierTotal).toFixed(2)}</td>
                       <td className="px-4 py-2">
                         <div className="flex size-9 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
                           {photoUrl ? (
@@ -201,7 +201,7 @@ export const ProductionHistoryPage = () => {
                         </div>
                       </td>
                       <td className="px-2 py-2.5 text-right">
-                        <Button variant="ghost" size="icon" onClick={() => setViewEntry(entry)}>
+                        <Button variant="ghost" size="icon" aria-label="View entry" onClick={() => setViewEntry(entry)}>
                           <Eye />
                         </Button>
                       </td>

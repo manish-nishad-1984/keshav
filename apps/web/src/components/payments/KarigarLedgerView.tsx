@@ -53,7 +53,7 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
               />
             </div>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -77,9 +77,9 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
               <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2 font-medium">Karigar</th>
-                  <th className="px-4 py-2 font-medium">Total Amount</th>
-                  <th className="px-4 py-2 font-medium">Paid Amount</th>
-                  <th className="px-4 py-2 font-medium">Pending</th>
+                  <th className="px-4 py-2 font-medium text-right">Total Amount</th>
+                  <th className="px-4 py-2 font-medium text-right">Paid Amount</th>
+                  <th className="px-4 py-2 font-medium text-right">Pending</th>
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-2 py-2" />
                 </tr>
@@ -88,16 +88,16 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
                 {rows.map((row) => (
                   <tr key={row.karigarId} className="border-b border-border last:border-0">
                     <td className="px-4 py-2.5 font-medium">{row.karigarName}</td>
-                    <td className="numeric px-4 py-2.5">{row.totalAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5">{row.paidAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5 font-medium">{row.pending.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{row.totalAmount.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{row.paidAmount.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 font-medium text-right">{row.pending.toFixed(2)}</td>
                     <td className="px-4 py-2.5">
                       <Badge variant={row.pending > 0 ? 'danger' : 'success'}>
                         {row.pending > 0 ? 'Due' : 'Settled'}
                       </Badge>
                     </td>
                     <td className="px-2 py-2.5 text-right">
-                      <Button variant="ghost" size="icon" onClick={() => setHistoryTarget(row)}>
+                      <Button variant="ghost" size="icon" aria-label={`Payment history for ${row.karigarName}`} onClick={() => setHistoryTarget(row)}>
                         <Eye />
                       </Button>
                     </td>
@@ -115,9 +115,9 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
                 <tfoot>
                   <tr className="border-t border-border font-semibold">
                     <td className="px-4 py-2.5">Total</td>
-                    <td className="numeric px-4 py-2.5">{totals.totalAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5">{totals.paidAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5">{totals.pending.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{totals.totalAmount.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{totals.paidAmount.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{totals.pending.toFixed(2)}</td>
                     <td />
                     <td />
                   </tr>

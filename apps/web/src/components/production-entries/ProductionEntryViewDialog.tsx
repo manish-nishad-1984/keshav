@@ -48,48 +48,65 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
             <DialogTitle>Production Entry</DialogTitle>
           </DialogHeader>
           {entry ? (
-            <DialogBody className="space-y-4">
-              <div className="flex justify-center">
-                <div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
+            <DialogBody className="space-y-3">
+              <div className="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                <div className="flex size-28 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
                   {photoUrl ? (
-                    <img src={photoUrl} alt="" className="size-full object-cover" />
+                    <img src={photoUrl} alt="Production photo" className="size-full object-cover" />
                   ) : (
-                    <ImageOff className="size-8" />
+                    <ImageOff className="size-7" />
                   )}
                 </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Date" value={formatDate(entry.date)} />
-                {entry.lotNumber ? <Field label="Lot Number" value={entry.lotNumber} /> : null}
-                {entry.designNumber ? <Field label="Design Number" value={entry.designNumber} /> : null}
-                <Field label="Work Type" value={entry.workType.name} />
-                <Field label="Style No." value={entry.item.styleNo} />
-                <Field label="Item Name" value={entry.item.itemName} />
-              </div>
-
-              <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
-                <Field label="Carrier" value={`${entry.carrier.fullName} (${entry.carrier.code})`} />
-                <Field label="Quantity" value={String(entry.carrierQuantity)} />
-                <Field label="Rate (₹)" value={Number(entry.carrierRate).toFixed(2)} />
-                <Field label="Total (₹)" value={Number(entry.carrierTotal).toFixed(2)} />
-              </div>
-
-              {entry.overlockCarrier ? (
-                <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
-                  <Field label="Overlock Carrier" value={`${entry.overlockCarrier.fullName} (${entry.overlockCarrier.code})`} />
-                  <Field label="Rate (₹)" value={Number(entry.overlockRate ?? 0).toFixed(2)} />
-                  <Field label="Total (₹)" value={Number(entry.overlockTotal ?? 0).toFixed(2)} />
+                <div className="grid grid-cols-2 content-start gap-x-4 gap-y-2.5 sm:grid-cols-3">
+                  <Field label="Date" value={formatDate(entry.date)} />
+                  {entry.lotNumber ? <Field label="Lot Number" value={entry.lotNumber} /> : null}
+                  {entry.designNumber ? <Field label="Design Number" value={entry.designNumber} /> : null}
+                  <Field label="Work Type" value={entry.workType.name} />
+                  <Field label="Style No." value={entry.item.styleNo} />
+                  <Field label="Item Name" value={entry.item.itemName} />
                 </div>
-              ) : null}
+              </div>
 
-              {entry.flatlockKarigar ? (
-                <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
-                  <Field label="Flatlock Karigar" value={`${entry.flatlockKarigar.fullName} (${entry.flatlockKarigar.code})`} />
-                  <Field label="Rate (₹)" value={Number(entry.flatlockRate ?? 0).toFixed(2)} />
-                  <Field label="Total (₹)" value={Number(entry.flatlockTotal ?? 0).toFixed(2)} />
-                </div>
-              ) : null}
+              <div className="overflow-x-auto rounded-md border border-border">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-border bg-muted/50 text-2xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-1.5 font-medium">Role</th>
+                      <th className="px-3 py-1.5 font-medium">Karigar</th>
+                      <th className="px-3 py-1.5 text-right font-medium">Qty</th>
+                      <th className="px-3 py-1.5 text-right font-medium">Rate (₹)</th>
+                      <th className="px-3 py-1.5 text-right font-medium">Total (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">Karigar</td>
+                      <td className="px-3 py-2 font-medium">{`${entry.carrier.fullName} (${entry.carrier.code})`}</td>
+                      <td className="numeric px-3 py-2 text-right">{entry.carrierQuantity}</td>
+                      <td className="numeric px-3 py-2 text-right">{Number(entry.carrierRate).toFixed(2)}</td>
+                      <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.carrierTotal).toFixed(2)}</td>
+                    </tr>
+                    {entry.overlockCarrier ? (
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">Overlock Karigar</td>
+                        <td className="px-3 py-2 font-medium">{`${entry.overlockCarrier.fullName} (${entry.overlockCarrier.code})`}</td>
+                        <td className="numeric px-3 py-2 text-right text-muted-foreground">{entry.carrierQuantity}</td>
+                        <td className="numeric px-3 py-2 text-right">{Number(entry.overlockRate ?? 0).toFixed(2)}</td>
+                        <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.overlockTotal ?? 0).toFixed(2)}</td>
+                      </tr>
+                    ) : null}
+                    {entry.flatlockKarigar ? (
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">Flatlock Karigar</td>
+                        <td className="px-3 py-2 font-medium">{`${entry.flatlockKarigar.fullName} (${entry.flatlockKarigar.code})`}</td>
+                        <td className="numeric px-3 py-2 text-right text-muted-foreground">{entry.carrierQuantity}</td>
+                        <td className="numeric px-3 py-2 text-right">{Number(entry.flatlockRate ?? 0).toFixed(2)}</td>
+                        <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.flatlockTotal ?? 0).toFixed(2)}</td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
 
               {entry.remarks ? <Field label="Remarks" value={entry.remarks} /> : null}
             </DialogBody>

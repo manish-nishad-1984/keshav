@@ -23,19 +23,20 @@ export const SettingsPage = () => {
 
   return (
     <PageLayout title="Settings" description="Company info, work types, and general configuration.">
-      <div className="grid gap-5 md:grid-cols-[14rem_minmax(0,1fr)]">
-        <Card className="h-fit p-2">
-          <nav className="flex flex-col gap-1">
+      <div className="grid gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
+        <Card className="h-fit p-1.5">
+          <nav aria-label="Settings sections" className="flex gap-1 overflow-x-auto md:flex-col">
             {TABS.map((t) => (
               <button
                 key={t.key}
                 type="button"
+                aria-current={tab === t.key ? 'page' : undefined}
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  'rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                  'shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:py-3',
                   tab === t.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    ? 'bg-accent text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 {t.label}

@@ -3,10 +3,8 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Topbar } from '../components/layout/Topbar';
 import { CommandPalette } from '../components/common/CommandPalette';
-import { cn } from '../lib/utils';
 
 export const AppLayout = () => {
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -20,29 +18,22 @@ export const AppLayout = () => {
 
       <CommandPalette />
 
-      <Sidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+      <Topbar onOpenMobile={() => setMobileOpen(true)} />
 
-      <div
-        className={cn(
-          'flex min-h-screen flex-col transition-[padding] duration-200',
-          collapsed ? 'lg:pl-sidebar-collapsed' : 'lg:pl-sidebar',
-        )}
-      >
-        <Topbar
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((c) => !c)}
-          onOpenMobile={() => setMobileOpen(true)}
-        />
+      <div className="flex">
+        <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
 
-        <main id="main-content" className="flex-1 px-3 py-4 sm:px-5 sm:py-5">
-          <div className="mx-auto w-full max-w-[110rem]">
-            <Outlet />
-          </div>
-        </main>
+        <div className="flex min-h-[calc(100vh-theme(spacing.topbar))] min-w-0 flex-1 flex-col">
+          <main id="main-content" className="flex-1 px-3 py-3 sm:px-5 sm:py-4">
+            <div className="mx-auto w-full max-w-[110rem]">
+              <Outlet />
+            </div>
+          </main>
 
-        <footer className="border-t border-border px-5 py-3 text-2xs text-muted-foreground">
-          KESHAV Trading & Co. &copy; {new Date().getFullYear()}
-        </footer>
+          <footer className="border-t border-border px-5 py-2.5 text-2xs text-muted-foreground">
+            KESHAV Trading & Co. &copy; {new Date().getFullYear()}
+          </footer>
+        </div>
       </div>
     </div>
   );

@@ -164,9 +164,9 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
   return (
     <PageLayout title="Cutting Entry" description="Fabric cutting lots — the starting point of production.">
       <Card>
-        <CardContent className="p-4 sm:p-5">
+        <CardContent className="p-3 sm:p-4">
           <form
-            className="space-y-5"
+            className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
               mutation.mutate();

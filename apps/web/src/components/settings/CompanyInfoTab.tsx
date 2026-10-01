@@ -84,9 +84,9 @@ export const CompanyInfoTab = () => {
 
   return (
     <Card>
-      <CardContent>
+      <CardContent className="p-3 sm:p-4">
         <form
-          className="space-y-5"
+          className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             mutation.mutate();
@@ -95,11 +95,12 @@ export const CompanyInfoTab = () => {
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
           {saved ? <FormAlert tone="success">Company information saved.</FormAlert> : null}
 
+          <div className="grid gap-x-5 gap-y-3 md:grid-cols-[auto_minmax(0,1fr)]">
           <FormField label="Logo">
             <PhotoUpload value={form.logoUrl} onChange={(url) => setForm((f) => ({ ...f, logoUrl: url }))} />
           </FormField>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
             <FormField label="Company Name" required>
               <Input
                 required
@@ -138,7 +139,7 @@ export const CompanyInfoTab = () => {
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               />
             </FormField>
-            <FormField label="Address" className="sm:col-span-2">
+            <FormField label="Address" className="sm:col-span-2 lg:col-span-1">
               <Input
                 disabled={!canUpdate}
                 value={form.addressLine1}
@@ -146,9 +147,10 @@ export const CompanyInfoTab = () => {
               />
             </FormField>
           </div>
+          </div>
 
           {canUpdate ? (
-            <div className="border-t border-border pt-4">
+            <div className="pt-1">
               <Button type="submit" loading={mutation.isPending}>
                 Save Changes
               </Button>

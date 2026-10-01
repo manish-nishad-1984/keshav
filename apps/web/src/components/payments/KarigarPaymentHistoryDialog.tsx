@@ -51,7 +51,7 @@ export const KarigarPaymentHistoryDialog = ({ karigar, onOpenChange }: KarigarPa
                 <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 font-medium">Date</th>
-                    <th className="px-3 py-2 font-medium">Amount</th>
+                    <th className="px-3 py-2 font-medium text-right">Amount</th>
                     <th className="px-3 py-2 font-medium">Mode</th>
                     <th className="px-3 py-2 font-medium">Reference</th>
                     <th className="px-3 py-2 font-medium">Remarks</th>
@@ -61,7 +61,7 @@ export const KarigarPaymentHistoryDialog = ({ karigar, onOpenChange }: KarigarPa
                   {data?.items.map((payment) => (
                     <tr key={payment.id} className="border-b border-border last:border-0">
                       <td className="px-3 py-2 text-muted-foreground">{formatDate(payment.date)}</td>
-                      <td className="numeric px-3 py-2 font-medium">{Number(payment.amount).toFixed(2)}</td>
+                      <td className="numeric px-3 py-2 font-medium text-right">{Number(payment.amount).toFixed(2)}</td>
                       <td className="px-3 py-2">
                         <Badge variant="muted">{PAYMENT_MODE_LABELS[payment.paymentMode]}</Badge>
                       </td>

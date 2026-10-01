@@ -61,9 +61,9 @@ export default {
         '2xs': ['0.6875rem', { lineHeight: '1rem' }],
       },
       spacing: {
-        sidebar: '16rem',
-        'sidebar-collapsed': '4.5rem',
-        topbar: '3.5rem',
+        sidebar: '14rem',
+        'sidebar-collapsed': '5.5rem',
+        topbar: '3.25rem',
       },
       boxShadow: {
         card: '0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06)',

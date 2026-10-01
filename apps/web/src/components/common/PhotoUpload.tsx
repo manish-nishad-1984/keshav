@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ImageIcon, ImageOff, Loader2, User } from 'lucide-react';
+import { ImageIcon, ImageOff, Loader2, Upload, User } from 'lucide-react';
 import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
@@ -57,11 +57,12 @@ export const PhotoUpload = ({ value, onChange, size = 'default', id, className }
           type="button"
           variant="outline"
           size="sm"
-          className={compact ? 'h-11 sm:h-8' : undefined}
+          className={compact ? 'border-primary/40 text-primary hover:bg-accent hover:text-primary' : undefined}
           onClick={() => inputRef.current?.click()}
           disabled={mutation.isPending}
         >
-          Change Photo
+          {compact ? <Upload /> : null}
+          {compact && !value ? 'Upload Photo' : 'Change Photo'}
         </Button>
         {error ? <p className="text-2xs text-destructive">{error}</p> : null}
         <input

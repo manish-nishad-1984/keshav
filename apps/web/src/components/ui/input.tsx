@@ -10,7 +10,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     <input
       ref={ref}
       className={cn(
-        'flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:bg-card disabled:opacity-70',
+        'flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-sm shadow-sm transition-colors duration-150 max-sm:h-11 max-sm:text-base placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:bg-card disabled:opacity-70',
         invalid && 'border-destructive focus-visible:ring-destructive',
         className,
       )}

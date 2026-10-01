@@ -119,7 +119,7 @@ export const UserFormDialog = ({ open, onOpenChange, user }: UserFormDialogProps
           <DialogBody>
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
               <FormField label="Full name" required>
                 <Input
                   required
@@ -145,14 +145,14 @@ export const UserFormDialog = ({ open, onOpenChange, user }: UserFormDialogProps
                   onChange={(e) => setForm((f) => ({ ...f, employeeCode: e.target.value }))}
                 />
               </FormField>
-              <FormField label="Designation" className="sm:col-span-2">
+              <FormField label="Designation" className={isEdit ? 'sm:col-span-2' : undefined}>
                 <Input
                   value={form.designation}
                   onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value }))}
                 />
               </FormField>
               {!isEdit ? (
-                <FormField label="Initial password" required hint="At least 8 characters." className="sm:col-span-2">
+                <FormField label="Initial password" required hint="At least 8 characters.">
                   <PasswordInput
                     required
                     minLength={8}

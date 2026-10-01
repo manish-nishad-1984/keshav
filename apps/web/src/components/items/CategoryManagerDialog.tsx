@@ -126,7 +126,7 @@ export const CategoryManagerDialog = ({ open, onOpenChange }: CategoryManagerDia
                         >
                           <Check />
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setRenamingId(null)}>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setRenamingId(null)} aria-label="Cancel">
                           <X />
                         </Button>
                       </>
@@ -150,7 +150,7 @@ export const CategoryManagerDialog = ({ open, onOpenChange }: CategoryManagerDia
                             setRenamingId(category.id);
                             setRenameValue(category.name);
                           }}
-                        >
+                         aria-label="Edit">
                           <Pencil />
                         </Button>
                         <Button
@@ -158,7 +158,7 @@ export const CategoryManagerDialog = ({ open, onOpenChange }: CategoryManagerDia
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteTarget(category)}
-                        >
+                         aria-label="Delete">
                           <Trash2 />
                         </Button>
                       </>

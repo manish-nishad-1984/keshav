@@ -76,10 +76,10 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
               mutation.mutate();
             }}
           >
-            <DialogBody className="space-y-4">
+            <DialogBody className="space-y-3">
               {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-              <PhotoUpload value={form.photoUrl} onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))} />
+              <PhotoUpload size="sm" value={form.photoUrl} onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))} />
 
               {isEdit ? (
                 <FormField label="Style No.">
@@ -92,12 +92,12 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
                 required
                 hint={isEdit ? undefined : 'The style number is generated automatically from the category prefix.'}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex">
                   <Select
                     value={form.categoryId}
                     onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
                   >
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="min-w-0 flex-1 rounded-r-none">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -108,7 +108,15 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setCategoryManagerOpen(true)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Manage categories"
+                    title="Manage categories"
+                    className="shrink-0 rounded-l-none border-l-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setCategoryManagerOpen(true)}
+                  >
                     <Settings2 />
                   </Button>
                 </div>

@@ -70,9 +70,9 @@ export const GeneralSettingsTab = () => {
 
   return (
     <Card>
-      <CardContent>
+      <CardContent className="p-3 sm:p-4">
         <form
-          className="space-y-5"
+          className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             mutation.mutate();
@@ -81,7 +81,7 @@ export const GeneralSettingsTab = () => {
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
           {saved ? <FormAlert tone="success">Settings saved.</FormAlert> : null}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
             <FormField label="Currency">
               <Input
                 disabled={!canUpdate}
@@ -96,13 +96,13 @@ export const GeneralSettingsTab = () => {
                 onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
               />
             </FormField>
-            <FormField label="Fiscal Year Start Month" className="sm:col-span-2">
+            <FormField label="Fiscal Year Start Month">
               <Select
                 value={String(form.fiscalYearStartMonth)}
                 onValueChange={(v) => setForm((f) => ({ ...f, fiscalYearStartMonth: Number(v) }))}
                 disabled={!canUpdate}
               >
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -117,7 +117,7 @@ export const GeneralSettingsTab = () => {
           </div>
 
           {canUpdate ? (
-            <div className="border-t border-border pt-4">
+            <div className="pt-1">
               <Button type="submit" loading={mutation.isPending}>
                 Save Changes
               </Button>

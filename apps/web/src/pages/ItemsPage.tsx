@@ -125,7 +125,7 @@ export const ItemsPage = () => {
               setCategoryId(v);
             }}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

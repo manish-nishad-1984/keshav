@@ -73,7 +73,7 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                   <th className="px-4 py-2 font-medium">Party</th>
                   <th className="px-4 py-2 font-medium">Color</th>
                   <th className="px-4 py-2 font-medium">Mode</th>
-                  <th className="px-4 py-2 font-medium">Total</th>
+                  <th className="px-4 py-2 font-medium text-right">Total</th>
                   <th className="px-4 py-2 font-medium">Action</th>
                 </tr>
               </thead>
@@ -88,9 +88,9 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                     <td className="px-4 py-2.5">
                       <Badge variant={entry.isOnline ? 'info' : 'muted'}>{entry.isOnline ? 'Online' : 'Offline'}</Badge>
                     </td>
-                    <td className="numeric px-4 py-2.5 text-muted-foreground">{Number(entry.totalAmount).toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{Number(entry.totalAmount).toFixed(2)}</td>
                     <td className="px-2 py-2.5">
-                      <Button variant="ghost" size="icon" disabled={!canUpdate} onClick={() => onEdit(entry)}>
+                      <Button variant="ghost" size="icon" aria-label={`Edit lot ${entry.lotNumber}`} disabled={!canUpdate} onClick={() => onEdit(entry)}>
                         <Pencil />
                       </Button>
                     </td>

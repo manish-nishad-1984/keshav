@@ -134,7 +134,7 @@ export const RoleFormDialog = ({ open, onOpenChange, role }: RoleFormDialogProps
           <DialogBody>
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
               <FormField label="Name" required>
                 <Input
                   required
@@ -190,7 +190,7 @@ export const RoleFormDialog = ({ open, onOpenChange, role }: RoleFormDialogProps
                           const someChecked = moduleActions.some((a) => form.permissionKeys.has(`${module.key}:${a}`));
                           return (
                             <tr key={module.key} className="border-b border-border last:border-0">
-                              <td className="px-3 py-2">
+                              <td className="px-3 py-1.5">
                                 <div className="flex items-center gap-2">
                                   <Checkbox
                                     id={`module-${module.key}`}
@@ -206,9 +206,10 @@ export const RoleFormDialog = ({ open, onOpenChange, role }: RoleFormDialogProps
                                 const available = moduleActions.includes(action);
                                 const key = `${module.key}:${action}`;
                                 return (
-                                  <td key={action} className={cn('px-2 py-2 text-center', !available && 'bg-muted/30')}>
+                                  <td key={action} className={cn('px-2 py-1.5 text-center', !available && 'bg-muted/30')}>
                                     {available ? (
                                       <Checkbox
+                                        aria-label={`${module.label}: ${action}`}
                                         checked={form.permissionKeys.has(key)}
                                         onCheckedChange={() => togglePermission(key)}
                                       />
