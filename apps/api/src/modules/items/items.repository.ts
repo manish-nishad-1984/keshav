@@ -14,10 +14,7 @@ export const listItems = async (
     ...(categoryId ? { categoryId } : {}),
     ...(search
       ? {
-          OR: [
-            { itemName: { contains: search, mode: 'insensitive' } },
-            { styleNo: { contains: search, mode: 'insensitive' } },
-          ],
+          itemName: { contains: search, mode: 'insensitive' },
         }
       : {}),
   };
@@ -39,14 +36,19 @@ export const listItems = async (
 export const findItemById = (organizationId: string, id: string) =>
   prisma.item.findFirst({ where: { id, organizationId, deletedAt: null }, include: { category: true } });
 
+// Design names are unique among non-deleted items, case-insensitively.
+export const findActiveItemByName = (organizationId: string, itemName: string) =>
+  prisma.item.findFirst({
+    where: { organizationId, deletedAt: null, itemName: { equals: itemName.trim(), mode: 'insensitive' } },
+  });
+
 export const createItem = (
   organizationId: string,
-  styleNo: string,
   data: { categoryId: string; itemName: string; photoUrl?: string },
   createdById: string | null,
 ) =>
   prisma.item.create({
-    data: { organizationId, styleNo, ...data, createdById: createdById ?? undefined },
+    data: { organizationId, ...data, createdById: createdById ?? undefined },
     include: { category: true },
   });
 

@@ -60,6 +60,8 @@ model Organization {
   productionEntries ProductionEntry[]
   payments          Payment[]
   backups           Backup[]
+  parties           Party[]
+  books             Book[]
 
   @@map("organizations")
 }
@@ -443,7 +445,8 @@ model Item {
   id             String    @id @default(uuid()) @db.Uuid
   organizationId String    @db.Uuid
   categoryId     String    @db.Uuid
-  styleNo        String
+  // Shown as "Design Name" in the UI. Unique among non-deleted items (enforced in the service,
+  // since soft-deleted rows would otherwise block reusing a name).
   itemName       String
   photoUrl       String?
   isActive       Boolean   @default(true)
@@ -458,7 +461,6 @@ model Item {
   productionEntries ProductionEntry[]
   CuttingEntry      CuttingEntry[]
 
-  @@unique([organizationId, styleNo])
   @@map("items")
 }
 
@@ -467,17 +469,66 @@ enum AverageUnit {
   METER
 }
 
+// A book is a lot-number series, typically one per financial year ("2025-26"). Lot numbers are
+// generated per book, starting at startNumber; the user picks the working book in the header.
+// Hard-deleted (like WorkType) and only when no cutting entry uses it.
+model Book {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  startNumber    Int      @default(1)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?  @db.Uuid
+  updatedById    String?  @db.Uuid
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cuttingEntries CuttingEntry[]
+
+  @@unique([organizationId, name])
+  @@map("books")
+}
+
+// Hard-deleted (like WorkType) and only when no cutting entry uses it; deactivate instead to
+// hide a party from new entries while keeping its history.
+model Party {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  mobile         String?
+  referenceName  String?
+  address        String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?  @db.Uuid
+  updatedById    String?  @db.Uuid
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cuttingEntries CuttingEntry[]
+
+  @@unique([organizationId, name])
+  @@map("parties")
+}
+
 // The first stage of production — a cutting "lot". Daily Production Entry later looks a
-// lot number up against this table to auto-fill and lock its item/quantity fields.
+// lot number up against this table (within the selected book) to auto-fill and lock its
+// item/quantity fields.
 model CuttingEntry {
   id             String      @id @default(uuid()) @db.Uuid
   organizationId String      @db.Uuid
+  bookId         String      @db.Uuid
+  // Generated server-side as the next number in the book (see cutting.service); never entered
+  // by the user. Text because lots created before books existed may not be numeric.
   lotNumber      String
   date           DateTime    @db.Date
   patternTypeId  String      @db.Uuid
   isOnline       Boolean
   itemId         String      @db.Uuid
-  partyName      String
+  partyId        String      @db.Uuid
+  // Nullable only for lots created before this field existed; required for new entries.
+  pieces         Int?
   averageValue   Decimal     @db.Decimal(10, 2)
   averageUnit    AverageUnit
   colorId        String      @db.Uuid
@@ -491,13 +542,15 @@ model CuttingEntry {
   updatedById    String?     @db.Uuid
 
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  book              Book               @relation(fields: [bookId], references: [id])
+  party             Party              @relation(fields: [partyId], references: [id])
   patternType       PatternType        @relation("CuttingEntryPatternType", fields: [patternTypeId], references: [id])
   item              Item               @relation(fields: [itemId], references: [id])
   color             Color              @relation(fields: [colorId], references: [id])
   lines             CuttingEntryLine[]
   productionEntries ProductionEntry[]
 
-  @@unique([organizationId, lotNumber])
+  @@unique([bookId, lotNumber])
   @@map("cutting_entries")
 }
 

@@ -38,7 +38,8 @@ export const createProductionEntry = async (
   let cuttingEntryId: string | undefined;
   let itemId = input.itemId;
   if (input.lotNumber) {
-    const cuttingEntry = await getCuttingEntryByLotNumber(organizationId, input.lotNumber);
+    if (!input.bookId) throw badRequest('Select a book in the header before entering a lot number');
+    const cuttingEntry = await getCuttingEntryByLotNumber(organizationId, input.bookId, input.lotNumber);
     cuttingEntryId = cuttingEntry.id;
     itemId = cuttingEntry.itemId;
   } else if (!itemId) {

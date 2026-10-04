@@ -10,14 +10,14 @@ export type ListItemsQuery = z.infer<typeof listItemsQuerySchema>;
 
 export const createItemSchema = z.object({
   categoryId: z.string().uuid(),
-  itemName: z.string().min(1),
+  itemName: z.string().trim().min(1),
   photoUrl: z.string().optional(),
 });
 export type CreateItemInput = z.infer<typeof createItemSchema>;
 
 export const updateItemSchema = z.object({
   categoryId: z.string().uuid().optional(),
-  itemName: z.string().min(1).optional(),
+  itemName: z.string().trim().min(1).optional(),
   photoUrl: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 });

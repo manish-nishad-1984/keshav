@@ -98,7 +98,7 @@ export const ItemsPage = () => {
               }}
             >
               <Plus />
-              Add Item
+              Add Design
             </Button>
           ) : null}
         </div>
@@ -109,7 +109,7 @@ export const ItemsPage = () => {
           <div className="relative w-full max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search item or style no…"
+              placeholder="Search design…"
               className="pl-8"
               value={search}
               onChange={(e) => {
@@ -147,8 +147,7 @@ export const ItemsPage = () => {
               <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2 font-medium">Photo</th>
-                  <th className="px-4 py-2 font-medium">Style No.</th>
-                  <th className="px-4 py-2 font-medium">Item Name</th>
+                  <th className="px-4 py-2 font-medium">Design Name</th>
                   <th className="px-4 py-2 font-medium">Category</th>
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2" />
@@ -168,7 +167,6 @@ export const ItemsPage = () => {
                           )}
                         </div>
                       </td>
-                      <td className="numeric px-4 py-2.5 text-muted-foreground">{item.styleNo}</td>
                       <td className="px-4 py-2.5 font-medium">{item.itemName}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{item.category.name}</td>
                       <td className="px-4 py-2.5">
@@ -184,8 +182,8 @@ export const ItemsPage = () => {
                 })}
                 {!data?.items.length ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                      No items yet.
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                      No designs yet.
                     </td>
                   </tr>
                 ) : null}
@@ -203,8 +201,8 @@ export const ItemsPage = () => {
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete item"
-        description={`Delete "${deleteTarget?.itemName}" (${deleteTarget?.styleNo})? This cannot be undone.`}
+        title="Delete design"
+        description={`Delete "${deleteTarget?.itemName}"? This cannot be undone.`}
         confirmLabel="Delete"
         tone="destructive"
         isSubmitting={deleteMutation.isPending}

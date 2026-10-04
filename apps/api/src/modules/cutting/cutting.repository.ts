@@ -2,6 +2,8 @@ import { prisma } from '../../lib/prisma';
 import type { Prisma } from '@prisma/client';
 
 const includeRelations = {
+  book: { select: { id: true, name: true } },
+  party: true,
   patternType: true,
   item: { include: { category: true } },
   color: true,
@@ -12,11 +14,12 @@ export const listCuttingEntries = async (
   organizationId: string,
   page: number,
   pageSize: number,
-  filters: { search?: string; itemId?: string; dateFrom?: Date; dateTo?: Date },
+  filters: { bookId?: string; search?: string; itemId?: string; dateFrom?: Date; dateTo?: Date },
 ) => {
   const where: Prisma.CuttingEntryWhereInput = {
     organizationId,
     deletedAt: null,
+    ...(filters.bookId ? { bookId: filters.bookId } : {}),
     ...(filters.itemId ? { itemId: filters.itemId } : {}),
     ...(filters.dateFrom || filters.dateTo
       ? {
@@ -30,8 +33,7 @@ export const listCuttingEntries = async (
       ? {
           OR: [
             { lotNumber: { contains: filters.search, mode: 'insensitive' } },
-            { partyName: { contains: filters.search, mode: 'insensitive' } },
-            { item: { styleNo: { contains: filters.search, mode: 'insensitive' } } },
+            { party: { name: { contains: filters.search, mode: 'insensitive' } } },
             { item: { itemName: { contains: filters.search, mode: 'insensitive' } } },
           ],
         }
@@ -42,7 +44,7 @@ export const listCuttingEntries = async (
     prisma.cuttingEntry.findMany({
       where,
       include: includeRelations,
-      orderBy: { date: 'desc' },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
@@ -55,19 +57,21 @@ export const listCuttingEntries = async (
 export const findCuttingEntryById = (organizationId: string, id: string) =>
   prisma.cuttingEntry.findFirst({ where: { id, organizationId, deletedAt: null }, include: includeRelations });
 
-export const findCuttingEntryByLotNumber = (organizationId: string, lotNumber: string) =>
+export const findCuttingEntryByLotNumber = (organizationId: string, bookId: string, lotNumber: string) =>
   prisma.cuttingEntry.findFirst({
-    where: { organizationId, lotNumber, deletedAt: null },
+    where: { organizationId, bookId, lotNumber, deletedAt: null },
     include: includeRelations,
   });
 
 interface CuttingEntryHeaderData {
+  bookId: string;
   lotNumber: string;
   date: Date;
   patternTypeId: string;
   isOnline: boolean;
   itemId: string;
-  partyName: string;
+  partyId: string;
+  pieces: number;
   averageValue: number;
   averageUnit: 'KILOGRAM' | 'METER';
   colorId: string;
@@ -81,13 +85,14 @@ interface CuttingLineData {
 }
 
 export const createCuttingEntry = (
+  db: Prisma.TransactionClient,
   organizationId: string,
   header: CuttingEntryHeaderData,
   lines: CuttingLineData[],
   totalAmount: number,
   createdById: string | null,
 ) =>
-  prisma.cuttingEntry.create({
+  db.cuttingEntry.create({
     data: {
       organizationId,
       ...header,
@@ -103,7 +108,7 @@ export const createCuttingEntry = (
 // enough that this is simpler and safer than trying to match old lines to new ones by identity.
 export const updateCuttingEntry = (
   id: string,
-  header: Partial<Omit<CuttingEntryHeaderData, 'lotNumber'>>,
+  header: Partial<Omit<CuttingEntryHeaderData, 'lotNumber' | 'bookId'>>,
   lines: CuttingLineData[] | undefined,
   totalAmount: number | undefined,
   updatedById: string | null,

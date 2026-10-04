@@ -18,13 +18,13 @@ import type { Karigar, WorkType } from '../components/karigars/karigar-constants
 import type { Item } from '../components/items/item-constants';
 import type { CuttingEntry } from '../components/cutting/cutting-constants';
 import { localIsoDate } from '../lib/date';
+import { useSelectedBook } from '../hooks/use-selected-book';
 
 const todayInputValue = () => localIsoDate();
 
 const emptyForm = {
   date: todayInputValue(),
   lotNumber: '',
-  designNumber: '',
   workTypeId: '',
   itemId: '',
   carrierId: '',
@@ -67,6 +67,9 @@ export const ProductionEntryPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Lot numbers are per book: lookups use the book selected in the header.
+  const { selectedBook } = useSelectedBook();
+  const bookId = selectedBook?.id;
 
   const { data: karigars } = useQuery({
     queryKey: ['karigars', 'options'],
@@ -88,9 +91,12 @@ export const ProductionEntryPage = () => {
 
   const debouncedLotNumber = useDebouncedValue(form.lotNumber.trim(), 400);
   const { data: matchedLot, isFetching: lotFetching } = useQuery({
-    queryKey: ['cutting-entry-by-lot', debouncedLotNumber],
-    queryFn: () => apiClient.get<CuttingEntry>(`/cutting/lot/${encodeURIComponent(debouncedLotNumber)}`),
-    enabled: debouncedLotNumber.length > 0,
+    queryKey: ['cutting-entry-by-lot', bookId, debouncedLotNumber],
+    queryFn: () =>
+      apiClient.get<CuttingEntry>(
+        `/cutting/lot/${encodeURIComponent(debouncedLotNumber)}?bookId=${encodeURIComponent(bookId ?? '')}`,
+      ),
+    enabled: debouncedLotNumber.length > 0 && Boolean(bookId),
     retry: false,
   });
   // A lot number match is authoritative for the item — locked, not just pre-filled, so the
@@ -126,7 +132,7 @@ export const ProductionEntryPage = () => {
       apiClient.post('/production-entries', {
         date: form.date,
         lotNumber: form.lotNumber || undefined,
-        designNumber: form.designNumber || undefined,
+        bookId: form.lotNumber ? bookId : undefined,
         workTypeId: form.workTypeId,
         itemId: itemLocked ? undefined : form.itemId,
         carrierId: form.carrierId,
@@ -177,11 +183,13 @@ export const ProductionEntryPage = () => {
   // Shown only once a lot number is typed; the always-on explanation lives in the HelpTip.
   const lotStatus = !form.lotNumber.trim()
     ? null
-    : lotLookupPending
+    : !bookId
+      ? { className: 'text-status-warning', text: 'Select a book in the header to look up lots.' }
+      : lotLookupPending
       ? { className: 'text-muted-foreground', text: 'Checking lot…' }
       : matchedLot
-        ? { className: 'font-medium text-status-success', text: 'Matched — item locked from this lot.' }
-        : { className: 'text-status-warning', text: 'No matching cutting entry — select item manually.' };
+        ? { className: 'font-medium text-status-success', text: 'Matched — design locked from this lot.' }
+        : { className: 'text-status-warning', text: `No lot ${form.lotNumber.trim()} in book ${selectedBook?.name} — select design manually.` };
 
   const karigarOptions = activeKarigars.map((karigar) => (
     <SelectItem key={karigar.id} value={karigar.id}>
@@ -190,7 +198,7 @@ export const ProductionEntryPage = () => {
   ));
 
   return (
-    <PageLayout title="Daily Production Entry" description="Log today's production per karigar and item.">
+    <PageLayout title="Daily Production Entry" description="Log today's production per karigar and design.">
       <Card>
         <CardContent className="p-3 sm:p-4">
           <form
@@ -204,7 +212,7 @@ export const ProductionEntryPage = () => {
             {saved ? <FormAlert tone="success">Production entry saved.</FormAlert> : null}
 
             {/* Row 1 — entry header */}
-            <div className={cn(ROW, 'grid-cols-2 lg:grid-cols-4')}>
+            <div className={cn(ROW, 'grid-cols-2 lg:grid-cols-3')}>
               <FormField label="Date" required htmlFor="pe-date" className={FIELD}>
                 <DatePicker
                   id="pe-date"
@@ -218,7 +226,12 @@ export const ProductionEntryPage = () => {
                 label="Lot Number"
                 htmlFor="pe-lot"
                 className={FIELD}
-                labelAddon={<HelpTip label="About lot number" text="Optional. Matches a Cutting entry and locks its item." />}
+                labelAddon={
+                  <HelpTip
+                    label="About lot number"
+                    text={`Optional. Matches a Cutting lot in the selected book${selectedBook ? ` (${selectedBook.name})` : ''} and locks its design.`}
+                  />
+                }
               >
                 <Input
                   id="pe-lot"
@@ -233,15 +246,6 @@ export const ProductionEntryPage = () => {
                     {lotStatus.text}
                   </p>
                 ) : null}
-              </FormField>
-
-              <FormField label="Design Number" htmlFor="pe-design" className={FIELD}>
-                <Input
-                  id="pe-design"
-                 
-                  value={form.designNumber}
-                  onChange={(e) => setForm((f) => ({ ...f, designNumber: e.target.value }))}
-                />
               </FormField>
 
               <FormField label="Work Type" required htmlFor="pe-work-type" className={FIELD}>
@@ -268,7 +272,7 @@ export const ProductionEntryPage = () => {
               )}
             >
               <FormField
-                label="Item Name"
+                label="Design Name"
                 required
                 htmlFor="pe-item"
                 className={cn(FIELD, 'col-span-2 sm:col-span-3 lg:col-span-1')}
@@ -278,12 +282,12 @@ export const ProductionEntryPage = () => {
                 ) : (
                   <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
                     <SelectTrigger id="pe-item">
-                      <SelectValue placeholder="Select item" />
+                      <SelectValue placeholder="Select design" />
                     </SelectTrigger>
                     <SelectContent>
                       {activeItems.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
-                          {item.itemName} ({item.styleNo})
+                          {item.itemName}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const listCuttingEntriesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  bookId: z.string().uuid().optional(),
   search: z.string().optional(),
   itemId: z.string().uuid().optional(),
   dateFrom: z.coerce.date().optional(),
@@ -10,19 +11,23 @@ export const listCuttingEntriesQuerySchema = z.object({
 });
 export type ListCuttingEntriesQuery = z.infer<typeof listCuttingEntriesQuerySchema>;
 
+export const lotLookupQuerySchema = z.object({ bookId: z.string().uuid() });
+
 const cuttingLineSchema = z.object({
   size: z.string().min(1),
   quantity: z.coerce.number().int().positive(),
   rate: z.coerce.number().positive(),
 });
 
+// No lotNumber: it is generated server-side as the next number in the chosen book.
 export const createCuttingEntrySchema = z.object({
-  lotNumber: z.string().min(1),
+  bookId: z.string().uuid(),
   date: z.coerce.date(),
   patternTypeId: z.string().uuid(),
   isOnline: z.boolean(),
   itemId: z.string().uuid(),
-  partyName: z.string().min(1),
+  partyId: z.string().uuid(),
+  pieces: z.coerce.number().int().positive(),
   averageValue: z.coerce.number().positive(),
   averageUnit: z.enum(['KILOGRAM', 'METER']),
   colorId: z.string().uuid(),
@@ -35,7 +40,8 @@ export const updateCuttingEntrySchema = z.object({
   patternTypeId: z.string().uuid().optional(),
   isOnline: z.boolean().optional(),
   itemId: z.string().uuid().optional(),
-  partyName: z.string().min(1).optional(),
+  partyId: z.string().uuid().optional(),
+  pieces: z.coerce.number().int().positive().optional(),
   averageValue: z.coerce.number().positive().optional(),
   averageUnit: z.enum(['KILOGRAM', 'METER']).optional(),
   colorId: z.string().uuid().optional(),

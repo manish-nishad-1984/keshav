@@ -8,7 +8,7 @@ export interface ItemCategory {
 export interface Item {
   id: string;
   categoryId: string;
-  styleNo: string;
+  /** Shown as "Design Name". */
   itemName: string;
   photoUrl: string | null;
   isActive: boolean;

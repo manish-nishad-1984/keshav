@@ -1,5 +1,4 @@
-import { notFound } from '../../lib/httpError';
-import { nextSequenceCode } from '../../lib/numberSequence';
+import { conflict, notFound } from '../../lib/httpError';
 import { getItemCategory } from '../item-categories/item-categories.service';
 import * as repo from './items.repository';
 import type { CreateItemInput, ListItemsQuery, UpdateItemInput } from './items.schema';
@@ -13,12 +12,12 @@ export const getItem = async (organizationId: string, id: string) => {
   return item;
 };
 
-// Style No. is minted once from the chosen category's prefix and stays fixed for the item's
-// life — changing the category later (see updateItem) does not regenerate it.
+const DUPLICATE_DESIGN = 'A design with this name already exists';
+
 export const createItem = async (organizationId: string, input: CreateItemInput, actorId: string | null) => {
-  const category = await getItemCategory(organizationId, input.categoryId);
-  const styleNo = await nextSequenceCode(organizationId, category.prefix);
-  return repo.createItem(organizationId, styleNo, input, actorId);
+  await getItemCategory(organizationId, input.categoryId);
+  if (await repo.findActiveItemByName(organizationId, input.itemName)) throw conflict(DUPLICATE_DESIGN);
+  return repo.createItem(organizationId, input, actorId);
 };
 
 export const updateItem = async (
@@ -29,6 +28,10 @@ export const updateItem = async (
 ) => {
   await getItem(organizationId, id);
   if (input.categoryId) await getItemCategory(organizationId, input.categoryId);
+  if (input.itemName) {
+    const existing = await repo.findActiveItemByName(organizationId, input.itemName);
+    if (existing && existing.id !== id) throw conflict(DUPLICATE_DESIGN);
+  }
   return repo.updateItem(id, input, actorId);
 };
 

@@ -34,7 +34,6 @@ export const listProductionEntries = async (
           OR: [
             { lotNumber: { contains: filters.search, mode: 'insensitive' } },
             { carrier: { fullName: { contains: filters.search, mode: 'insensitive' } } },
-            { item: { styleNo: { contains: filters.search, mode: 'insensitive' } } },
             { item: { itemName: { contains: filters.search, mode: 'insensitive' } } },
           ],
         }

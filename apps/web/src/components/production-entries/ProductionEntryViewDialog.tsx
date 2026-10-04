@@ -62,8 +62,7 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                   {entry.lotNumber ? <Field label="Lot Number" value={entry.lotNumber} /> : null}
                   {entry.designNumber ? <Field label="Design Number" value={entry.designNumber} /> : null}
                   <Field label="Work Type" value={entry.workType.name} />
-                  <Field label="Style No." value={entry.item.styleNo} />
-                  <Field label="Item Name" value={entry.item.itemName} />
+                  <Field label="Design Name" value={entry.item.itemName} />
                 </div>
               </div>
 

@@ -56,7 +56,7 @@ export const ProductionHistoryPage = () => {
     setIsExporting(true);
     try {
       const all = await apiClient.list<ProductionEntry>('/production-entries', { page: 1, pageSize: 1000, ...filters });
-      const header = ['Date', 'Lot Number', 'Carrier', 'Code', 'Work Type', 'Style No', 'Item Name', 'Qty', 'Rate', 'Amount', 'Remarks'];
+      const header = ['Date', 'Lot Number', 'Carrier', 'Code', 'Work Type', 'Design Name', 'Qty', 'Rate', 'Amount', 'Remarks'];
       const rows = all.items.map((entry) =>
         [
           formatDate(entry.date),
@@ -64,7 +64,6 @@ export const ProductionHistoryPage = () => {
           entry.carrier.fullName,
           entry.carrier.code,
           entry.workType.name,
-          entry.item.styleNo,
           entry.item.itemName,
           String(entry.carrierQuantity),
           Number(entry.carrierRate).toFixed(2),
@@ -151,10 +150,10 @@ export const ProductionHistoryPage = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Item</SelectItem>
+              <SelectItem value="ALL">All Designs</SelectItem>
               {items?.items.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
-                  {item.styleNo} — {item.itemName}
+                  {item.itemName}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -170,8 +169,7 @@ export const ProductionHistoryPage = () => {
                 <tr>
                   <th className="px-4 py-2 font-medium">Date</th>
                   <th className="px-4 py-2 font-medium">Karigar</th>
-                  <th className="px-4 py-2 font-medium">Style</th>
-                  <th className="px-4 py-2 font-medium">Item</th>
+                  <th className="px-4 py-2 font-medium">Design</th>
                   <th className="px-4 py-2 font-medium text-right">Qty</th>
                   <th className="px-4 py-2 font-medium text-right">Rate</th>
                   <th className="px-4 py-2 font-medium text-right">Amount</th>
@@ -186,7 +184,6 @@ export const ProductionHistoryPage = () => {
                     <tr key={entry.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-2.5 text-muted-foreground">{formatDate(entry.date)}</td>
                       <td className="px-4 py-2.5 font-medium">{entry.carrier.fullName}</td>
-                      <td className="numeric px-4 py-2.5 text-muted-foreground">{entry.item.styleNo}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{entry.carrierQuantity}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{Number(entry.carrierRate).toFixed(2)}</td>
@@ -210,7 +207,7 @@ export const ProductionHistoryPage = () => {
                 })}
                 {!data?.items.length ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                       No production entries found.
                     </td>
                   </tr>

@@ -26,7 +26,6 @@ interface KarigarSummaryRow {
 
 interface ItemSummaryRow {
   itemId: string;
-  styleNo: string;
   itemName: string;
   totalQuantity: number;
   totalAmount: number;
@@ -112,13 +111,12 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
         .map((e) => [
           formatDate(e.date),
           e.carrier.fullName,
-          e.item.styleNo,
           e.item.itemName,
           String(e.carrierQuantity),
           Number(e.carrierRate).toFixed(2),
           Number(e.carrierTotal).toFixed(2),
         ]);
-      downloadCsv(`${reportKey}-${today}.csv`, ['Date', 'Karigar', 'Style', 'Item', 'Qty', 'Rate', 'Amount'], rows);
+      downloadCsv(`${reportKey}-${today}.csv`, ['Date', 'Karigar', 'Design', 'Qty', 'Rate', 'Amount'], rows);
     } else if (reportKey === 'karigar-summary') {
       const rows = (karigarSummaryQuery.data ?? []).map((r) => [
         r.karigarName,
@@ -129,12 +127,11 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
       downloadCsv(`karigar-summary-${today}.csv`, ['Karigar', 'Code', 'Total Qty', 'Total Amount'], rows);
     } else if (reportKey === 'item-summary') {
       const rows = (itemSummaryQuery.data ?? []).map((r) => [
-        r.styleNo,
         r.itemName,
         String(r.totalQuantity),
         r.totalAmount.toFixed(2),
       ]);
-      downloadCsv(`item-summary-${today}.csv`, ['Style No', 'Item Name', 'Total Qty', 'Total Amount'], rows);
+      downloadCsv(`item-summary-${today}.csv`, ['Design Name', 'Total Qty', 'Total Amount'], rows);
     } else if (reportKey === 'monthly-summary') {
       const rows = (monthlySummaryQuery.data ?? []).map((r) => [
         formatMonthKey(r.month),
@@ -166,8 +163,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
               <th className="px-3 py-2 font-medium">Sr.</th>
               <th className="px-3 py-2 font-medium">Date</th>
               <th className="px-3 py-2 font-medium">Karigar</th>
-              <th className="px-3 py-2 font-medium">Style</th>
-              <th className="px-3 py-2 font-medium">Item</th>
+              <th className="px-3 py-2 font-medium">Design</th>
               <th className="px-3 py-2 font-medium text-right">Qty</th>
               <th className="px-3 py-2 font-medium text-right">Rate</th>
               <th className="px-3 py-2 font-medium text-right">Amount</th>
@@ -179,7 +175,6 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td className="px-3 py-2">{i + 1}</td>
                 <td className="px-3 py-2">{formatDate(e.date)}</td>
                 <td className="px-3 py-2">{e.carrier.fullName}</td>
-                <td className="numeric px-3 py-2">{e.item.styleNo}</td>
                 <td className="px-3 py-2">{e.item.itemName}</td>
                 <td className="numeric px-3 py-2 text-right">{e.carrierQuantity}</td>
                 <td className="numeric px-3 py-2 text-right">{Number(e.carrierRate).toFixed(2)}</td>
@@ -188,7 +183,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
             ))}
             {!items.length ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
                   No data for this range.
                 </td>
               </tr>
@@ -197,7 +192,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
           {items.length ? (
             <tfoot>
               <tr className="border-t border-border font-semibold">
-                <td colSpan={7} className="px-3 py-2 text-right">
+                <td colSpan={6} className="px-3 py-2 text-right">
                   Total
                 </td>
                 <td className="numeric px-3 py-2 text-right">{total.toFixed(2)}</td>
@@ -218,8 +213,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
               <th className="px-3 py-2 font-medium">Photo</th>
               <th className="px-3 py-2 font-medium">Date</th>
               <th className="px-3 py-2 font-medium">Karigar</th>
-              <th className="px-3 py-2 font-medium">Style</th>
-              <th className="px-3 py-2 font-medium">Item</th>
+              <th className="px-3 py-2 font-medium">Design</th>
               <th className="px-3 py-2 font-medium text-right">Qty</th>
               <th className="px-3 py-2 font-medium text-right">Amount</th>
             </tr>
@@ -241,7 +235,6 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                   </td>
                   <td className="px-3 py-2">{formatDate(e.date)}</td>
                   <td className="px-3 py-2">{e.carrier.fullName}</td>
-                  <td className="numeric px-3 py-2">{e.item.styleNo}</td>
                   <td className="px-3 py-2">{e.item.itemName}</td>
                   <td className="numeric px-3 py-2 text-right">{e.carrierQuantity}</td>
                   <td className="numeric px-3 py-2 text-right">{Number(e.carrierTotal).toFixed(2)}</td>
@@ -250,7 +243,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
             })}
             {!items.length ? (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
                   No photos for this range.
                 </td>
               </tr>
@@ -314,8 +307,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">Sr.</th>
-              <th className="px-3 py-2 font-medium">Style No</th>
-              <th className="px-3 py-2 font-medium">Item Name</th>
+              <th className="px-3 py-2 font-medium">Design Name</th>
               <th className="px-3 py-2 font-medium text-right">Total Qty</th>
               <th className="px-3 py-2 font-medium text-right">Total Amount</th>
             </tr>
@@ -324,7 +316,6 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
             {rows.map((r, i) => (
               <tr key={r.itemId} className="border-b border-border last:border-0">
                 <td className="px-3 py-2">{i + 1}</td>
-                <td className="numeric px-3 py-2">{r.styleNo}</td>
                 <td className="px-3 py-2">{r.itemName}</td>
                 <td className="numeric px-3 py-2 text-right">{r.totalQuantity}</td>
                 <td className="numeric px-3 py-2 text-right">{r.totalAmount.toFixed(2)}</td>
@@ -332,7 +323,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
             ))}
             {!rows.length ? (
               <tr>
-                <td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">
+                <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">
                   No data for this range.
                 </td>
               </tr>
@@ -341,7 +332,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
           {rows.length ? (
             <tfoot>
               <tr className="border-t border-border font-semibold">
-                <td colSpan={4} className="px-3 py-2 text-right">
+                <td colSpan={3} className="px-3 py-2 text-right">
                   Total
                 </td>
                 <td className="numeric px-3 py-2 text-right">{total.toFixed(2)}</td>

@@ -1,3 +1,5 @@
+import type { Party } from '../parties/party-constants';
+
 export interface PatternType {
   id: string;
   name: string;
@@ -33,18 +35,23 @@ export interface CuttingEntryLineInput {
 
 export interface CuttingEntry {
   id: string;
+  bookId: string;
+  book: { id: string; name: string };
   lotNumber: string;
   date: string;
   patternTypeId: string;
   isOnline: boolean;
   itemId: string;
-  partyName: string;
+  partyId: string;
+  party: Party;
+  /** Null only for lots created before PCs existed. */
+  pieces: number | null;
   averageValue: string;
   averageUnit: AverageUnit;
   colorId: string;
   totalAmount: string;
   patternType: PatternType;
-  item: { id: string; styleNo: string; itemName: string };
+  item: { id: string; itemName: string };
   color: Color;
   lines: CuttingEntryLine[];
 }

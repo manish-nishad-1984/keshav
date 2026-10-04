@@ -10,6 +10,7 @@ import { Input } from '../ui/input';
 import { LoadingState } from '../ui/loading-state';
 import { Pagination } from '../ui/pagination';
 import { usePermissions } from '../../hooks/use-permissions';
+import { useSelectedBook } from '../../hooks/use-selected-book';
 import type { CuttingEntry } from './cutting-constants';
 import { formatDate } from '../../lib/date';
 
@@ -22,22 +23,26 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
   const { hasPermission, isSuperAdmin } = usePermissions();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const { selectedBook, isLoading: booksLoading } = useSelectedBook();
+  const bookId = selectedBook?.id;
 
   const canCreate = isSuperAdmin || hasPermission('cutting:create');
   const canUpdate = isSuperAdmin || hasPermission('cutting:update');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['cutting-entries', { page, search }],
-    queryFn: () => apiClient.list<CuttingEntry>('/cutting', { page, pageSize: 10, search: search || undefined }),
+    // Lots belong to a book: the list shows only the header's selected book.
+    queryKey: ['cutting-entries', { page, search, bookId }],
+    queryFn: () => apiClient.list<CuttingEntry>('/cutting', { page, pageSize: 10, search: search || undefined, bookId }),
+    enabled: Boolean(bookId),
   });
 
   return (
     <PageLayout
       title="Cutting"
-      description="Fabric cutting lots — the starting point of production."
+      description={selectedBook ? 'Cutting lots in book ' + selectedBook.name + '.' : 'Fabric cutting lots — the starting point of production.'}
       actions={
         canCreate ? (
-          <Button onClick={onAdd}>
+          <Button onClick={onAdd} disabled={!selectedBook}>
             <Plus />
             Add Cutting Entry
           </Button>
@@ -49,7 +54,7 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
           <div className="relative w-full max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by lot number, party or item…"
+              placeholder="Search by lot number, party or design…"
               className="pl-8"
               value={search}
               onChange={(e) => {
@@ -60,7 +65,7 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
           </div>
         </div>
 
-        {isLoading ? (
+        {isLoading || booksLoading ? (
           <LoadingState variant="page" />
         ) : (
           <div className="overflow-x-auto">
@@ -69,8 +74,9 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                 <tr>
                   <th className="px-4 py-2 font-medium">Lot No.</th>
                   <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Item</th>
+                  <th className="px-4 py-2 font-medium">Design</th>
                   <th className="px-4 py-2 font-medium">Party</th>
+                  <th className="px-4 py-2 font-medium text-right">PCs</th>
                   <th className="px-4 py-2 font-medium">Color</th>
                   <th className="px-4 py-2 font-medium">Mode</th>
                   <th className="px-4 py-2 font-medium text-right">Total</th>
@@ -83,7 +89,8 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                     <td className="numeric px-4 py-2.5 font-medium">{entry.lotNumber}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{formatDate(entry.date)}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{entry.partyName}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{entry.party.name}</td>
+                    <td className="numeric px-4 py-2.5 text-right text-muted-foreground">{entry.pieces ?? '—'}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{entry.color.name}</td>
                     <td className="px-4 py-2.5">
                       <Badge variant={entry.isOnline ? 'info' : 'muted'}>{entry.isOnline ? 'Online' : 'Offline'}</Badge>
@@ -98,8 +105,8 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                 ))}
                 {!data?.items.length ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                      No cutting entries yet.
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                      {selectedBook ? 'No cutting entries in this book yet.' : 'Add a book in Book Master and select it in the header.'}
                     </td>
                   </tr>
                 ) : null}

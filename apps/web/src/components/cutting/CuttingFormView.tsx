@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Settings2, Plus, Save, Trash2 } from 'lucide-react';
+import { Settings2, Plus, Save, Trash2, UserPlus } from 'lucide-react';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card, CardContent } from '../ui/card';
@@ -12,7 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DatePicker } from '../ui/date-picker';
 import { PatternTypeManagerDialog } from './PatternTypeManagerDialog';
 import { ColorManagerDialog } from './ColorManagerDialog';
+import { PartyFormDialog, PARTIES_QUERY_KEY } from '../parties/PartyFormDialog';
+import { BOOKS_QUERY_KEY, useSelectedBook } from '../../hooks/use-selected-book';
+import { usePermissions } from '../../hooks/use-permissions';
 import type { Item } from '../items/item-constants';
+import type { Party } from '../parties/party-constants';
 import type { AverageUnit, Color, CuttingEntry, CuttingEntryLineInput, PatternType } from './cutting-constants';
 import { AVERAGE_UNIT_LABELS } from './cutting-constants';
 
@@ -49,16 +53,20 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
   const [error, setError] = useState<string | null>(null);
   const [patternManagerOpen, setPatternManagerOpen] = useState(false);
   const [colorManagerOpen, setColorManagerOpen] = useState(false);
+  const [partyFormOpen, setPartyFormOpen] = useState(false);
+  const { selectedBook } = useSelectedBook();
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  const canAddParty = isSuperAdmin || hasPermission('parties:create');
   // Index of a just-added size row, so its Size input takes focus when it mounts.
   const [focusLineIndex, setFocusLineIndex] = useState<number | null>(null);
 
   const [form, setForm] = useState({
-    lotNumber: '',
     date: '',
     patternTypeId: '',
     isOnline: true,
     itemId: '',
-    partyName: '',
+    partyId: '',
+    pieces: '' as number | '',
     averageValue: '' as number | '',
     averageUnit: 'KILOGRAM' as AverageUnit,
     colorId: '',
@@ -80,18 +88,31 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
   const activePatternTypes = patternTypes?.filter((p) => p.isActive) ?? [];
   const activeColors = colors?.filter((c) => c.isActive) ?? [];
   const activeItems = items?.items.filter((i) => i.isActive) ?? [];
+  const { data: parties } = useQuery({
+    queryKey: PARTIES_QUERY_KEY,
+    queryFn: () => apiClient.get<Party[]>('/parties'),
+  });
+  // Active parties, plus the entry's own party when editing even if it was deactivated since.
+  const partyOptions = parties?.filter((p) => p.isActive || p.id === entry?.partyId) ?? [];
+
+  // Lot numbers are assigned by the server on save; this is only a preview of the next one.
+  const { data: nextLot } = useQuery({
+    queryKey: [...BOOKS_QUERY_KEY, selectedBook?.id, 'next-lot'],
+    queryFn: () => apiClient.get<{ nextLotNumber: string }>(`/books/${selectedBook!.id}/next-lot`),
+    enabled: !isEdit && Boolean(selectedBook),
+  });
 
   useEffect(() => {
     setError(null);
     setFocusLineIndex(null);
     if (entry) {
       setForm({
-        lotNumber: entry.lotNumber,
         date: toDateInputValue(entry.date),
         patternTypeId: entry.patternTypeId,
         isOnline: entry.isOnline,
         itemId: entry.itemId,
-        partyName: entry.partyName,
+        partyId: entry.partyId,
+        pieces: entry.pieces ?? '',
         averageValue: Number(entry.averageValue),
         averageUnit: entry.averageUnit,
         colorId: entry.colorId,
@@ -99,12 +120,12 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
       setLines(entry.lines.map((l) => ({ size: l.size, quantity: l.quantity, rate: Number(l.rate) })));
     } else {
       setForm({
-        lotNumber: '',
         date: '',
         patternTypeId: '',
         isOnline: true,
         itemId: '',
-        partyName: '',
+        partyId: '',
+        pieces: '',
         averageValue: '',
         averageUnit: 'KILOGRAM',
         colorId: '',
@@ -132,7 +153,8 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
         patternTypeId: form.patternTypeId,
         isOnline: form.isOnline,
         itemId: form.itemId,
-        partyName: form.partyName,
+        partyId: form.partyId,
+        pieces: form.pieces,
         averageValue: form.averageValue,
         averageUnit: form.averageUnit,
         colorId: form.colorId,
@@ -141,21 +163,23 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
       if (isEdit && entry) {
         return apiClient.patch(`/cutting/${entry.id}`, payload);
       }
-      return apiClient.post('/cutting', { ...payload, lotNumber: form.lotNumber });
+      return apiClient.post('/cutting', { ...payload, bookId: selectedBook?.id });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['cutting-entries'] });
+      void queryClient.invalidateQueries({ queryKey: BOOKS_QUERY_KEY });
       onDone();
     },
     onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.'),
   });
 
   const canSubmit =
-    form.lotNumber &&
+    (isEdit || selectedBook) &&
     form.date &&
     form.patternTypeId &&
     form.itemId &&
-    form.partyName &&
+    form.partyId &&
+    form.pieces !== '' &&
     form.averageValue !== '' &&
     form.colorId &&
     lines.length > 0 &&
@@ -173,22 +197,29 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
             }}
           >
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+            {!isEdit && !selectedBook ? (
+              <FormAlert tone="error">No active book is selected. Add a book in Book Master, then select it in the header.</FormAlert>
+            ) : null}
 
             <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
               <FormField
                 label="Lot Number"
-                required
                 htmlFor="cutting-lot"
-                hint={isEdit ? 'Cannot be changed after creation.' : undefined}
+                hint={
+                  isEdit
+                    ? `Book ${entry?.book.name} · cannot be changed`
+                    : selectedBook
+                      ? `Auto · book ${selectedBook.name} · assigned on save`
+                      : 'Auto-generated from the selected book'
+                }
               >
                 <Input
                   id="cutting-lot"
-                  required
-                  disabled={isEdit}
-                  autoFocus={!isEdit}
-                  autoComplete="off"
-                  value={form.lotNumber}
-                  onChange={(e) => setForm((f) => ({ ...f, lotNumber: e.target.value }))}
+                  readOnly
+                  tabIndex={-1}
+                  className="numeric font-semibold"
+                  value={isEdit ? (entry?.lotNumber ?? '') : (nextLot?.nextLotNumber ?? '')}
+                  placeholder="Auto"
                 />
               </FormField>
 
@@ -249,15 +280,15 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                 </div>
               </FormField>
 
-              <FormField label="Item" required htmlFor="cutting-item">
+              <FormField label="Design" required htmlFor="cutting-item">
                 <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
                   <SelectTrigger id="cutting-item">
-                    <SelectValue placeholder="Select item" />
+                    <SelectValue placeholder="Select design" />
                   </SelectTrigger>
                   <SelectContent>
                     {activeItems.map((item) => (
                       <SelectItem key={item.id} value={item.id}>
-                        {item.itemName} ({item.styleNo})
+                        {item.itemName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -292,13 +323,47 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                 </div>
               </FormField>
 
-              {/* Spans two columns on desktop so the last row has no empty cell. */}
-              <FormField label="Party Name" required htmlFor="cutting-party" className="lg:col-span-2">
+              <FormField label="Party" required htmlFor="cutting-party">
+                <div className="flex">
+                  <Select value={form.partyId} onValueChange={(v) => setForm((f) => ({ ...f, partyId: v }))}>
+                    <SelectTrigger id="cutting-party" className={canAddParty ? joinedTrigger : undefined}>
+                      <SelectValue placeholder={partyOptions.length ? 'Select party' : 'No parties yet'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {partyOptions.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.isActive ? p.name : `${p.name} (inactive)`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {canAddParty ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className={joinedButton}
+                      aria-label="Add party"
+                      title="Add party"
+                      onClick={() => setPartyFormOpen(true)}
+                    >
+                      <UserPlus />
+                    </Button>
+                  ) : null}
+                </div>
+              </FormField>
+
+              <FormField label="PCs" required htmlFor="cutting-pieces">
                 <Input
-                  id="cutting-party"
+                  id="cutting-pieces"
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
                   required
-                  value={form.partyName}
-                  onChange={(e) => setForm((f) => ({ ...f, partyName: e.target.value }))}
+                  className="numeric text-right"
+                  value={form.pieces}
+                  onChange={(e) => setForm((f) => ({ ...f, pieces: toNumberOrEmpty(e.target.value) }))}
                 />
               </FormField>
 
@@ -445,6 +510,11 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
 
       <PatternTypeManagerDialog open={patternManagerOpen} onOpenChange={setPatternManagerOpen} />
       <ColorManagerDialog open={colorManagerOpen} onOpenChange={setColorManagerOpen} />
+      <PartyFormDialog
+        open={partyFormOpen}
+        onOpenChange={setPartyFormOpen}
+        onSaved={(party) => setForm((f) => ({ ...f, partyId: party.id }))}
+      />
     </PageLayout>
   );
 };

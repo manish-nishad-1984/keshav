@@ -88,10 +88,10 @@ export const PhotoGalleryPage = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Item</SelectItem>
+              <SelectItem value="ALL">All Designs</SelectItem>
               {items?.items.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
-                  {item.styleNo} — {item.itemName}
+                  {item.itemName}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -115,7 +115,7 @@ export const PhotoGalleryPage = () => {
                     {photoUrl ? (
                       <img
                         src={photoUrl}
-                        alt={entry.item.styleNo}
+                        alt={entry.item.itemName}
                         className="size-full object-cover transition-transform group-hover:scale-105"
                       />
                     ) : (
@@ -125,7 +125,7 @@ export const PhotoGalleryPage = () => {
                     )}
                   </div>
                   <div className="px-2 py-1.5">
-                    <p className="numeric text-xs font-medium">{entry.item.styleNo}</p>
+                    <p className="truncate text-xs font-medium">{entry.item.itemName}</p>
                     <p className="text-2xs text-muted-foreground">{formatDate(entry.date)}</p>
                   </div>
                 </button>

@@ -57,7 +57,7 @@ export const getKarigarSummary = async (organizationId: string, dateFrom?: Date,
 export const getItemSummary = async (organizationId: string, dateFrom?: Date, dateTo?: Date) => {
   const date = dateFilter(dateFrom, dateTo);
   const [items, sums] = await Promise.all([
-    prisma.item.findMany({ where: { organizationId, deletedAt: null }, orderBy: { styleNo: 'asc' } }),
+    prisma.item.findMany({ where: { organizationId, deletedAt: null }, orderBy: { itemName: 'asc' } }),
     prisma.productionEntry.groupBy({
       by: ['itemId'],
       where: { organizationId, deletedAt: null, ...(date ? { date } : {}) },
@@ -71,7 +71,6 @@ export const getItemSummary = async (organizationId: string, dateFrom?: Date, da
       const s = sumMap.get(item.id);
       return {
         itemId: item.id,
-        styleNo: item.styleNo,
         itemName: item.itemName,
         totalQuantity: s?._sum.carrierQuantity ?? 0,
         totalAmount: Number(s?._sum.carrierTotal ?? 0),

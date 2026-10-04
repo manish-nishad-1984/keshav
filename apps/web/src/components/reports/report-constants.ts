@@ -31,8 +31,8 @@ export const REPORT_TYPES: ReportDefinition[] = [
   },
   {
     key: 'item-summary',
-    title: 'Item / Style Report',
-    description: 'Style-wise production summary',
+    title: 'Design Report',
+    description: 'Design-wise production summary',
     icon: 'Shirt',
     usesDateRange: true,
   },

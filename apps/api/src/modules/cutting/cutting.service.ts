@@ -1,4 +1,8 @@
+import { Prisma } from '@prisma/client';
 import { conflict, notFound } from '../../lib/httpError';
+import { prisma } from '../../lib/prisma';
+import { reserveNextLotNumber } from '../books/books.service';
+import { getParty } from '../parties/parties.service';
 import { getPatternType } from '../pattern-types/pattern-types.service';
 import { getItem } from '../items/items.service';
 import { getColor } from '../colors/colors.service';
@@ -12,6 +16,7 @@ const sumLineTotals = (lines: { total: number }[]) =>
 
 export const listCuttingEntries = (organizationId: string, query: ListCuttingEntriesQuery) =>
   repo.listCuttingEntries(organizationId, query.page, query.pageSize, {
+    bookId: query.bookId,
     search: query.search,
     itemId: query.itemId,
     dateFrom: query.dateFrom,
@@ -24,35 +29,50 @@ export const getCuttingEntry = async (organizationId: string, id: string) => {
   return entry;
 };
 
-// Used by production-entries.service to resolve a typed-in lot number to its cutting entry.
-export const getCuttingEntryByLotNumber = async (organizationId: string, lotNumber: string) => {
-  const entry = await repo.findCuttingEntryByLotNumber(organizationId, lotNumber);
-  if (!entry) throw notFound('No cutting entry found for this lot number');
+// Used by production-entries.service to resolve a typed-in lot number (within the selected book)
+// to its cutting entry.
+export const getCuttingEntryByLotNumber = async (organizationId: string, bookId: string, lotNumber: string) => {
+  const entry = await repo.findCuttingEntryByLotNumber(organizationId, bookId, lotNumber.trim());
+  if (!entry) throw notFound('No cutting entry found for this lot number in the selected book');
   return entry;
 };
 
-const validateReferences = (organizationId: string, input: { patternTypeId?: string; itemId?: string; colorId?: string }) =>
+const validateReferences = (
+  organizationId: string,
+  input: { patternTypeId?: string; itemId?: string; colorId?: string; partyId?: string },
+) =>
   Promise.all([
     input.patternTypeId ? getPatternType(organizationId, input.patternTypeId) : Promise.resolve(),
     input.itemId ? getItem(organizationId, input.itemId) : Promise.resolve(),
     input.colorId ? getColor(organizationId, input.colorId) : Promise.resolve(),
+    input.partyId ? getParty(organizationId, input.partyId) : Promise.resolve(),
   ]);
+
+const isUniqueViolation = (err: unknown) => err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
 
 export const createCuttingEntry = async (
   organizationId: string,
   input: CreateCuttingEntryInput,
   actorId: string | null,
 ) => {
-  if (await repo.findCuttingEntryByLotNumber(organizationId, input.lotNumber)) {
-    throw conflict('A cutting entry with this lot number already exists');
-  }
   await validateReferences(organizationId, input);
 
   const lines = input.lines.map((l) => ({ ...l, total: computeLineTotal(l.quantity, l.rate) }));
   const { lines: _lines, ...header } = input;
   void _lines;
 
-  return repo.createCuttingEntry(organizationId, header, lines, sumLineTotals(lines), actorId);
+  // The lot number is assigned here, never by the client: the book row is locked for the length
+  // of the transaction so concurrent saves get consecutive numbers.
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const lotNumber = await reserveNextLotNumber(tx, organizationId, input.bookId);
+      return repo.createCuttingEntry(tx, organizationId, { ...header, lotNumber }, lines, sumLineTotals(lines), actorId);
+    });
+  } catch (err) {
+    // Only reachable if a non-numeric carried-over lot happens to equal the generated number.
+    if (isUniqueViolation(err)) throw conflict('That lot number is already taken in this book — please save again');
+    throw err;
+  }
 };
 
 export const updateCuttingEntry = async (

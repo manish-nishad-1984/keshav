@@ -17,6 +17,8 @@ export const createProductionEntrySchema = z.object({
   // server-side (authoritative — overrides whatever itemId the client also sent) rather than
   // trusting the client's own itemId for a lot-linked entry.
   lotNumber: z.string().min(1).optional(),
+  // The book the lot number belongs to (the header's selected book); required with lotNumber.
+  bookId: z.string().uuid().optional(),
   designNumber: z.string().optional(),
   workTypeId: z.string().uuid(),
   // Required only when lotNumber isn't given — validated in the service, not here, since the

@@ -1,6 +1,11 @@
 import type { Request, Response } from 'express';
 import { ok, okList } from '../../lib/response';
-import { createCuttingEntrySchema, listCuttingEntriesQuerySchema, updateCuttingEntrySchema } from './cutting.schema';
+import {
+  createCuttingEntrySchema,
+  listCuttingEntriesQuerySchema,
+  lotLookupQuerySchema,
+  updateCuttingEntrySchema,
+} from './cutting.schema';
 import * as service from './cutting.service';
 
 export const list = async (req: Request, res: Response) => {
@@ -15,7 +20,8 @@ export const get = async (req: Request, res: Response) => {
 };
 
 export const getByLotNumber = async (req: Request, res: Response) => {
-  const entry = await service.getCuttingEntryByLotNumber(req.auth!.organizationId, req.params.lotNumber);
+  const { bookId } = lotLookupQuerySchema.parse(req.query);
+  const entry = await service.getCuttingEntryByLotNumber(req.auth!.organizationId, bookId, req.params.lotNumber);
   ok(res, entry);
 };
 

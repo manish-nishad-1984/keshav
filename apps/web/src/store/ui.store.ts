@@ -13,6 +13,9 @@ interface UiState {
   /** Desktop sidebar: true = narrow icon rail (default), false = expanded with labels and child links. */
   navCollapsed: boolean;
   toggleNavCollapsed: () => void;
+  /** Working book (lot-number series) chosen in the header; validated against the live list in useSelectedBook. */
+  selectedBookId: string | null;
+  setSelectedBookId: (id: string | null) => void;
 }
 
 const applyTheme = (theme: Theme): void => {
@@ -45,6 +48,8 @@ export const useUiStore = create<UiState>()(
       },
       navCollapsed: true,
       toggleNavCollapsed: () => set((state) => ({ navCollapsed: !state.navCollapsed })),
+      selectedBookId: null,
+      setSelectedBookId: (selectedBookId) => set({ selectedBookId }),
     }),
     {
       name: 'ckfast-ui',
@@ -56,11 +61,16 @@ export const useUiStore = create<UiState>()(
         if (version < 1 && state.theme === 'light') return { ...state, theme: 'comfort' } as UiState;
         return state as UiState;
       },
-      partialize: (state) => ({ theme: state.theme, palette: state.palette, navCollapsed: state.navCollapsed }),
+      partialize: (state) => ({
+        theme: state.theme,
+        palette: state.palette,
+        navCollapsed: state.navCollapsed,
+        selectedBookId: state.selectedBookId,
+      }),
       // Keep any preference the user already saved. One build stored it inverted as
       // `navExpanded`; translate that rather than resetting it. Nothing saved → the default rail.
       merge: (persisted, current) => {
-        const saved = (persisted ?? {}) as Partial<Pick<UiState, 'theme' | 'palette' | 'navCollapsed'>> & { navExpanded?: boolean };
+        const saved = (persisted ?? {}) as Partial<Pick<UiState, 'theme' | 'palette' | 'navCollapsed' | 'selectedBookId'>> & { navExpanded?: boolean };
         const navCollapsed =
           typeof saved.navCollapsed === 'boolean'
             ? saved.navCollapsed
@@ -71,6 +81,7 @@ export const useUiStore = create<UiState>()(
           ...current,
           ...(saved.theme ? { theme: saved.theme } : {}),
           ...(saved.palette ? { palette: saved.palette } : {}),
+          ...(saved.selectedBookId ? { selectedBookId: saved.selectedBookId } : {}),
           navCollapsed,
         };
       },

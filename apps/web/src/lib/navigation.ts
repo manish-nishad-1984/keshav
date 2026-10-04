@@ -15,7 +15,7 @@ interface NavSectionDefinition {
 
 const SECTION_DEFINITIONS: NavSectionDefinition[] = [
   { key: 'dashboard', label: 'Dashboard', icon: 'House', modules: ['dashboard'] },
-  { key: 'masters', label: 'Masters', icon: 'Database', modules: ['karigars', 'items'] },
+  { key: 'masters', label: 'Masters', icon: 'Database', modules: ['karigars', 'items', 'parties', 'books'] },
   { key: 'cutting', label: 'Cutting', icon: 'Scissors', modules: ['cutting'] },
   { key: 'production', label: 'Production', icon: 'Factory', modules: ['production_entries', 'production_history', 'photo_gallery'] },
   { key: 'payments', label: 'Payments', icon: 'Wallet', modules: ['payments'] },
@@ -28,7 +28,9 @@ const SETTINGS_KEY: ModuleKey = 'company_settings';
 // Short labels for child links / contextual tabs, where the section name already gives context.
 const SHORT_LABELS: Partial<Record<ModuleKey, string>> = {
   karigars: 'Karigars',
-  items: 'Items / Designs',
+  items: 'Designs',
+  parties: 'Parties',
+  books: 'Books',
   production_entries: 'Daily Entry',
   production_history: 'History',
   photo_gallery: 'Photo Gallery',

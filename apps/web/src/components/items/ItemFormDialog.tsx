@@ -67,7 +67,7 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isEdit ? 'Edit item' : 'Add item'}</DialogTitle>
+            <DialogTitle>{isEdit ? 'Edit design' : 'Add design'}</DialogTitle>
           </DialogHeader>
 
           <form
@@ -81,17 +81,16 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
 
               <PhotoUpload size="sm" value={form.photoUrl} onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))} />
 
-              {isEdit ? (
-                <FormField label="Style No.">
-                  <Input disabled value={item?.styleNo ?? ''} className="numeric" />
-                </FormField>
-              ) : null}
+              <FormField label="Design Name" required>
+                <Input
+                  required
+                  autoFocus
+                  value={form.itemName}
+                  onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))}
+                />
+              </FormField>
 
-              <FormField
-                label="Category"
-                required
-                hint={isEdit ? undefined : 'The style number is generated automatically from the category prefix.'}
-              >
+              <FormField label="Category" required>
                 <div className="flex">
                   <Select
                     value={form.categoryId}
@@ -121,14 +120,6 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
                   </Button>
                 </div>
               </FormField>
-
-              <FormField label="Item Name" required>
-                <Input
-                  required
-                  value={form.itemName}
-                  onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))}
-                />
-              </FormField>
             </DialogBody>
 
             <DialogFooter>
@@ -136,7 +127,7 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
                 Cancel
               </Button>
               <Button type="submit" loading={mutation.isPending} disabled={!form.categoryId}>
-                {isEdit ? 'Save changes' : 'Add item'}
+                {isEdit ? 'Save changes' : 'Add design'}
               </Button>
             </DialogFooter>
           </form>

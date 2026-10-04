@@ -7,6 +7,7 @@ import { useNavigation } from '../../lib/navigation';
 import { useUiStore } from '../../store/ui.store';
 import { PALETTES, THEMES } from '../../lib/themes';
 import { cn } from '../../lib/utils';
+import { BookSelector } from './BookSelector';
 
 const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 const SHORTCUT = isMac ? '⌘K' : 'Ctrl+K';
@@ -60,6 +61,10 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
         <span className="text-lg font-bold tracking-wide">KESHAV</span>
         <span className="hidden text-sm text-primary-foreground/80 sm:inline">Trading & Co</span>
       </Link>
+
+      <div className="ml-1 sm:ml-3">
+        <BookSelector />
+      </div>
 
       <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5">
         {/* Opens the existing command palette (Ctrl/⌘+K). */}

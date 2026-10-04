@@ -14,6 +14,8 @@ import { reportsRouter } from '../modules/reports/reports.routes';
 import { backupRouter } from '../modules/backup/backup.routes';
 import { organizationRouter } from '../modules/organization/organization.routes';
 import { uploadsRouter } from '../modules/uploads/uploads.routes';
+import { partiesRouter } from '../modules/parties/parties.routes';
+import { booksRouter } from '../modules/books/books.routes';
 
 interface ProtectedRoute {
   path: string;
@@ -29,6 +31,8 @@ const protectedRoutes: ProtectedRoute[] = [
   { path: '/audit-logs', router: auditLogsRouter },
   { path: '/karigars', router: karigarsRouter },
   { path: '/items', router: itemsRouter },
+  { path: '/parties', router: partiesRouter },
+  { path: '/books', router: booksRouter },
   { path: '/cutting', router: cuttingRouter },
   { path: '/production-entries', router: productionEntriesRouter },
   { path: '/payments', router: paymentsRouter },
