@@ -21,19 +21,19 @@
   --tint-s: 30%;
 
   --background: var(--tint-h) calc(var(--tint-s) * 1.55) 94.1%; /* #E9F0F7 workspace */
-  --foreground: 221 39.3% 11%; /* #111827 */
-  --foreground-soft: var(--tint-h) calc(var(--tint-s) * 0.64) 34.5%; /* #475569 nav, tabs, icons */
+  --foreground: 222 47% 11%; /* #0F172A */
+  --foreground-soft: var(--tint-h) calc(var(--tint-s) * 0.64) 30%; /* nav, tabs, icons */
   --card: 0 0% 100%;
-  --card-foreground: 221 39.3% 11%;
+  --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
-  --popover-foreground: 221 39.3% 11%;
+  --popover-foreground: 222 47% 11%;
   --primary: var(--brand-h) var(--brand-s) var(--brand-l);
   --primary-hover: var(--brand-h) var(--brand-s) var(--brand-hover-l);
   --primary-foreground: 0 0% 100%;
   --secondary: var(--tint-h) calc(var(--tint-s) * 1.07) 91.5%;
   --secondary-foreground: 217 32.6% 17.5%;
   --muted: var(--tint-h) calc(var(--tint-s) * 1.33) 96.1%; /* #F1F5F9 input fill */
-  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.54) 46.9%; /* #64748B */
+  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.54) 40%; /* secondary text */
   --accent: var(--brand-h) calc(var(--brand-s) * 0.76) 94.7%; /* #E8F2FB hover surface */
   --accent-foreground: var(--brand-h) var(--brand-s) var(--brand-l);
   --destructive: 4 74.3% 48.8%;
@@ -64,19 +64,19 @@
   --radius: 0.375rem; /* 6px controls; cards use rounded-card (10px) */
 }
 
-/* Comfort (default): same layers as Light, but a deeper workspace, off-white surfaces and
-   slightly softer text contrast — less glare over a long working day. */
+/* Comfort (default): same layers as Light, but a deeper workspace and off-white surfaces —
+   less glare over a long working day. Text stays dark for crisp contrast. */
 .theme-comfort {
   --background: var(--tint-h) var(--tint-s) 88.5%; /* blue: #D9E2EC */
-  --foreground: var(--tint-h) calc(var(--tint-s) * 0.93) 15%;
-  --foreground-soft: var(--tint-h) calc(var(--tint-s) * 0.67) 32%;
+  --foreground: 222 40% 10%;
+  --foreground-soft: var(--tint-h) calc(var(--tint-s) * 0.67) 27%;
   --card: var(--tint-h) var(--tint-s) 98%;
-  --card-foreground: var(--tint-h) calc(var(--tint-s) * 0.93) 15%;
+  --card-foreground: 222 40% 10%;
   --popover: var(--tint-h) var(--tint-s) 98.5%;
-  --popover-foreground: var(--tint-h) calc(var(--tint-s) * 0.93) 15%;
+  --popover-foreground: 222 40% 10%;
   --secondary: var(--tint-h) calc(var(--tint-s) * 0.8) 88%;
   --muted: var(--tint-h) calc(var(--tint-s) * 0.93) 93.5%; /* input fill */
-  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.53) 42%;
+  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.53) 35%;
   --accent: var(--brand-h) calc(var(--brand-s) * 0.6) 91%;
   --border: var(--tint-h) calc(var(--tint-s) * 0.8) 83%;
   --input: var(--tint-h) calc(var(--tint-s) * 0.67) 76%;
@@ -96,7 +96,7 @@
 
 .dark {
   --background: var(--tint-h) 24% 8%;
-  --foreground: 210 20% 96%;
+  --foreground: 210 25% 98%;
   --card: var(--tint-h) 22% 11%;
   --card-foreground: 210 20% 96%;
   --popover: var(--tint-h) 22% 11%;
@@ -107,7 +107,7 @@
   --secondary: var(--tint-h) 18% 17%;
   --secondary-foreground: 210 20% 92%;
   --muted: var(--tint-h) 18% 15%;
-  --muted-foreground: 218 11% 62%;
+  --muted-foreground: 218 13% 70%;
   --accent: var(--brand-h) calc(var(--brand-s) * 0.5) 20%;
   --accent-foreground: var(--brand-h) var(--brand-s) 82%;
   --destructive: 0 62% 52%;
@@ -121,7 +121,7 @@
   --status-success: 142 60% 50%;
   --status-warning: 34 92% 58%;
   --status-danger: 0 72% 62%;
-  --foreground-soft: 215 15% 75%;
+  --foreground-soft: 215 18% 82%;
   --input-hover: var(--tint-h) 18% 18%;
   --input-foreground: 210 20% 96%;
   --placeholder: 218 11% 55%;
