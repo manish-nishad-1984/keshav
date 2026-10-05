@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { ok, okList } from '../../lib/response';
 import {
   createProductionEntrySchema,
+  karigarLotsQuerySchema,
   listProductionEntriesQuerySchema,
   updateProductionEntrySchema,
 } from './production-entries.schema';
@@ -33,4 +34,9 @@ export const update = async (req: Request, res: Response) => {
 export const remove = async (req: Request, res: Response) => {
   await service.deleteProductionEntry(req.auth!.organizationId, req.params.id, req.auth!.userId);
   ok(res, { deleted: true });
+};
+
+export const karigarLots = async (req: Request, res: Response) => {
+  const { karigarId, bookId } = karigarLotsQuerySchema.parse(req.query);
+  ok(res, await service.listKarigarLots(req.auth!.organizationId, karigarId, bookId));
 };

@@ -4,7 +4,13 @@ import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { fieldBase } from './field-styles';
 
-export const Select = SelectPrimitive.Root;
+// Radix keeps a hidden native <select> for form support. When a controlled value is set before its
+// options exist (edit forms whose option lists load from the API), that native select reports ""
+// and Radix forwards it to onValueChange, wiping the saved value. No item can have the value "",
+// so an empty change is never a real user choice — drop it.
+export const Select = ({ onValueChange, ...props }: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>) => (
+  <SelectPrimitive.Root {...props} onValueChange={(value) => value !== '' && onValueChange?.(value)} />
+);
 export const SelectGroup = SelectPrimitive.Group;
 export const SelectValue = SelectPrimitive.Value;
 

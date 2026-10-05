@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash2, ImageOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Pencil, Trash2, ImageOff } from 'lucide-react';
 import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { usePermissions } from '../../hooks/use-permissions';
 import type { ProductionEntry } from './production-entry-constants';
+import { ratePending } from './production-entry-constants';
 import { formatDate } from '../../lib/date';
 
 interface ProductionEntryViewDialogProps {
@@ -26,6 +29,8 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
   const queryClient = useQueryClient();
   const { hasPermission, isSuperAdmin } = usePermissions();
   const canDelete = isSuperAdmin || hasPermission('production_entries:delete');
+  const canUpdate = isSuperAdmin || hasPermission('production_entries:update');
+  const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const deleteMutation = useMutation({
@@ -45,7 +50,10 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
       <Dialog open={Boolean(entry)} onOpenChange={onOpenChange}>
         <DialogContent size="lg">
           <DialogHeader>
-            <DialogTitle>Production Entry</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Production Entry
+              {entry && ratePending(entry) ? <Badge variant="warning">Rate pending</Badge> : null}
+            </DialogTitle>
           </DialogHeader>
           {entry ? (
             <DialogBody className="space-y-3">
@@ -58,7 +66,7 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                   )}
                 </div>
                 <div className="grid grid-cols-2 content-start gap-x-4 gap-y-2.5 sm:grid-cols-3">
-                  <Field label="Date" value={formatDate(entry.date)} />
+                  <Field label="Date" value={entry.entryTime ? `${formatDate(entry.date)} ${entry.entryTime}` : formatDate(entry.date)} />
                   {entry.lotNumber ? <Field label="Lot Number" value={entry.lotNumber} /> : null}
                   {entry.designNumber ? <Field label="Design Number" value={entry.designNumber} /> : null}
                   <Field label="Work Type" value={entry.workType.name} />
@@ -79,28 +87,28 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                   </thead>
                   <tbody className="divide-y divide-border">
                     <tr>
-                      <td className="px-3 py-2 text-muted-foreground">Karigar</td>
+                      <td className="px-3 py-2 text-muted-foreground">Stitching</td>
                       <td className="px-3 py-2 font-medium">{`${entry.carrier.fullName} (${entry.carrier.code})`}</td>
                       <td className="numeric px-3 py-2 text-right">{entry.carrierQuantity}</td>
-                      <td className="numeric px-3 py-2 text-right">{Number(entry.carrierRate).toFixed(2)}</td>
+                      <td className="numeric px-3 py-2 text-right">{entry.carrierRate ? Number(entry.carrierRate).toFixed(2) : '—'}</td>
                       <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.carrierTotal).toFixed(2)}</td>
                     </tr>
-                    {entry.overlockCarrier ? (
-                      <tr>
-                        <td className="px-3 py-2 text-muted-foreground">Overlock Karigar</td>
-                        <td className="px-3 py-2 font-medium">{`${entry.overlockCarrier.fullName} (${entry.overlockCarrier.code})`}</td>
-                        <td className="numeric px-3 py-2 text-right text-muted-foreground">{entry.carrierQuantity}</td>
-                        <td className="numeric px-3 py-2 text-right">{Number(entry.overlockRate ?? 0).toFixed(2)}</td>
-                        <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.overlockTotal ?? 0).toFixed(2)}</td>
-                      </tr>
-                    ) : null}
                     {entry.flatlockKarigar ? (
                       <tr>
-                        <td className="px-3 py-2 text-muted-foreground">Flatlock Karigar</td>
+                        <td className="px-3 py-2 text-muted-foreground">Flatlock</td>
                         <td className="px-3 py-2 font-medium">{`${entry.flatlockKarigar.fullName} (${entry.flatlockKarigar.code})`}</td>
                         <td className="numeric px-3 py-2 text-right text-muted-foreground">{entry.carrierQuantity}</td>
-                        <td className="numeric px-3 py-2 text-right">{Number(entry.flatlockRate ?? 0).toFixed(2)}</td>
+                        <td className="numeric px-3 py-2 text-right">{entry.flatlockRate ? Number(entry.flatlockRate).toFixed(2) : '—'}</td>
                         <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.flatlockTotal ?? 0).toFixed(2)}</td>
+                      </tr>
+                    ) : null}
+                    {entry.overlockCarrier ? (
+                      <tr>
+                        <td className="px-3 py-2 text-muted-foreground">Overlock</td>
+                        <td className="px-3 py-2 font-medium">{`${entry.overlockCarrier.fullName} (${entry.overlockCarrier.code})`}</td>
+                        <td className="numeric px-3 py-2 text-right text-muted-foreground">{entry.carrierQuantity}</td>
+                        <td className="numeric px-3 py-2 text-right">{entry.overlockRate ? Number(entry.overlockRate).toFixed(2) : '—'}</td>
+                        <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.overlockTotal ?? 0).toFixed(2)}</td>
                       </tr>
                     ) : null}
                   </tbody>
@@ -111,6 +119,12 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
             </DialogBody>
           ) : null}
           <DialogFooter>
+            {canUpdate && entry ? (
+              <Button variant="outline" onClick={() => navigate(`/production-entries?edit=${entry.id}`)}>
+                <Pencil />
+                Edit
+              </Button>
+            ) : null}
             {canDelete ? (
               <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
                 <Trash2 />

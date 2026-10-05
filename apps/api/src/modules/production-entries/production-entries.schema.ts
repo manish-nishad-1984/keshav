@@ -11,52 +11,55 @@ export const listProductionEntriesQuerySchema = z.object({
 });
 export type ListProductionEntriesQuery = z.infer<typeof listProductionEntriesQuerySchema>;
 
+// "HH:mm", 24-hour — same rule as the cutting entry.
+const entryTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must be HH:mm')
+  .nullable()
+  .optional();
+
+// Rates may be left empty and filled in later (edit); totals are then 0 until they are.
+const rateSchema = z.coerce.number().positive().nullable().optional();
+
+// The stitching karigar and the lot they took (Cutting Distribution). Quantity, design and work
+// type are not sent: the service takes all pieces still pending for that karigar + lot, the
+// lot's design and the karigar's work type.
 export const createProductionEntrySchema = z.object({
-  date: z.coerce.date(),
-  // When set, the service resolves it to a CuttingEntry and derives itemId from that lot
-  // server-side (authoritative — overrides whatever itemId the client also sent) rather than
-  // trusting the client's own itemId for a lot-linked entry.
-  lotNumber: z.string().min(1).optional(),
-  // The book the lot number belongs to (the header's selected book); required with lotNumber.
-  bookId: z.string().uuid().optional(),
-  designNumber: z.string().optional(),
-  workTypeId: z.string().uuid(),
-  // Required only when lotNumber isn't given — validated in the service, not here, since the
-  // requirement is conditional on another field.
-  itemId: z.string().uuid().optional(),
-
+  cuttingEntryId: z.string().uuid(),
   carrierId: z.string().uuid(),
-  carrierQuantity: z.coerce.number().int().positive(),
-  carrierRate: z.coerce.number().positive(),
+  date: z.coerce.date(),
+  entryTime: entryTimeSchema,
+  carrierRate: rateSchema,
 
-  overlockCarrierId: z.string().uuid().optional(),
-  overlockRate: z.coerce.number().positive().optional(),
+  overlockCarrierId: z.string().uuid().nullable().optional(),
+  overlockRate: rateSchema,
 
-  flatlockKarigarId: z.string().uuid().optional(),
-  flatlockRate: z.coerce.number().positive().optional(),
+  flatlockKarigarId: z.string().uuid().nullable().optional(),
+  flatlockRate: rateSchema,
 
-  photoUrl: z.string().optional(),
+  photoUrl: z.string().min(1),
   remarks: z.string().optional(),
 });
 export type CreateProductionEntryInput = z.infer<typeof createProductionEntrySchema>;
 
+export const karigarLotsQuerySchema = z.object({
+  karigarId: z.string().uuid(),
+  bookId: z.string().uuid(),
+});
+
+// Lot, karigar and quantity are fixed once saved.
 export const updateProductionEntrySchema = z.object({
   date: z.coerce.date().optional(),
-  designNumber: z.string().optional(),
-  workTypeId: z.string().uuid().optional(),
-  itemId: z.string().uuid().optional(),
-
-  carrierId: z.string().uuid().optional(),
-  carrierQuantity: z.coerce.number().int().positive().optional(),
-  carrierRate: z.coerce.number().positive().optional(),
+  entryTime: entryTimeSchema,
+  carrierRate: rateSchema,
 
   overlockCarrierId: z.string().uuid().nullable().optional(),
-  overlockRate: z.coerce.number().positive().nullable().optional(),
+  overlockRate: rateSchema,
 
   flatlockKarigarId: z.string().uuid().nullable().optional(),
-  flatlockRate: z.coerce.number().positive().nullable().optional(),
+  flatlockRate: rateSchema,
 
-  photoUrl: z.string().nullable().optional(),
-  remarks: z.string().optional(),
+  photoUrl: z.string().min(1).optional(),
+  remarks: z.string().nullable().optional(),
 });
 export type UpdateProductionEntryInput = z.infer<typeof updateProductionEntrySchema>;

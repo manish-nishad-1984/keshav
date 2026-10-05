@@ -1,461 +1,448 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilePlus2, RotateCcw, Save } from 'lucide-react';
 import { apiClient, ApiRequestError } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { FormField } from '../components/ui/form-field';
 import { FormAlert } from '../components/ui/form-alert';
-import { HelpTip } from '../components/ui/help-tip';
+import { LoadingState } from '../components/ui/loading-state';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { DatePicker } from '../components/ui/date-picker';
-import { PhotoUpload } from '../components/common/PhotoUpload';
+import { ProductionPhotoCompare } from '../components/production-entries/ProductionPhotoCompare';
 import { cn } from '../lib/utils';
-import type { Karigar, WorkType } from '../components/karigars/karigar-constants';
-import type { Item } from '../components/items/item-constants';
-import type { CuttingEntry } from '../components/cutting/cutting-constants';
+import type { Karigar } from '../components/karigars/karigar-constants';
+import type { ProductionEntry, ProductionKarigarLot } from '../components/production-entries/production-entry-constants';
+import { STAGE_LABELS } from '../components/production-entries/production-entry-constants';
 import { localIsoDate } from '../lib/date';
 import { useSelectedBook } from '../hooks/use-selected-book';
 
-const todayInputValue = () => localIsoDate();
+const NONE = 'none';
 
-const emptyForm = {
-  date: todayInputValue(),
-  lotNumber: '',
-  workTypeId: '',
-  itemId: '',
-  carrierId: '',
-  carrierQuantity: '',
-  carrierRate: '',
-  overlockCarrierId: '',
-  overlockRate: '',
-  flatlockKarigarId: '',
-  flatlockRate: '',
-  photoUrl: null as string | null,
-  remarks: '',
+const nowTime = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-// Layout tokens for this dense daily-entry form: a 4px label gap and 10–12px row gaps keep the
-// whole form within a 1366×768 viewport. Control heights (36px desktop / 44px mobile) come from
-// the shared primitives.
-const ROW = 'grid gap-x-3 gap-y-2.5';
-const FIELD = 'min-w-0 space-y-1';
-const ACTION = 'max-sm:px-2';
-const NUMERIC = 'numeric text-right';
-// Calculated totals are read-only rather than disabled so they keep full text contrast; they
-// stay out of the tab order as before.
-const TOTAL_PROPS = {
-  readOnly: true,
-  tabIndex: -1,
-  className: cn(NUMERIC, 'cursor-default text-foreground'),
-} as const;
+const emptyForm = () => ({
+  carrierId: '',
+  cuttingEntryId: '',
+  date: localIsoDate(),
+  entryTime: nowTime(),
+  carrierRate: '',
+  flatlockKarigarId: NONE,
+  flatlockRate: '',
+  overlockCarrierId: NONE,
+  overlockRate: '',
+  photoUrl: null as string | null,
+  remarks: '',
+});
+type FormState = ReturnType<typeof emptyForm>;
 
-// A short debounce keeps the lot lookup from firing a request on every keystroke.
-const useDebouncedValue = <T,>(value: T, delayMs: number) => {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(timer);
-  }, [value, delayMs]);
-  return debounced;
+const money = (value: number) => value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const rateOrNull = (value: string) => (value === '' ? null : Number(value));
+
+// One stage card: who did it, the (locked) quantity, an optional rate and the total.
+const StageCard = ({
+  title,
+  accent,
+  quantity,
+  karigarSlot,
+  rate,
+  onRate,
+  active,
+  rateId,
+}: {
+  title: string;
+  accent: string;
+  quantity: number;
+  karigarSlot: React.ReactNode;
+  rate: string;
+  onRate: (value: string) => void;
+  active: boolean;
+  rateId: string;
+}) => {
+  const total = active && rate ? quantity * Number(rate) : 0;
+  return (
+    <section aria-label={title} className={cn('space-y-2 rounded-lg border border-border bg-card p-3', !active && 'opacity-70')}>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <span className={cn('size-2.5 rounded-full', accent)} aria-hidden />
+          {title}
+        </h3>
+        {active && !rate ? <Badge variant="warning">Rate pending</Badge> : null}
+      </div>
+      {karigarSlot}
+      <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] gap-2">
+        <div className="space-y-1">
+          <p className="text-2xs font-medium text-muted-foreground">Qty (pcs)</p>
+          <div className="numeric flex h-9 items-center justify-end rounded-md bg-muted px-2.5 text-sm font-semibold max-sm:h-11">
+            {active ? quantity : '—'}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label htmlFor={rateId} className="text-2xs font-medium text-muted-foreground">
+            Rate ₹ <span className="font-normal">(optional)</span>
+          </label>
+          <Input
+            id={rateId}
+            type="number"
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            className="numeric text-right"
+            disabled={!active}
+            value={rate}
+            onChange={(e) => onRate(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
+        <span className="text-muted-foreground">Total</span>
+        <span className="numeric font-semibold">₹ {money(total)}</span>
+      </div>
+    </section>
+  );
 };
 
 export const ProductionEntryPage = () => {
-  const [form, setForm] = useState(emptyForm);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEdit = Boolean(editId);
+
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  // Lot numbers are per book: lookups use the book selected in the header.
   const { selectedBook } = useSelectedBook();
-  const bookId = selectedBook?.id;
+  const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
+
+  const { data: editing, isLoading: editLoading } = useQuery({
+    queryKey: ['production-entries', 'detail', editId],
+    queryFn: () => apiClient.get<ProductionEntry>(`/production-entries/${editId}`),
+    enabled: isEdit,
+  });
+  // Lots are per book: a new entry uses the header's book, an edited one its own lot's book.
+  const bookId = isEdit ? editing?.cuttingEntry?.bookId : selectedBook?.id;
+
+  useEffect(() => {
+    if (!editing) return;
+    setForm({
+      carrierId: editing.carrierId,
+      cuttingEntryId: editing.cuttingEntryId ?? '',
+      date: editing.date.slice(0, 10),
+      entryTime: editing.entryTime ?? '',
+      carrierRate: editing.carrierRate ? String(Number(editing.carrierRate)) : '',
+      flatlockKarigarId: editing.flatlockKarigarId ?? NONE,
+      flatlockRate: editing.flatlockRate ? String(Number(editing.flatlockRate)) : '',
+      overlockCarrierId: editing.overlockCarrierId ?? NONE,
+      overlockRate: editing.overlockRate ? String(Number(editing.overlockRate)) : '',
+      photoUrl: editing.photoUrl,
+      remarks: editing.remarks ?? '',
+    });
+  }, [editing]);
 
   const { data: karigars } = useQuery({
     queryKey: ['karigars', 'options'],
     queryFn: () => apiClient.list<Karigar>('/karigars', { page: 1, pageSize: 100 }),
   });
-  const activeKarigars = karigars?.items.filter((k) => k.isActive) ?? [];
+  const keep = new Set([editing?.carrierId, editing?.flatlockKarigarId, editing?.overlockCarrierId]);
+  const karigarOptions = karigars?.items.filter((k) => k.isActive || keep.has(k.id)) ?? [];
 
-  const { data: workTypes } = useQuery({
-    queryKey: ['work-types'],
-    queryFn: () => apiClient.get<WorkType[]>('/karigars/work-types'),
+  const { data: lots, isFetching: lotsLoading } = useQuery({
+    queryKey: ['production-entries', 'karigar-lots', form.carrierId, bookId],
+    queryFn: () => apiClient.get<ProductionKarigarLot[]>('/production-entries/karigar-lots', { karigarId: form.carrierId, bookId }),
+    enabled: Boolean(form.carrierId && bookId),
   });
-  const activeWorkTypes = workTypes?.filter((w) => w.isActive) ?? [];
+  // New entries: only lots with pieces still to hand in. Editing: the entry's own lot.
+  const lotOptions = lots?.filter((l) => (isEdit ? l.id === form.cuttingEntryId : l.piecesPending > 0)) ?? [];
+  const lot = lots?.find((l) => l.id === form.cuttingEntryId);
 
-  const { data: items } = useQuery({
-    queryKey: ['items', 'options'],
-    queryFn: () => apiClient.list<Item>('/items', { page: 1, pageSize: 100 }),
-  });
-  const activeItems = items?.items.filter((i) => i.isActive) ?? [];
-
-  const debouncedLotNumber = useDebouncedValue(form.lotNumber.trim(), 400);
-  const { data: matchedLot, isFetching: lotFetching } = useQuery({
-    queryKey: ['cutting-entry-by-lot', bookId, debouncedLotNumber],
-    queryFn: () =>
-      apiClient.get<CuttingEntry>(
-        `/cutting/lot/${encodeURIComponent(debouncedLotNumber)}?bookId=${encodeURIComponent(bookId ?? '')}`,
-      ),
-    enabled: debouncedLotNumber.length > 0 && Boolean(bookId),
-    retry: false,
-  });
-  // A lot number match is authoritative for the item — locked, not just pre-filled, so the
-  // production entry can't drift from what was actually cut under that lot.
-  const itemLocked = Boolean(matchedLot);
-  const lotLookupPending = form.lotNumber.trim() !== debouncedLotNumber || lotFetching;
-
+  // A different karigar has different lots: drop a lot they never took.
   useEffect(() => {
-    if (matchedLot) setForm((f) => ({ ...f, itemId: matchedLot.itemId }));
-  }, [matchedLot]);
+    if (!isEdit && form.cuttingEntryId && lots && !lotOptions.some((l) => l.id === form.cuttingEntryId)) set({ cuttingEntryId: '' });
+  }, [lots]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectedItem = activeItems.find((i) => i.id === form.itemId);
-  const lockedItemName = selectedItem?.itemName ?? matchedLot?.item.itemName ?? '';
-
-  const carrierTotal = useMemo(() => {
-    const quantity = Number(form.carrierQuantity) || 0;
-    const rate = Number(form.carrierRate) || 0;
-    return quantity * rate;
-  }, [form.carrierQuantity, form.carrierRate]);
-
-  const overlockTotal = useMemo(() => {
-    if (!form.overlockCarrierId || !form.overlockRate) return 0;
-    return (Number(form.carrierQuantity) || 0) * (Number(form.overlockRate) || 0);
-  }, [form.overlockCarrierId, form.overlockRate, form.carrierQuantity]);
-
-  const flatlockTotal = useMemo(() => {
-    if (!form.flatlockKarigarId || !form.flatlockRate) return 0;
-    return (Number(form.carrierQuantity) || 0) * (Number(form.flatlockRate) || 0);
-  }, [form.flatlockKarigarId, form.flatlockRate, form.carrierQuantity]);
+  // The full production: every pending piece of the lot (fixed once saved).
+  const quantity = isEdit ? (editing?.carrierQuantity ?? 0) : (lot?.piecesPending ?? 0);
+  const flatlockOn = form.flatlockKarigarId !== NONE;
+  const overlockOn = form.overlockCarrierId !== NONE;
+  const stitchingTotal = form.carrierRate ? quantity * Number(form.carrierRate) : 0;
+  const flatlockTotal = flatlockOn && form.flatlockRate ? quantity * Number(form.flatlockRate) : 0;
+  const overlockTotal = overlockOn && form.overlockRate ? quantity * Number(form.overlockRate) : 0;
+  const grandTotal = stitchingTotal + flatlockTotal + overlockTotal;
 
   const mutation = useMutation({
-    mutationFn: () =>
-      apiClient.post('/production-entries', {
+    mutationFn: () => {
+      const payload = {
         date: form.date,
-        lotNumber: form.lotNumber || undefined,
-        bookId: form.lotNumber ? bookId : undefined,
-        workTypeId: form.workTypeId,
-        itemId: itemLocked ? undefined : form.itemId,
-        carrierId: form.carrierId,
-        carrierQuantity: Number(form.carrierQuantity),
-        carrierRate: Number(form.carrierRate),
-        overlockCarrierId: form.overlockCarrierId || undefined,
-        overlockRate: form.overlockRate ? Number(form.overlockRate) : undefined,
-        flatlockKarigarId: form.flatlockKarigarId || undefined,
-        flatlockRate: form.flatlockRate ? Number(form.flatlockRate) : undefined,
+        entryTime: form.entryTime || null,
+        carrierRate: rateOrNull(form.carrierRate),
+        flatlockKarigarId: flatlockOn ? form.flatlockKarigarId : null,
+        flatlockRate: flatlockOn ? rateOrNull(form.flatlockRate) : null,
+        overlockCarrierId: overlockOn ? form.overlockCarrierId : null,
+        overlockRate: overlockOn ? rateOrNull(form.overlockRate) : null,
         photoUrl: form.photoUrl ?? undefined,
-        remarks: form.remarks || undefined,
-      }),
+        remarks: form.remarks || (isEdit ? null : undefined),
+      };
+      if (isEdit) return apiClient.patch(`/production-entries/${editId}`, payload);
+      return apiClient.post('/production-entries', { ...payload, cuttingEntryId: form.cuttingEntryId, carrierId: form.carrierId });
+    },
     onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.'),
   });
 
   useEffect(() => {
-    if (saved) {
-      const timer = setTimeout(() => setSaved(false), 2500);
-      return () => clearTimeout(timer);
-    }
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), 2500);
+    return () => clearTimeout(timer);
   }, [saved]);
 
-  const isValid = Boolean(
-    form.date &&
-      form.workTypeId &&
-      (itemLocked || form.itemId) &&
-      form.carrierId &&
-      form.carrierQuantity &&
-      form.carrierRate &&
-      form.photoUrl,
-  );
+  // Older entries may predate lots; they can still be edited (e.g. to fill in rates).
+  const isValid = Boolean(form.carrierId && (isEdit || form.cuttingEntryId) && form.date && form.photoUrl && quantity > 0);
 
-  const handleCarrierChange = (carrierId: string) => {
-    const karigar = activeKarigars.find((k) => k.id === carrierId);
-    setForm((f) => ({ ...f, carrierId, workTypeId: karigar ? karigar.workTypeId : f.workTypeId }));
-  };
-
-  const save = (resetMode: 'full' | 'keepDate') => {
+  const save = (andNew: boolean) => {
     setError(null);
     mutation.mutate(undefined, {
       onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ['production-entries'] });
+        void queryClient.invalidateQueries({ queryKey: ['accessory-issues'] });
+        if (isEdit) {
+          navigate('/production-history');
+          return;
+        }
         setSaved(true);
-        setForm(resetMode === 'keepDate' ? { ...emptyForm, date: form.date } : emptyForm);
+        // Save & New keeps the date and the karigar — the next lot is often theirs too.
+        setForm(andNew ? { ...emptyForm(), date: form.date, carrierId: form.carrierId } : emptyForm());
       },
     });
   };
 
-  // Shown only once a lot number is typed; the always-on explanation lives in the HelpTip.
-  const lotStatus = !form.lotNumber.trim()
-    ? null
-    : !bookId
-      ? { className: 'text-status-warning', text: 'Select a book in the header to look up lots.' }
-      : lotLookupPending
-      ? { className: 'text-muted-foreground', text: 'Checking lot…' }
-      : matchedLot
-        ? { className: 'font-medium text-status-success', text: 'Matched — design locked from this lot.' }
-        : { className: 'text-status-warning', text: `No lot ${form.lotNumber.trim()} in book ${selectedBook?.name} — select design manually.` };
+  const otherKarigarSelect = (id: string, value: string, onChange: (v: string) => void, label: string) => (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger id={id} aria-label={`${label} karigar`}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NONE}>Not done</SelectItem>
+        {karigarOptions.map((k) => (
+          <SelectItem key={k.id} value={k.id}>
+            {k.fullName}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
-  const karigarOptions = activeKarigars.map((karigar) => (
-    <SelectItem key={karigar.id} value={karigar.id}>
-      {karigar.fullName} ({karigar.code})
-    </SelectItem>
-  ));
+  if (isEdit && editLoading) {
+    return (
+      <PageLayout title="Edit Production Entry">
+        <LoadingState variant="page" />
+      </PageLayout>
+    );
+  }
 
   return (
-    <PageLayout title="Daily Production Entry" description="Log today's production per karigar and design.">
+    <PageLayout
+      title={isEdit ? 'Edit Production Entry' : 'Daily Production Entry'}
+      description="Full production of a lot handed in by the karigar — stitching, flatlock and overlock."
+    >
       <Card>
         <CardContent className="p-3 sm:p-4">
           <form
-            className="space-y-2.5"
+            className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault();
-              save('full');
+              save(false);
             }}
           >
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
             {saved ? <FormAlert tone="success">Production entry saved.</FormAlert> : null}
+            {!bookId && !isEdit ? (
+              <FormAlert tone="error">No active book is selected. Add a book in Book Master, then select it in the header.</FormAlert>
+            ) : null}
 
-            {/* Row 1 — entry header */}
-            <div className={cn(ROW, 'grid-cols-2 lg:grid-cols-3')}>
-              <FormField label="Date" required htmlFor="pe-date" className={FIELD}>
-                <DatePicker
-                  id="pe-date"
-                  required
-                  value={form.date}
-                  onChange={(date) => setForm((f) => ({ ...f, date }))}
-                />
-              </FormField>
-
-              <FormField
-                label="Lot Number"
-                htmlFor="pe-lot"
-                className={FIELD}
-                labelAddon={
-                  <HelpTip
-                    label="About lot number"
-                    text={`Optional. Matches a Cutting lot in the selected book${selectedBook ? ` (${selectedBook.name})` : ''} and locks its design.`}
-                  />
-                }
-              >
-                <Input
-                  id="pe-lot"
-                  autoComplete="off"
-                  aria-describedby={lotStatus ? 'pe-lot-status' : undefined}
-                 
-                  value={form.lotNumber}
-                  onChange={(e) => setForm((f) => ({ ...f, lotNumber: e.target.value }))}
-                />
-                {lotStatus ? (
-                  <p id="pe-lot-status" role="status" className={cn('text-2xs', lotStatus.className)}>
-                    {lotStatus.text}
-                  </p>
-                ) : null}
-              </FormField>
-
-              <FormField label="Work Type" required htmlFor="pe-work-type" className={FIELD}>
-                <Select value={form.workTypeId} onValueChange={(v) => setForm((f) => ({ ...f, workTypeId: v }))}>
-                  <SelectTrigger id="pe-work-type">
-                    <SelectValue placeholder="Select work type" />
+            {/* Karigar → lot → date & time */}
+            <div className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
+              <FormField label="Stitching Karigar" required htmlFor="pe-karigar">
+                <Select value={form.carrierId} disabled={isEdit} onValueChange={(v) => set({ carrierId: v })}>
+                  <SelectTrigger id="pe-karigar">
+                    <SelectValue placeholder="Select karigar" />
                   </SelectTrigger>
                   <SelectContent>
-                    {activeWorkTypes.map((workType) => (
-                      <SelectItem key={workType.id} value={workType.id}>
-                        {workType.name}
+                    {karigarOptions.map((k) => (
+                      <SelectItem key={k.id} value={k.id}>
+                        {k.fullName} ({k.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </FormField>
-            </div>
 
-            {/* Row 2 — item and main karigar; this quantity drives all three totals */}
-            <div
-              className={cn(
-                ROW,
-                'grid-cols-2 sm:grid-cols-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]',
-              )}
-            >
               <FormField
-                label="Design Name"
+                label="Lot Number"
                 required
-                htmlFor="pe-item"
-                className={cn(FIELD, 'col-span-2 sm:col-span-3 lg:col-span-1')}
+                htmlFor="pe-lot"
+                hint={
+                  isEdit
+                    ? 'Cannot be changed'
+                    : form.carrierId && lots && !lotOptions.length && !lotsLoading
+                      ? 'No pending lot for this karigar in this book (Cutting Distribution)'
+                      : undefined
+                }
               >
-                {itemLocked ? (
-                  <Input id="pe-item" disabled title={lockedItemName} value={lockedItemName} />
-                ) : (
-                  <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
-                    <SelectTrigger id="pe-item">
-                      <SelectValue placeholder="Select design" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeItems.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.itemName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-
-              <FormField
-                label="Karigar"
-                required
-                htmlFor="pe-karigar"
-                className={cn(FIELD, 'col-span-2 sm:col-span-3 lg:col-span-1')}
-              >
-                <Select value={form.carrierId} onValueChange={handleCarrierChange}>
-                  <SelectTrigger id="pe-karigar">
-                    <SelectValue placeholder="Select karigar" />
+                <Select value={form.cuttingEntryId} disabled={isEdit || !form.carrierId} onValueChange={(v) => set({ cuttingEntryId: v })}>
+                  <SelectTrigger id="pe-lot">
+                    <SelectValue placeholder={form.carrierId ? 'Select lot' : 'Select a karigar first'} />
                   </SelectTrigger>
-                  <SelectContent>{karigarOptions}</SelectContent>
+                  <SelectContent>
+                    {lotOptions.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        Lot {l.lotNumber} · {l.item.itemName} · {isEdit ? `${l.piecesTaken} pcs` : `${l.piecesPending} pcs to hand in`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </FormField>
 
-              <FormField label="Quantity (PCS)" required htmlFor="pe-qty" className={cn(FIELD, 'sm:col-span-2 lg:col-span-1')}>
-                <Input
-                  id="pe-qty"
-                  type="number"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
-                  required
-                  className={NUMERIC}
-                  value={form.carrierQuantity}
-                  onChange={(e) => setForm((f) => ({ ...f, carrierQuantity: e.target.value }))}
-                />
-              </FormField>
-              <FormField label="Rate (₹)" required htmlFor="pe-rate" className={cn(FIELD, 'sm:col-span-2 lg:col-span-1')}>
-                <Input
-                  id="pe-rate"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  required
-                  aria-label="Karigar Rate (₹)"
-                  className={NUMERIC}
-                  value={form.carrierRate}
-                  onChange={(e) => setForm((f) => ({ ...f, carrierRate: e.target.value }))}
-                />
-              </FormField>
-              <FormField label="Total (₹)" htmlFor="pe-total" className={cn(FIELD, 'col-span-2 lg:col-span-1')}>
-                <Input id="pe-total" aria-label="Karigar Total (₹)" {...TOTAL_PROPS} value={carrierTotal.toFixed(2)} />
+              <FormField label="Date & Time" required htmlFor="pe-date">
+                <div className="flex gap-2">
+                  <DatePicker id="pe-date" required className="min-w-0 flex-1" value={form.date} onChange={(date) => set({ date })} />
+                  <Input
+                    type="time"
+                    aria-label="Time"
+                    className="w-[7.25rem] shrink-0"
+                    value={form.entryTime}
+                    onChange={(e) => set({ entryTime: e.target.value })}
+                  />
+                </div>
               </FormField>
             </div>
 
-            {/* Row 3 — overlock and flatlock karigars (three fields each), sharing the quantity above */}
-            <div
-              className={cn(
-                ROW,
-                'grid-cols-2 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]',
-              )}
-            >
-              <FormField label="Overlock Karigar" htmlFor="pe-overlock" className={cn(FIELD, 'col-span-2 sm:col-span-1')}>
-                <Select value={form.overlockCarrierId} onValueChange={(v) => setForm((f) => ({ ...f, overlockCarrierId: v }))}>
-                  <SelectTrigger id="pe-overlock">
-                    <SelectValue placeholder="Select karigar" />
-                  </SelectTrigger>
-                  <SelectContent>{karigarOptions}</SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="Rate (₹)" htmlFor="pe-overlock-rate" className={FIELD}>
-                <Input
-                  id="pe-overlock-rate"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  aria-label="Overlock Karigar Rate (₹)"
-                  className={NUMERIC}
-                  value={form.overlockRate}
-                  onChange={(e) => setForm((f) => ({ ...f, overlockRate: e.target.value }))}
-                />
-              </FormField>
-              <FormField label="Total (₹)" htmlFor="pe-overlock-total" className={FIELD}>
-                <Input
-                  id="pe-overlock-total"
-                  aria-label="Overlock Karigar Total (₹)"
-                  {...TOTAL_PROPS}
-                  value={overlockTotal.toFixed(2)}
-                />
-              </FormField>
+            {/* Read-only lot details */}
+            {lot ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md bg-muted px-3 py-2 text-sm">
+                <span>
+                  <span className="text-muted-foreground">Design</span> <span className="font-semibold">{lot.item.itemName}</span>
+                </span>
+                <span>
+                  <span className="text-muted-foreground">Party</span> <span className="font-medium">{lot.party.name}</span>
+                </span>
+                <Badge variant={lot.isOnline ? 'info' : 'muted'}>{lot.isOnline ? 'Online' : 'Offline'}</Badge>
+                <span className="text-muted-foreground">
+                  Given <span className="numeric font-medium text-foreground">{lot.piecesTaken}</span>
+                  {lot.piecesProduced && !isEdit ? (
+                    <>
+                      {' '}· already in <span className="numeric font-medium text-foreground">{lot.piecesProduced}</span>
+                    </>
+                  ) : null}
+                </span>
+                <span className="ml-auto font-semibold text-primary">
+                  Full production: <span className="numeric">{quantity}</span> pcs
+                </span>
+              </div>
+            ) : null}
 
-              <FormField
-                label="Flatlock Karigar"
-                htmlFor="pe-flatlock"
-                className={cn(FIELD, 'col-span-2 sm:col-span-1')}
-              >
-                <Select value={form.flatlockKarigarId} onValueChange={(v) => setForm((f) => ({ ...f, flatlockKarigarId: v }))}>
-                  <SelectTrigger id="pe-flatlock">
-                    <SelectValue placeholder="Select karigar" />
-                  </SelectTrigger>
-                  <SelectContent>{karigarOptions}</SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="Rate (₹)" htmlFor="pe-flatlock-rate" className={FIELD}>
-                <Input
-                  id="pe-flatlock-rate"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  aria-label="Flatlock Karigar Rate (₹)"
-                  className={NUMERIC}
-                  value={form.flatlockRate}
-                  onChange={(e) => setForm((f) => ({ ...f, flatlockRate: e.target.value }))}
-                />
-              </FormField>
-              <FormField label="Total (₹)" htmlFor="pe-flatlock-total" className={FIELD}>
-                <Input
-                  id="pe-flatlock-total"
-                  aria-label="Flatlock Karigar Total (₹)"
-                  {...TOTAL_PROPS}
-                  value={flatlockTotal.toFixed(2)}
-                />
-              </FormField>
+            {/* Stitching · Flatlock · Overlock */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <StageCard
+                title={STAGE_LABELS.stitching}
+                accent="bg-primary"
+                quantity={quantity}
+                active
+                rateId="pe-rate-stitching"
+                rate={form.carrierRate}
+                onRate={(v) => set({ carrierRate: v })}
+                karigarSlot={
+                  <div className="flex h-9 items-center truncate rounded-md border border-dashed border-border px-2.5 text-sm max-sm:h-11">
+                    {karigarOptions.find((k) => k.id === form.carrierId)?.fullName ?? (
+                      <span className="text-muted-foreground">Stitching karigar above</span>
+                    )}
+                  </div>
+                }
+              />
+              <StageCard
+                title={STAGE_LABELS.flatlock}
+                accent="bg-status-progress"
+                quantity={quantity}
+                active={flatlockOn}
+                rateId="pe-rate-flatlock"
+                rate={form.flatlockRate}
+                onRate={(v) => set({ flatlockRate: v })}
+                karigarSlot={otherKarigarSelect('pe-flatlock', form.flatlockKarigarId, (v) => set({ flatlockKarigarId: v }), 'Flatlock')}
+              />
+              <StageCard
+                title={STAGE_LABELS.overlock}
+                accent="bg-status-success"
+                quantity={quantity}
+                active={overlockOn}
+                rateId="pe-rate-overlock"
+                rate={form.overlockRate}
+                onRate={(v) => set({ overlockRate: v })}
+                karigarSlot={otherKarigarSelect('pe-overlock', form.overlockCarrierId, (v) => set({ overlockCarrierId: v }), 'Overlock')}
+              />
             </div>
 
-            {/* Row 4 — photo and remarks */}
-            <div className={cn(ROW, 'grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]')}>
-              <FormField label="Photo Upload" required htmlFor="pe-photo" className={FIELD}>
-                <PhotoUpload
-                  id="pe-photo"
-                  size="sm"
-                  value={form.photoUrl}
-                  onChange={(url) => setForm((f) => ({ ...f, photoUrl: url }))}
-                />
-              </FormField>
+            <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-1 rounded-md border border-border px-3 py-2 text-sm">
+              <span className="text-muted-foreground">
+                Stitching <span className="numeric text-foreground">₹ {money(stitchingTotal)}</span>
+              </span>
+              <span className="text-muted-foreground">
+                Flatlock <span className="numeric text-foreground">₹ {money(flatlockTotal)}</span>
+              </span>
+              <span className="text-muted-foreground">
+                Overlock <span className="numeric text-foreground">₹ {money(overlockTotal)}</span>
+              </span>
+              <span className="font-semibold">
+                Grand Total <output aria-live="polite" className="numeric text-base text-primary">₹ {money(grandTotal)}</output>
+              </span>
+            </div>
 
-              <FormField label="Remarks" htmlFor="pe-remarks" className={FIELD}>
+            {/* Photo compare + remarks */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <div className="space-y-1">
+                <p className="text-xs font-medium">
+                  Photo <span className="text-destructive">*</span>
+                </p>
+                <ProductionPhotoCompare lotPhotoUrl={lot?.lotPhotoUrl ?? null} value={form.photoUrl} onChange={(url) => set({ photoUrl: url })} />
+              </div>
+              <FormField label="Remarks" htmlFor="pe-remarks">
                 <Textarea
                   id="pe-remarks"
-                  rows={2}
+                  rows={4}
                   placeholder="Enter remarks (optional)"
-                  className="min-h-14 resize-y"
+                  className="min-h-24 resize-y"
                   value={form.remarks}
-                  onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
+                  onChange={(e) => set({ remarks: e.target.value })}
                 />
               </FormField>
             </div>
 
-            {/* Row 5 — actions */}
-            <div className="grid grid-cols-3 gap-2 pt-1 sm:flex sm:items-center">
-              <Button type="submit" className={ACTION} loading={mutation.isPending} disabled={!isValid}>
+            <div className="flex flex-wrap gap-2 border-t border-border pt-3 sm:justify-end">
+              {isEdit ? (
+                <Button type="button" variant="outline" onClick={() => navigate('/production-history')}>
+                  Cancel
+                </Button>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={() => setForm(emptyForm())}>
+                    <RotateCcw />
+                    Clear
+                  </Button>
+                  <Button type="button" variant="outline" loading={mutation.isPending} disabled={!isValid} onClick={() => save(true)}>
+                    <FilePlus2 />
+                    Save & New
+                  </Button>
+                </>
+              )}
+              <Button type="submit" className="sm:min-w-28" loading={mutation.isPending} disabled={!isValid}>
                 <Save />
-                Save Entry
-              </Button>
-              <Button type="button" variant="outline" className={ACTION} onClick={() => setForm(emptyForm)}>
-                <RotateCcw />
-                Clear
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className={ACTION}
-                loading={mutation.isPending}
-                disabled={!isValid}
-                onClick={() => save('keepDate')}
-              >
-                <FilePlus2 />
-                Save & New
+                {isEdit ? 'Save Changes' : 'Save Entry'}
               </Button>
             </div>
           </form>

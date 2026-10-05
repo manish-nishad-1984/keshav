@@ -13,16 +13,38 @@ export type ListCuttingEntriesQuery = z.infer<typeof listCuttingEntriesQuerySche
 
 export const lotLookupQuerySchema = z.object({ bookId: z.string().uuid() });
 
-const cuttingLineSchema = z.object({
-  size: z.string().min(1),
-  quantity: z.coerce.number().int().positive(),
-  rate: z.coerce.number().positive(),
-});
+// One colour row of the size grid. Zero quantities are allowed in the payload (empty cells) and
+// dropped by the service; a row needs at least one size with pieces.
+const cuttingRowSchema = z
+  .object({
+    colorId: z.string().uuid(),
+    photoUrl: z.string().min(1).nullable().optional(),
+    quantities: z.array(
+      z.object({
+        sizeId: z.string().uuid(),
+        quantity: z.coerce.number().int().min(0),
+      }),
+    ),
+  })
+  .refine((row) => row.quantities.some((q) => q.quantity > 0), {
+    message: 'Each colour row needs pieces in at least one size',
+  })
+  .refine((row) => new Set(row.quantities.map((q) => q.sizeId)).size === row.quantities.length, {
+    message: 'A size can appear only once per colour row',
+  });
+
+// "HH:mm", 24-hour.
+const entryTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must be HH:mm')
+  .nullable()
+  .optional();
 
 // No lotNumber: it is generated server-side as the next number in the chosen book.
 export const createCuttingEntrySchema = z.object({
   bookId: z.string().uuid(),
   date: z.coerce.date(),
+  entryTime: entryTimeSchema,
   patternTypeId: z.string().uuid(),
   isOnline: z.boolean(),
   itemId: z.string().uuid(),
@@ -30,13 +52,13 @@ export const createCuttingEntrySchema = z.object({
   pieces: z.coerce.number().int().positive(),
   averageValue: z.coerce.number().positive(),
   averageUnit: z.enum(['KILOGRAM', 'METER']),
-  colorId: z.string().uuid(),
-  lines: z.array(cuttingLineSchema).min(1),
+  rows: z.array(cuttingRowSchema).min(1),
 });
 export type CreateCuttingEntryInput = z.infer<typeof createCuttingEntrySchema>;
 
 export const updateCuttingEntrySchema = z.object({
   date: z.coerce.date().optional(),
+  entryTime: entryTimeSchema,
   patternTypeId: z.string().uuid().optional(),
   isOnline: z.boolean().optional(),
   itemId: z.string().uuid().optional(),
@@ -44,7 +66,6 @@ export const updateCuttingEntrySchema = z.object({
   pieces: z.coerce.number().int().positive().optional(),
   averageValue: z.coerce.number().positive().optional(),
   averageUnit: z.enum(['KILOGRAM', 'METER']).optional(),
-  colorId: z.string().uuid().optional(),
-  lines: z.array(cuttingLineSchema).min(1).optional(),
+  rows: z.array(cuttingRowSchema).min(1).optional(),
 });
 export type UpdateCuttingEntryInput = z.infer<typeof updateCuttingEntrySchema>;

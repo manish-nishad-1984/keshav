@@ -11,6 +11,9 @@ import { AuditLogsPage } from '../pages/AuditLogsPage';
 import { KarigarsPage } from '../pages/KarigarsPage';
 import { ItemsPage } from '../pages/ItemsPage';
 import { CuttingPage } from '../pages/CuttingPage';
+import { CuttingDistributionPage } from '../pages/CuttingDistributionPage';
+import { AccessoryIssuesPage } from '../pages/AccessoryIssuesPage';
+import { AccessoriesPage } from '../pages/AccessoriesPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { ProductionEntryPage } from '../pages/ProductionEntryPage';
 import { ProductionHistoryPage } from '../pages/ProductionHistoryPage';
@@ -32,6 +35,9 @@ const MODULE_PAGES: Partial<Record<ModuleKey, ComponentType>> = {
   parties: PartiesPage,
   books: BooksPage,
   cutting: CuttingPage,
+  cutting_distribution: CuttingDistributionPage,
+  accessory_issues: AccessoryIssuesPage,
+  accessories: AccessoriesPage,
   company_settings: SettingsPage,
   production_entries: ProductionEntryPage,
   production_history: ProductionHistoryPage,

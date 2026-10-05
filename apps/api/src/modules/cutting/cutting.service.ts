@@ -3,16 +3,42 @@ import { conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { reserveNextLotNumber } from '../books/books.service';
 import { getParty } from '../parties/parties.service';
+import { assertSizesExist } from '../sizes/sizes.service';
 import { getPatternType } from '../pattern-types/pattern-types.service';
 import { getItem } from '../items/items.service';
 import { getColor } from '../colors/colors.service';
+import { countDistributionsForCuttingEntry, sumDistributedByCell } from '../cutting-distribution/cutting-distribution.repository';
 import * as repo from './cutting.repository';
+import type { CuttingRowData } from './cutting.repository';
 import type { CreateCuttingEntryInput, ListCuttingEntriesQuery, UpdateCuttingEntryInput } from './cutting.schema';
 
-// Never trust a client-supplied total — always derive it from quantity * rate server-side.
-const computeLineTotal = (quantity: number, rate: number) => Math.round(quantity * rate * 100) / 100;
-const sumLineTotals = (lines: { total: number }[]) =>
-  Math.round(lines.reduce((sum, l) => sum + l.total, 0) * 100) / 100;
+type RowInput = NonNullable<UpdateCuttingEntryInput['rows']>[number];
+
+// Drops empty cells and derives every total server-side — never trust client-supplied totals.
+const buildRows = (rows: RowInput[]): { rows: CuttingRowData[]; totalQuantity: number } => {
+  const built = rows.map((row) => {
+    const quantities = row.quantities.filter((q) => q.quantity > 0);
+    return {
+      colorId: row.colorId,
+      photoUrl: row.photoUrl ?? null,
+      quantities,
+      totalQuantity: quantities.reduce((sum, q) => sum + q.quantity, 0),
+    };
+  });
+  return { rows: built, totalQuantity: built.reduce((sum, r) => sum + r.totalQuantity, 0) };
+};
+
+// Every colour and size used by the grid must belong to this organization.
+const validateRows = async (organizationId: string, rows: RowInput[] | undefined) => {
+  if (!rows) return;
+  await Promise.all([
+    ...[...new Set(rows.map((r) => r.colorId))].map((colorId) => getColor(organizationId, colorId)),
+    assertSizesExist(
+      organizationId,
+      rows.flatMap((r) => r.quantities.map((q) => q.sizeId)),
+    ),
+  ]);
+};
 
 export const listCuttingEntries = (organizationId: string, query: ListCuttingEntriesQuery) =>
   repo.listCuttingEntries(organizationId, query.page, query.pageSize, {
@@ -39,13 +65,13 @@ export const getCuttingEntryByLotNumber = async (organizationId: string, bookId:
 
 const validateReferences = (
   organizationId: string,
-  input: { patternTypeId?: string; itemId?: string; colorId?: string; partyId?: string },
+  input: { patternTypeId?: string; itemId?: string; partyId?: string; rows?: RowInput[] },
 ) =>
   Promise.all([
     input.patternTypeId ? getPatternType(organizationId, input.patternTypeId) : Promise.resolve(),
     input.itemId ? getItem(organizationId, input.itemId) : Promise.resolve(),
-    input.colorId ? getColor(organizationId, input.colorId) : Promise.resolve(),
     input.partyId ? getParty(organizationId, input.partyId) : Promise.resolve(),
+    validateRows(organizationId, input.rows),
   ]);
 
 const isUniqueViolation = (err: unknown) => err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
@@ -57,16 +83,16 @@ export const createCuttingEntry = async (
 ) => {
   await validateReferences(organizationId, input);
 
-  const lines = input.lines.map((l) => ({ ...l, total: computeLineTotal(l.quantity, l.rate) }));
-  const { lines: _lines, ...header } = input;
-  void _lines;
+  const { rows, totalQuantity } = buildRows(input.rows);
+  const { rows: _rows, ...header } = input;
+  void _rows;
 
   // The lot number is assigned here, never by the client: the book row is locked for the length
   // of the transaction so concurrent saves get consecutive numbers.
   try {
     return await prisma.$transaction(async (tx) => {
       const lotNumber = await reserveNextLotNumber(tx, organizationId, input.bookId);
-      return repo.createCuttingEntry(tx, organizationId, { ...header, lotNumber }, lines, sumLineTotals(lines), actorId);
+      return repo.createCuttingEntry(tx, organizationId, { ...header, lotNumber }, rows, totalQuantity, actorId);
     });
   } catch (err) {
     // Only reachable if a non-numeric carried-over lot happens to equal the generated number.
@@ -81,18 +107,48 @@ export const updateCuttingEntry = async (
   input: UpdateCuttingEntryInput,
   actorId: string | null,
 ) => {
-  await getCuttingEntry(organizationId, id);
+  const existing = await getCuttingEntry(organizationId, id);
   await validateReferences(organizationId, input);
 
-  const lines = input.lines?.map((l) => ({ ...l, total: computeLineTotal(l.quantity, l.rate) }));
-  const { lines: _lines, ...header } = input;
-  void _lines;
+  const built = input.rows ? buildRows(input.rows) : undefined;
+  const { rows: _rows, ...header } = input;
+  void _rows;
 
-  return repo.updateCuttingEntry(id, header, lines, lines ? sumLineTotals(lines) : undefined, actorId);
+  if (built) await assertCoversDistributed(existing.lotNumber, id, built.rows);
+
+  return repo.updateCuttingEntry(id, header, built?.rows, built?.totalQuantity, actorId);
+};
+
+// An edited grid must still hold every piece already handed to karigars (Cutting Distribution).
+const assertCoversDistributed = async (lotNumber: string, id: string, rows: CuttingRowData[]) => {
+  const distributed = await sumDistributedByCell(prisma, id);
+  if (distributed.size === 0) return;
+
+  const cut = new Map<string, number>();
+  for (const row of rows) {
+    for (const q of row.quantities) {
+      const key = `${row.colorId}:${q.sizeId}`;
+      cut.set(key, (cut.get(key) ?? 0) + q.quantity);
+    }
+  }
+  const short = [...distributed].filter(([key, given]) => (cut.get(key) ?? 0) < given);
+  if (short.length === 0) return;
+
+  const [colorId, sizeId] = short[0][0].split(':');
+  const [color, size] = await Promise.all([
+    prisma.color.findUnique({ where: { id: colorId }, select: { name: true } }),
+    prisma.size.findUnique({ where: { id: sizeId }, select: { name: true } }),
+  ]);
+  throw conflict(
+    `${short[0][1]} ${color?.name ?? ''} / ${size?.name ?? ''} pieces of lot ${lotNumber} are already distributed to karigars — the lot can't have fewer than that`,
+  );
 };
 
 export const deleteCuttingEntry = async (organizationId: string, id: string, actorId: string | null) => {
   await getCuttingEntry(organizationId, id);
+  if ((await countDistributionsForCuttingEntry(id)) > 0) {
+    throw conflict('This lot is already distributed to karigars — remove its distributions before deleting it');
+  }
   const usageCount = await repo.countProductionEntriesForCuttingEntry(id);
   if (usageCount > 0) {
     throw conflict('Daily production entries already reference this lot — remove them before deleting it');

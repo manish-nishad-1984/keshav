@@ -133,6 +133,7 @@ export const apiClient = {
     return request<T>(path, { method: 'POST', body: form });
   },
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
   list: <T>(path: string, params?: Record<string, unknown>) => request<Paginated<T>>(path, { method: 'GET', params }),
 };

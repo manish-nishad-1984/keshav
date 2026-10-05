@@ -12,7 +12,15 @@ import { Pagination } from '../ui/pagination';
 import { usePermissions } from '../../hooks/use-permissions';
 import { useSelectedBook } from '../../hooks/use-selected-book';
 import type { CuttingEntry } from './cutting-constants';
+import { AVERAGE_UNIT_SHORT, fabricRequired } from './cutting-constants';
 import { formatDate } from '../../lib/date';
+
+const colourNames = (entry: CuttingEntry) => entry.rows.map((r) => r.color.name).join(', ');
+
+const fabricText = (entry: CuttingEntry) => {
+  const fabric = fabricRequired(entry.totalQuantity, entry.pieces, entry.averageValue);
+  return fabric === null ? '—' : `${fabric.toLocaleString('en-IN', { maximumFractionDigits: 3 })} ${AVERAGE_UNIT_SHORT[entry.averageUnit]}`;
+};
 
 interface CuttingListViewProps {
   onAdd: () => void;
@@ -54,7 +62,7 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
           <div className="relative w-full max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by lot number, party or design…"
+              placeholder="Search lot, party, design or colour…"
               className="pl-8"
               value={search}
               onChange={(e) => {
@@ -76,10 +84,10 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                   <th className="px-4 py-2 font-medium">Date</th>
                   <th className="px-4 py-2 font-medium">Design</th>
                   <th className="px-4 py-2 font-medium">Party</th>
-                  <th className="px-4 py-2 font-medium text-right">PCs</th>
-                  <th className="px-4 py-2 font-medium">Color</th>
+                  <th className="px-4 py-2 font-medium">Colours</th>
+                  <th className="px-4 py-2 font-medium text-right">Total Pcs</th>
+                  <th className="px-4 py-2 font-medium text-right">Total Kapda</th>
                   <th className="px-4 py-2 font-medium">Mode</th>
-                  <th className="px-4 py-2 font-medium text-right">Total</th>
                   <th className="px-4 py-2 font-medium">Action</th>
                 </tr>
               </thead>
@@ -87,15 +95,20 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                 {data?.items.map((entry) => (
                   <tr key={entry.id} className="border-b border-border last:border-0">
                     <td className="numeric px-4 py-2.5 font-medium">{entry.lotNumber}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{formatDate(entry.date)}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
+                      {formatDate(entry.date)}
+                      {entry.entryTime ? <span className="ml-1.5 text-2xs">{entry.entryTime}</span> : null}
+                    </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{entry.party.name}</td>
-                    <td className="numeric px-4 py-2.5 text-right text-muted-foreground">{entry.pieces ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{entry.color.name}</td>
+                    <td className="max-w-[14rem] truncate px-4 py-2.5 text-muted-foreground" title={colourNames(entry)}>
+                      {colourNames(entry) || '—'}
+                    </td>
+                    <td className="numeric px-4 py-2.5 text-right font-medium">{entry.totalQuantity.toLocaleString('en-IN')}</td>
+                    <td className="numeric px-4 py-2.5 text-right text-muted-foreground">{fabricText(entry)}</td>
                     <td className="px-4 py-2.5">
                       <Badge variant={entry.isOnline ? 'info' : 'muted'}>{entry.isOnline ? 'Online' : 'Offline'}</Badge>
                     </td>
-                    <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{Number(entry.totalAmount).toFixed(2)}</td>
                     <td className="px-2 py-2.5">
                       <Button variant="ghost" size="icon" aria-label={`Edit lot ${entry.lotNumber}`} disabled={!canUpdate} onClick={() => onEdit(entry)}>
                         <Pencil />

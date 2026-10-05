@@ -3,12 +3,14 @@ import { asyncHandler } from '../../lib/asyncHandler';
 import { requirePermission } from '../../middleware/authorize';
 import { patternTypesRouter } from '../pattern-types/pattern-types.routes';
 import { colorsRouter } from '../colors/colors.routes';
+import { sizesRouter } from '../sizes/sizes.routes';
 import * as controller from './cutting.controller';
 
 export const cuttingRouter = Router();
 
 cuttingRouter.use('/pattern-types', patternTypesRouter);
 cuttingRouter.use('/colors', colorsRouter);
+cuttingRouter.use('/sizes', sizesRouter);
 
 // Registered before /:id so a lot number lookup isn't swallowed by the id route — used by
 // Daily Production Entry to resolve a typed-in lot number to its cutting entry.

@@ -18,8 +18,10 @@ export const updateColor = (
   updatedById: string | null,
 ) => prisma.color.update({ where: { id }, data: { ...data, updatedById: updatedById ?? undefined } });
 
-// Same FK-reality reasoning as PatternType/WorkType — CuttingEntry.colorId has no
-// cascade/set-null, so a soft-deleted cutting entry still holds a real FK to this color.
-export const countCuttingEntriesWithColor = (colorId: string) => prisma.cuttingEntry.count({ where: { colorId } });
+// Same FK-reality reasoning as PatternType/WorkType — CuttingEntryRow.colorId has no
+// cascade/set-null, so rows of a soft-deleted cutting entry still hold a real FK to this color.
+export const countCuttingEntriesWithColor = async (colorId: string) =>
+  (await prisma.cuttingEntryRow.count({ where: { colorId } })) +
+  (await prisma.cuttingDistributionQuantity.count({ where: { colorId } }));
 
 export const deleteColor = (id: string) => prisma.color.delete({ where: { id } });

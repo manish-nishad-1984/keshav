@@ -15,3 +15,6 @@ apps/web/vite.config.d.ts
 .claude/settings.local.json
 fix-live.ps1
 web.config.fix
+
+# One-step deploy secrets
+deploy/deploy.local.env

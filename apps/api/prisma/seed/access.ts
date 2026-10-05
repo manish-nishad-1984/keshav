@@ -68,6 +68,32 @@ export const seedRoles = async (prisma: PrismaClient, organizationId: string, pe
       skipDuplicates: true,
     });
   }
+
+  // Accessory Operator is a starting point the admin may edit, so it is only created when missing
+  // (same as the 20261007120000_accessories migration) and its permissions are never reset.
+  const operator = await prisma.role.findUnique({
+    where: { organizationId_slug: { organizationId, slug: 'accessory_operator' } },
+  });
+  if (!operator) {
+    const keys = [
+      'dashboard:view',
+      'books:view',
+      'karigars:view',
+      'accessories:view',
+      ...only('accessory_issues', 'view', 'create', 'update'),
+    ];
+    await prisma.role.create({
+      data: {
+        organizationId,
+        slug: 'accessory_operator',
+        name: 'Accessory Operator',
+        description: 'Issues accessories to karigars and takes back the extra.',
+        permissions: {
+          create: keys.map((k) => permissionIds.get(k)).filter((id): id is string => Boolean(id)).map((permissionId) => ({ permissionId })),
+        },
+      },
+    });
+  }
 };
 
 export { all };

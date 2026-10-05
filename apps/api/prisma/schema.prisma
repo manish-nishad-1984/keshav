@@ -44,24 +44,28 @@ model Organization {
   createdById          String?   @db.Uuid
   updatedById          String?   @db.Uuid
 
-  branches          Branch[]
-  users             User[]
-  roles             Role[]
-  auditLogs         AuditLog[]
-  numberSequences   NumberSequence[]
-  companySettings   CompanySetting[]
-  karigars          Karigar[]
-  itemCategories    ItemCategory[]
-  items             Item[]
-  workTypes         WorkType[]
-  patternTypes      PatternType[]
-  colors            Color[]
-  cuttingEntries    CuttingEntry[]
-  productionEntries ProductionEntry[]
-  payments          Payment[]
-  backups           Backup[]
-  parties           Party[]
-  books             Book[]
+  branches              Branch[]
+  users                 User[]
+  roles                 Role[]
+  auditLogs             AuditLog[]
+  numberSequences       NumberSequence[]
+  companySettings       CompanySetting[]
+  karigars              Karigar[]
+  itemCategories        ItemCategory[]
+  items                 Item[]
+  workTypes             WorkType[]
+  patternTypes          PatternType[]
+  colors                Color[]
+  cuttingEntries        CuttingEntry[]
+  productionEntries     ProductionEntry[]
+  payments              Payment[]
+  backups               Backup[]
+  parties               Party[]
+  books                 Book[]
+  sizes                 Size[]
+  cuttingDistributions  CuttingDistribution[]
+  accessories           Accessory[]
+  accessoryTransactions AccessoryTransaction[]
 
   @@map("organizations")
 }
@@ -382,8 +386,9 @@ model Color {
   createdById    String?  @db.Uuid
   updatedById    String?  @db.Uuid
 
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  cuttingEntries CuttingEntry[]
+  organization           Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cuttingRows            CuttingEntryRow[]
+  distributionQuantities CuttingDistributionQuantity[]
 
   @@unique([organizationId, name])
   @@map("colors")
@@ -407,12 +412,14 @@ model Karigar {
   createdById    String?   @db.Uuid
   updatedById    String?   @db.Uuid
 
-  organization           Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workType               WorkType          @relation(fields: [workTypeId], references: [id])
-  carrierEntries         ProductionEntry[] @relation("ProductionEntryCarrier")
-  overlockCarrierEntries ProductionEntry[] @relation("ProductionEntryOverlockCarrier")
-  flatlockKarigarEntries ProductionEntry[] @relation("ProductionEntryFlatlockKarigar")
+  organization           Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workType               WorkType               @relation(fields: [workTypeId], references: [id])
+  carrierEntries         ProductionEntry[]      @relation("ProductionEntryCarrier")
+  overlockCarrierEntries ProductionEntry[]      @relation("ProductionEntryOverlockCarrier")
+  flatlockKarigarEntries ProductionEntry[]      @relation("ProductionEntryFlatlockKarigar")
   payments               Payment[]
+  cuttingDistributions   CuttingDistribution[]
+  accessoryTransactions  AccessoryTransaction[]
 
   @@unique([organizationId, code])
   @@map("karigars")
@@ -460,6 +467,7 @@ model Item {
   category          ItemCategory      @relation(fields: [categoryId], references: [id])
   productionEntries ProductionEntry[]
   CuttingEntry      CuttingEntry[]
+  accessories       ItemAccessory[]
 
   @@map("items")
 }
@@ -528,54 +536,224 @@ model CuttingEntry {
   itemId         String      @db.Uuid
   partyId        String      @db.Uuid
   // Nullable only for lots created before this field existed; required for new entries.
+  // PCs and Avg go together: Avg is the fabric used for PCs pieces (e.g. 4 pcs = 1.53 kg), so the
+  // lot's total fabric = totalQuantity / pieces * averageValue (computed for display).
   pieces         Int?
-  averageValue   Decimal     @db.Decimal(10, 2)
+  averageValue   Decimal     @db.Decimal(10, 3)
   averageUnit    AverageUnit
-  colorId        String      @db.Uuid
-  // Denormalized sum of this entry's lines' totals, computed server-side on every write —
-  // same convention as ProductionEntry.carrierTotal etc., never trust a client-supplied total.
-  totalAmount    Decimal     @db.Decimal(12, 2)
+  // Optional time of day, "HH:mm", kept apart from the date-only `date` column.
+  entryTime      String?
+  // Denormalized sum of every row's quantities, computed server-side on every write.
+  totalQuantity  Int         @default(0)
+  // Legacy: lots created before rates were removed (Oct 2026) keep their old amount; new lots
+  // leave it null.
+  totalAmount    Decimal?    @db.Decimal(12, 2)
   deletedAt      DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   createdById    String?     @db.Uuid
   updatedById    String?     @db.Uuid
 
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  book              Book               @relation(fields: [bookId], references: [id])
-  party             Party              @relation(fields: [partyId], references: [id])
-  patternType       PatternType        @relation("CuttingEntryPatternType", fields: [patternTypeId], references: [id])
-  item              Item               @relation(fields: [itemId], references: [id])
-  color             Color              @relation(fields: [colorId], references: [id])
-  lines             CuttingEntryLine[]
-  productionEntries ProductionEntry[]
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  book                  Book                   @relation(fields: [bookId], references: [id])
+  party                 Party                  @relation(fields: [partyId], references: [id])
+  patternType           PatternType            @relation("CuttingEntryPatternType", fields: [patternTypeId], references: [id])
+  item                  Item                   @relation(fields: [itemId], references: [id])
+  rows                  CuttingEntryRow[]
+  distributions         CuttingDistribution[]
+  accessoryTransactions AccessoryTransaction[]
+  productionEntries     ProductionEntry[]
 
   @@unique([bookId, lotNumber])
   @@map("cutting_entries")
 }
 
-// One size/quantity/rate row within a cutting lot (a single lot commonly spans several
-// sizes — S/M/L/XL — each cut in a different quantity).
-model CuttingEntryLine {
+// Size Master: the size columns of the cutting grid (e.g. "S" with detail "38/28"), shown in
+// sortOrder. Hard-deleted only when no cutting quantity uses it; deactivate to hide it.
+model Size {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  detail         String?
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?  @db.Uuid
+  updatedById    String?  @db.Uuid
+
+  organization           Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  quantities             CuttingRowQuantity[]
+  distributionQuantities CuttingDistributionQuantity[]
+
+  @@unique([organizationId, name])
+  @@map("sizes")
+}
+
+// One colour within a cutting lot: the cloth photo, its colour and a quantity per size.
+model CuttingEntryRow {
   id             String   @id @default(uuid()) @db.Uuid
   cuttingEntryId String   @db.Uuid
-  size           String
-  quantity       Int
-  rate           Decimal  @db.Decimal(10, 2)
-  // Denormalized (quantity * rate), computed server-side — see CuttingEntry.totalAmount.
-  total          Decimal  @db.Decimal(12, 2)
+  colorId        String   @db.Uuid
+  photoUrl       String?
+  sortOrder      Int      @default(0)
+  // Denormalized sum of this row's quantities, computed server-side.
+  totalQuantity  Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cuttingEntry CuttingEntry @relation(fields: [cuttingEntryId], references: [id], onDelete: Cascade)
+  cuttingEntry CuttingEntry         @relation(fields: [cuttingEntryId], references: [id], onDelete: Cascade)
+  color        Color                @relation(fields: [colorId], references: [id])
+  quantities   CuttingRowQuantity[]
 
-  @@map("cutting_entry_lines")
+  @@map("cutting_entry_rows")
+}
+
+// Pieces cut for one size within one colour row (only non-zero quantities are stored).
+model CuttingRowQuantity {
+  id       String @id @default(uuid()) @db.Uuid
+  rowId    String @db.Uuid
+  sizeId   String @db.Uuid
+  quantity Int
+
+  row  CuttingEntryRow @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  size Size            @relation(fields: [sizeId], references: [id])
+
+  @@unique([rowId, sizeId])
+  @@map("cutting_row_quantities")
+}
+
+// Cutting Distribution: pieces of a cut lot handed to one karigar, per colour and size. A lot is
+// distributed over several entries; what is still left (cut minus every distribution) is derived,
+// never stored. Hard-deleted — removing an entry simply returns its pieces to the lot.
+model CuttingDistribution {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  cuttingEntryId String   @db.Uuid
+  karigarId      String   @db.Uuid
+  date           DateTime @db.Date
+  // Optional time of day, "HH:mm", same as CuttingEntry.entryTime.
+  entryTime      String?
+  remarks        String?
+  // Denormalized sum of the quantities, computed server-side on every write.
+  totalQuantity  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?  @db.Uuid
+  updatedById    String?  @db.Uuid
+
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cuttingEntry CuttingEntry                  @relation(fields: [cuttingEntryId], references: [id])
+  karigar      Karigar                       @relation(fields: [karigarId], references: [id])
+  quantities   CuttingDistributionQuantity[]
+
+  @@index([cuttingEntryId])
+  @@map("cutting_distributions")
+}
+
+// Pieces of one colour + size given in a distribution. Keyed by colour and size rather than by
+// cutting row, because cutting rows are recreated whenever the lot is edited.
+model CuttingDistributionQuantity {
+  id             String @id @default(uuid()) @db.Uuid
+  distributionId String @db.Uuid
+  colorId        String @db.Uuid
+  sizeId         String @db.Uuid
+  quantity       Int
+
+  distribution CuttingDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  color        Color               @relation(fields: [colorId], references: [id])
+  size         Size                @relation(fields: [sizeId], references: [id])
+
+  @@unique([distributionId, colorId, sizeId])
+  @@map("cutting_distribution_quantities")
+}
+
+// Accessory Master: zips, locks, chains, ID tags… handed to karigars with a lot.
+model Accessory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  // Free text, e.g. "pcs", "meter", "gross".
+  unit           String   @default("pcs")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?  @db.Uuid
+  updatedById    String?  @db.Uuid
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        ItemAccessory[]
+  lines        AccessoryTransactionLine[]
+
+  @@unique([organizationId, name])
+  @@map("accessories")
+}
+
+// How much of an accessory one piece of a design needs (e.g. T-shirt: 1 zip, 2 locks). A karigar's
+// accessory limit for a lot = pieces of that lot given to them × this.
+model ItemAccessory {
+  id               String  @id @default(uuid()) @db.Uuid
+  itemId           String  @db.Uuid
+  accessoryId      String  @db.Uuid
+  quantityPerPiece Decimal @db.Decimal(10, 3)
+
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  accessory Accessory @relation(fields: [accessoryId], references: [id])
+
+  @@unique([itemId, accessoryId])
+  @@map("item_accessories")
+}
+
+enum AccessoryTransactionType {
+  ISSUE
+  RETURN
+}
+
+// Accessories issued to, or returned by, a karigar against a lot they took. What the karigar
+// still holds (issued − returned − used by finished pieces) is derived, never stored.
+model AccessoryTransaction {
+  id             String                   @id @default(uuid()) @db.Uuid
+  organizationId String                   @db.Uuid
+  type           AccessoryTransactionType
+  karigarId      String                   @db.Uuid
+  cuttingEntryId String                   @db.Uuid
+  date           DateTime                 @db.Date
+  // Optional time of day, "HH:mm".
+  entryTime      String?
+  remarks        String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  createdById    String?                  @db.Uuid
+  updatedById    String?                  @db.Uuid
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  karigar      Karigar                    @relation(fields: [karigarId], references: [id])
+  cuttingEntry CuttingEntry               @relation(fields: [cuttingEntryId], references: [id])
+  lines        AccessoryTransactionLine[]
+
+  @@index([karigarId, cuttingEntryId])
+  @@map("accessory_transactions")
+}
+
+model AccessoryTransactionLine {
+  id            String  @id @default(uuid()) @db.Uuid
+  transactionId String  @db.Uuid
+  accessoryId   String  @db.Uuid
+  quantity      Decimal @db.Decimal(12, 3)
+
+  transaction AccessoryTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  accessory   Accessory            @relation(fields: [accessoryId], references: [id])
+
+  @@unique([transactionId, accessoryId])
+  @@map("accessory_transaction_lines")
 }
 
 model ProductionEntry {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @db.Uuid
   date           DateTime @db.Date
+  // Optional time of day, "HH:mm".
+  entryTime      String?
   // Nullable: older entries predate lot tracking, and not every entry may originate from a
   // cutting lot. When set, itemId/carrierQuantity are auto-filled from the matched
   // CuttingEntry and locked client-side (not enforced at the DB level).
@@ -585,13 +763,13 @@ model ProductionEntry {
   workTypeId     String   @db.Uuid
   itemId         String   @db.Uuid
 
-  carrierId       String  @db.Uuid
+  carrierId       String   @db.Uuid
   carrierQuantity Int
-  carrierRate     Decimal @db.Decimal(10, 2)
+  carrierRate     Decimal? @db.Decimal(10, 2)
   // Denormalized (carrierQuantity * carrierRate), computed server-side on every write — never
   // trust a client-supplied total, and reports/ledger queries read this column directly instead
   // of recomputing it every time. Same convention for overlockTotal/flatlockTotal below.
-  carrierTotal    Decimal @db.Decimal(12, 2)
+  carrierTotal    Decimal  @db.Decimal(12, 2)
 
   // Overlock and Flatlock are separate finishing stages, each optionally done by a different
   // karigar than the main carrier — both nullable since not every entry needs either.

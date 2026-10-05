@@ -6,8 +6,10 @@ const includeRelations = {
   party: true,
   patternType: true,
   item: { include: { category: true } },
-  color: true,
-  lines: { orderBy: { createdAt: 'asc' } },
+  rows: {
+    orderBy: { sortOrder: 'asc' },
+    include: { color: true, quantities: { include: { size: true } } },
+  },
 } as const;
 
 export const listCuttingEntries = async (
@@ -34,6 +36,7 @@ export const listCuttingEntries = async (
           OR: [
             { lotNumber: { contains: filters.search, mode: 'insensitive' } },
             { party: { name: { contains: filters.search, mode: 'insensitive' } } },
+            { rows: { some: { color: { name: { contains: filters.search, mode: 'insensitive' } } } } },
             { item: { itemName: { contains: filters.search, mode: 'insensitive' } } },
           ],
         }
@@ -74,56 +77,65 @@ interface CuttingEntryHeaderData {
   pieces: number;
   averageValue: number;
   averageUnit: 'KILOGRAM' | 'METER';
-  colorId: string;
+  entryTime?: string | null;
 }
 
-interface CuttingLineData {
-  size: string;
-  quantity: number;
-  rate: number;
-  total: number;
+export interface CuttingRowData {
+  colorId: string;
+  photoUrl: string | null;
+  totalQuantity: number;
+  quantities: { sizeId: string; quantity: number }[];
 }
+
+const rowsCreate = (rows: CuttingRowData[]) => ({
+  create: rows.map((row, index) => ({
+    colorId: row.colorId,
+    photoUrl: row.photoUrl,
+    sortOrder: index,
+    totalQuantity: row.totalQuantity,
+    quantities: { create: row.quantities },
+  })),
+});
 
 export const createCuttingEntry = (
   db: Prisma.TransactionClient,
   organizationId: string,
   header: CuttingEntryHeaderData,
-  lines: CuttingLineData[],
-  totalAmount: number,
+  rows: CuttingRowData[],
+  totalQuantity: number,
   createdById: string | null,
 ) =>
   db.cuttingEntry.create({
     data: {
       organizationId,
       ...header,
-      totalAmount,
+      totalQuantity,
       createdById: createdById ?? undefined,
-      lines: { create: lines },
+      rows: rowsCreate(rows),
     },
     include: includeRelations,
   });
 
-// Lines are replaced wholesale on update (delete all, recreate) rather than diffed — the UI
-// always submits the entry's full current line list, and a cutting lot's line count is small
-// enough that this is simpler and safer than trying to match old lines to new ones by identity.
+// Rows are replaced wholesale on update (delete all, recreate; quantities cascade) rather than
+// diffed — the UI always submits the entry's full grid, and a lot has only a few colour rows.
 export const updateCuttingEntry = (
   id: string,
   header: Partial<Omit<CuttingEntryHeaderData, 'lotNumber' | 'bookId'>>,
-  lines: CuttingLineData[] | undefined,
-  totalAmount: number | undefined,
+  rows: CuttingRowData[] | undefined,
+  totalQuantity: number | undefined,
   updatedById: string | null,
 ) =>
   prisma.$transaction(async (tx) => {
-    if (lines) {
-      await tx.cuttingEntryLine.deleteMany({ where: { cuttingEntryId: id } });
+    if (rows) {
+      await tx.cuttingEntryRow.deleteMany({ where: { cuttingEntryId: id } });
     }
     return tx.cuttingEntry.update({
       where: { id },
       data: {
         ...header,
-        ...(totalAmount !== undefined ? { totalAmount } : {}),
+        ...(totalQuantity !== undefined ? { totalQuantity } : {}),
         updatedById: updatedById ?? undefined,
-        ...(lines ? { lines: { create: lines } } : {}),
+        ...(rows ? { rows: rowsCreate(rows) } : {}),
       },
       include: includeRelations,
     });

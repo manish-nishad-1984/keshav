@@ -5,6 +5,7 @@ import { apiClient, resolvePhotoUrl } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { LoadingState } from '../components/ui/loading-state';
 import { Pagination } from '../components/ui/pagination';
@@ -66,7 +67,7 @@ export const ProductionHistoryPage = () => {
           entry.workType.name,
           entry.item.itemName,
           String(entry.carrierQuantity),
-          Number(entry.carrierRate).toFixed(2),
+          entry.carrierRate ? Number(entry.carrierRate).toFixed(2) : '',
           Number(entry.carrierTotal).toFixed(2),
           entry.remarks ?? '',
         ].map(toCsvValue),
@@ -186,7 +187,9 @@ export const ProductionHistoryPage = () => {
                       <td className="px-4 py-2.5 font-medium">{entry.carrier.fullName}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{entry.carrierQuantity}</td>
-                      <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{Number(entry.carrierRate).toFixed(2)}</td>
+                      <td className="numeric px-4 py-2.5 text-muted-foreground text-right">
+                        {entry.carrierRate ? Number(entry.carrierRate).toFixed(2) : <Badge variant="warning">Rate pending</Badge>}
+                      </td>
                       <td className="numeric px-4 py-2.5 font-medium text-right">{Number(entry.carrierTotal).toFixed(2)}</td>
                       <td className="px-4 py-2">
                         <div className="flex size-9 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">

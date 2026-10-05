@@ -113,7 +113,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
           e.carrier.fullName,
           e.item.itemName,
           String(e.carrierQuantity),
-          Number(e.carrierRate).toFixed(2),
+          e.carrierRate ? Number(e.carrierRate).toFixed(2) : '—',
           Number(e.carrierTotal).toFixed(2),
         ]);
       downloadCsv(`${reportKey}-${today}.csv`, ['Date', 'Karigar', 'Design', 'Qty', 'Rate', 'Amount'], rows);
@@ -177,7 +177,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td className="px-3 py-2">{e.carrier.fullName}</td>
                 <td className="px-3 py-2">{e.item.itemName}</td>
                 <td className="numeric px-3 py-2 text-right">{e.carrierQuantity}</td>
-                <td className="numeric px-3 py-2 text-right">{Number(e.carrierRate).toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{e.carrierRate ? Number(e.carrierRate).toFixed(2) : '—'}</td>
                 <td className="numeric px-3 py-2 text-right">{Number(e.carrierTotal).toFixed(2)}</td>
               </tr>
             ))}
