@@ -16,4 +16,16 @@ export interface Karigar {
   address: string | null;
   remarks: string | null;
   isActive: boolean;
+  // Only on a single karigar (GET /karigars/:id), not in lists.
+  documents?: KarigarDocument[];
+}
+
+export type KarigarDocumentType = 'AADHAAR_FRONT' | 'AADHAAR_BACK' | 'PAN' | 'OTHER';
+
+export interface KarigarDocument {
+  id: string;
+  type: KarigarDocumentType;
+  label: string | null;
+  fileUrl: string;
+  sortOrder: number;
 }

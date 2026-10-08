@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
 import type { Prisma } from '@prisma/client';
+import type { KarigarDocumentInput } from './karigars.schema';
 
 export const listKarigars = async (
   organizationId: string,
@@ -38,7 +39,25 @@ export const listKarigars = async (
 };
 
 export const findKarigarById = (organizationId: string, id: string) =>
-  prisma.karigar.findFirst({ where: { id, organizationId, deletedAt: null }, include: { workType: true } });
+  prisma.karigar.findFirst({
+    where: { id, organizationId, deletedAt: null },
+    include: { workType: true, documents: { orderBy: { sortOrder: 'asc' } } },
+  });
+
+// Documents are replaced wholesale (delete all, recreate) — the form always sends the full set.
+export const replaceKarigarDocuments = (karigarId: string, documents: KarigarDocumentInput[]) =>
+  prisma.$transaction([
+    prisma.karigarDocument.deleteMany({ where: { karigarId } }),
+    prisma.karigarDocument.createMany({
+      data: documents.map((d, index) => ({
+        karigarId,
+        type: d.type,
+        label: d.type === 'OTHER' ? (d.label?.trim() ?? null) : null,
+        fileUrl: d.fileUrl,
+        sortOrder: index,
+      })),
+    }),
+  ]);
 
 export const createKarigar = (
   organizationId: string,

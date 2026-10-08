@@ -19,6 +19,7 @@ import { booksRouter } from '../modules/books/books.routes';
 import { cuttingDistributionRouter } from '../modules/cutting-distribution/cutting-distribution.routes';
 import { accessoriesRouter } from '../modules/accessories/accessories.routes';
 import { accessoryIssuesRouter } from '../modules/accessory-issues/accessory-issues.routes';
+import { pressEntriesRouter } from '../modules/press-entries/press-entries.routes';
 
 interface ProtectedRoute {
   path: string;
@@ -41,6 +42,7 @@ const protectedRoutes: ProtectedRoute[] = [
   { path: '/accessories', router: accessoriesRouter },
   { path: '/accessory-issues', router: accessoryIssuesRouter },
   { path: '/production-entries', router: productionEntriesRouter },
+  { path: '/press-entries', router: pressEntriesRouter },
   { path: '/payments', router: paymentsRouter },
   { path: '/reports', router: reportsRouter },
   { path: '/backups', router: backupRouter },

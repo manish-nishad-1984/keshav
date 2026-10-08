@@ -22,6 +22,7 @@ import { PaymentsPage } from '../pages/PaymentsPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { BooksPage } from '../pages/BooksPage';
+import { PressEntryPage } from '../pages/PressEntryPage';
 
 // Every module gets a route automatically. Add a page here once it's built;
 // anything missing falls back to a placeholder — the router never needs editing.
@@ -40,6 +41,7 @@ const MODULE_PAGES: Partial<Record<ModuleKey, ComponentType>> = {
   accessories: AccessoriesPage,
   company_settings: SettingsPage,
   production_entries: ProductionEntryPage,
+  press_entries: PressEntryPage,
   production_history: ProductionHistoryPage,
   photo_gallery: PhotoGalleryPage,
   payments: PaymentsPage,

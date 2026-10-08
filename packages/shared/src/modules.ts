@@ -99,6 +99,17 @@ export const MODULES: ModuleDefinition[] = [
     description: 'Daily production logged per karigar, item, and quantity.',
   },
   {
+    key: 'press_entries',
+    label: 'Press Entry',
+    singular: 'Press Entry',
+    path: '/press-entries',
+    icon: 'Shirt',
+    group: 'general',
+    order: 16,
+    permission: 'press_entries:view',
+    description: 'Pieces ironed by press karigars, at the online / offline rate from Settings.',
+  },
+  {
     key: 'production_history',
     label: 'Production History',
     singular: 'Production Entry',

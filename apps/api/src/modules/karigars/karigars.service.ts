@@ -14,7 +14,10 @@ export const getKarigar = async (organizationId: string, id: string) => {
 
 export const createKarigar = async (organizationId: string, input: CreateKarigarInput, actorId: string | null) => {
   const code = await nextSequenceCode(organizationId, 'KRG');
-  return repo.createKarigar(organizationId, code, input, actorId);
+  const { documents, ...data } = input;
+  const karigar = await repo.createKarigar(organizationId, code, data, actorId);
+  if (documents?.length) await repo.replaceKarigarDocuments(karigar.id, documents);
+  return getKarigar(organizationId, karigar.id);
 };
 
 export const updateKarigar = async (
@@ -24,7 +27,10 @@ export const updateKarigar = async (
   actorId: string | null,
 ) => {
   await getKarigar(organizationId, id);
-  return repo.updateKarigar(id, input, actorId);
+  const { documents, ...data } = input;
+  await repo.updateKarigar(id, data, actorId);
+  if (documents) await repo.replaceKarigarDocuments(id, documents);
+  return getKarigar(organizationId, id);
 };
 
 export const deleteKarigar = async (organizationId: string, id: string, actorId: string | null) => {

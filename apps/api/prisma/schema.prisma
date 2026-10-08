@@ -66,6 +66,7 @@ model Organization {
   cuttingDistributions  CuttingDistribution[]
   accessories           Accessory[]
   accessoryTransactions AccessoryTransaction[]
+  pressEntries          PressEntry[]
 
   @@map("organizations")
 }
@@ -420,6 +421,8 @@ model Karigar {
   payments               Payment[]
   cuttingDistributions   CuttingDistribution[]
   accessoryTransactions  AccessoryTransaction[]
+  pressEntries           PressEntry[]
+  documents              KarigarDocument[]
 
   @@unique([organizationId, code])
   @@map("karigars")
@@ -429,6 +432,31 @@ model Karigar {
 // a hard uniqueness constraint, and a soft-deleted row would permanently block reusing that
 // name/prefix. The service-level guard already blocks deleting a category any item references,
 // so nothing of value is lost by removing the row outright.
+enum KarigarDocumentType {
+  AADHAAR_FRONT
+  AADHAAR_BACK
+  PAN
+  OTHER
+}
+
+// ID proofs of a karigar: one photo each for Aadhaar front/back and PAN, and any number of other
+// proofs with their own name (e.g. Voter ID). Replaced wholesale whenever the karigar is saved.
+model KarigarDocument {
+  id        String              @id @default(uuid()) @db.Uuid
+  karigarId String              @db.Uuid
+  type      KarigarDocumentType
+  // Name of an OTHER proof; empty for the fixed types.
+  label     String?
+  fileUrl   String
+  sortOrder Int                 @default(0)
+  createdAt DateTime            @default(now())
+
+  karigar Karigar @relation(fields: [karigarId], references: [id], onDelete: Cascade)
+
+  @@index([karigarId])
+  @@map("karigar_documents")
+}
+
 model ItemCategory {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @db.Uuid
@@ -746,6 +774,34 @@ model AccessoryTransactionLine {
 
   @@unique([transactionId, accessoryId])
   @@map("accessory_transaction_lines")
+}
+
+// Press (ironing): pieces a press karigar hands in. The rate comes from Settings (online / offline)
+// at the time of the entry and is kept on the row, so a later rate change doesn't rewrite history.
+model PressEntry {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  karigarId      String    @db.Uuid
+  date           DateTime  @db.Date
+  // Optional time of day, "HH:mm".
+  entryTime      String?
+  isOnline       Boolean
+  pieces         Int
+  rate           Decimal   @db.Decimal(10, 2)
+  // Denormalized pieces × rate, computed server-side on every write.
+  total          Decimal   @db.Decimal(12, 2)
+  remarks        String?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?   @db.Uuid
+  updatedById    String?   @db.Uuid
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  karigar      Karigar      @relation(fields: [karigarId], references: [id])
+
+  @@index([organizationId, date])
+  @@map("press_entries")
 }
 
 model ProductionEntry {

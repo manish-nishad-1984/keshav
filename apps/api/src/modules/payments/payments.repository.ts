@@ -74,7 +74,7 @@ export const softDeletePayment = (id: string, updatedById: string | null) =>
 // (carrier, overlock carrier, flatlock karigar), so each role is summed separately and merged —
 // there's no single column to group by across all three.
 export const getLedger = async (organizationId: string) => {
-  const [karigars, carrierSums, overlockSums, flatlockSums, paymentSums] = await Promise.all([
+  const [karigars, carrierSums, overlockSums, flatlockSums, pressSums, paymentSums] = await Promise.all([
     prisma.karigar.findMany({ where: { organizationId, deletedAt: null }, orderBy: { fullName: 'asc' } }),
     prisma.productionEntry.groupBy({
       by: ['carrierId'],
@@ -91,6 +91,12 @@ export const getLedger = async (organizationId: string) => {
       where: { organizationId, deletedAt: null, flatlockKarigarId: { not: null } },
       _sum: { flatlockTotal: true },
     }),
+    // Press karigars earn from Press Entry, not from production entries.
+    prisma.pressEntry.groupBy({
+      by: ['karigarId'],
+      where: { organizationId, deletedAt: null },
+      _sum: { total: true },
+    }),
     prisma.payment.groupBy({
       by: ['karigarId'],
       where: { organizationId, deletedAt: null },
@@ -106,6 +112,7 @@ export const getLedger = async (organizationId: string) => {
   carrierSums.forEach((row) => addAmount(row.carrierId, Number(row._sum.carrierTotal ?? 0)));
   overlockSums.forEach((row) => addAmount(row.overlockCarrierId, Number(row._sum.overlockTotal ?? 0)));
   flatlockSums.forEach((row) => addAmount(row.flatlockKarigarId, Number(row._sum.flatlockTotal ?? 0)));
+  pressSums.forEach((row) => addAmount(row.karigarId, Number(row._sum.total ?? 0)));
 
   const paidByKarigar = new Map(paymentSums.map((row) => [row.karigarId, Number(row._sum.amount ?? 0)]));
 

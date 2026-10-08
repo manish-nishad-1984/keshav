@@ -12,6 +12,8 @@ import { FormAlert } from '../ui/form-alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../ui/date-picker';
 import { PhotoUpload } from '../common/PhotoUpload';
+import { KarigarDocumentsSection, newDocumentDraft } from './KarigarDocumentsSection';
+import type { DocumentDraft } from './KarigarDocumentsSection';
 import type { Karigar, WorkType } from './karigar-constants';
 
 interface KarigarFormViewProps {
@@ -36,6 +38,19 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
     address: '',
     remarks: '',
   });
+
+  const [documents, setDocuments] = useState<DocumentDraft[]>([]);
+
+  // Lists don't carry ID proofs; load them for the karigar being edited.
+  const { data: details } = useQuery({
+    queryKey: ['karigars', 'detail', karigar?.id],
+    queryFn: () => apiClient.get<Karigar>(`/karigars/${karigar!.id}`),
+    enabled: isEdit,
+  });
+
+  useEffect(() => {
+    setDocuments(details?.documents?.map((d) => newDocumentDraft(d.type, d.fileUrl, d.label ?? '')) ?? []);
+  }, [details]);
 
   const { data: workTypes } = useQuery({
     queryKey: ['work-types'],
@@ -86,6 +101,10 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
         joinDate: form.joinDate || undefined,
         address: form.address || undefined,
         remarks: form.remarks || undefined,
+        // A proof without a photo is just an empty slot — not sent.
+        documents: documents
+          .filter((d) => d.fileUrl)
+          .map((d) => ({ type: d.type, label: d.type === 'OTHER' ? d.label.trim() : null, fileUrl: d.fileUrl })),
       };
       if (isEdit && karigar) {
         return apiClient.patch(`/karigars/${karigar.id}`, { ...payload, isActive: form.isActive });
@@ -99,6 +118,8 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
     onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.'),
   });
 
+  const unnamedProof = documents.some((d) => d.type === 'OTHER' && d.fileUrl && !d.label.trim());
+
   return (
     <PageLayout title="Add / Edit Karigar" description="Workers who stitch, cut, finish and pack garments.">
       <Card>
@@ -111,6 +132,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
             }}
           >
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+            {unnamedProof ? <FormAlert tone="error">Give each other proof a name (e.g. Voter ID) before saving.</FormAlert> : null}
 
             {/* Photo beside the identity fields on desktop; stacked on mobile. */}
             <div className="grid gap-x-5 gap-y-3 md:grid-cols-[auto_minmax(0,1fr)]">
@@ -177,6 +199,8 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
             </div>
             </div>
 
+            <KarigarDocumentsSection documents={documents} onChange={setDocuments} />
+
             <FormField label="Remarks">
               <Textarea
                 rows={2}
@@ -187,7 +211,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
             </FormField>
 
             <div className="flex items-center gap-2 pt-1">
-              <Button type="submit" loading={mutation.isPending} disabled={!form.workTypeId}>
+              <Button type="submit" loading={mutation.isPending} disabled={!form.workTypeId || unnamedProof}>
                 <Save />
                 Save
               </Button>

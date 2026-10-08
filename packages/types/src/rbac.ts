@@ -29,6 +29,7 @@ export const MODULE_PERMISSIONS = {
   accessories: [...CRUD, 'manage'],
   accessory_issues: [...CRUD],
   production_entries: [...CRUD, 'export'],
+  press_entries: [...CRUD],
   production_history: ['view', 'export'],
   photo_gallery: ['view'],
   payments: [...CRUD],
