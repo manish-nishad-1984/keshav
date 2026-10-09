@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Pencil, Trash2, Lock, LockOpen } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card } from '../ui/card';
@@ -13,6 +13,8 @@ import { usePermissions } from '../../hooks/use-permissions';
 import { useSelectedBook } from '../../hooks/use-selected-book';
 import type { CuttingEntry } from './cutting-constants';
 import { DeleteLotDialog } from './DeleteLotDialog';
+import { CloseLotDialog } from './CloseLotDialog';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { AVERAGE_UNIT_SHORT, fabricRequired } from './cutting-constants';
 import { formatDate } from '../../lib/date';
 
@@ -33,6 +35,16 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<CuttingEntry | null>(null);
+  const [closing, setClosing] = useState<CuttingEntry | null>(null);
+  const [reopening, setReopening] = useState<CuttingEntry | null>(null);
+  const queryClient = useQueryClient();
+  const reopenMutation = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/cutting/${id}/reopen`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries();
+      setReopening(null);
+    },
+  });
   const { selectedBook, isLoading: booksLoading } = useSelectedBook();
   const bookId = selectedBook?.id;
 
@@ -98,7 +110,14 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
               <tbody>
                 {data?.items.map((entry) => (
                   <tr key={entry.id} className="border-b border-border last:border-0">
-                    <td className="numeric px-4 py-2.5 font-medium">{entry.lotNumber}</td>
+                    <td className="numeric px-4 py-2.5 font-medium">
+                      {entry.lotNumber}
+                      {entry.closedAt ? (
+                        <Badge variant="neutral" className="ml-2 font-normal" title={entry.closeNote ?? undefined}>
+                          Closed{entry.closedShortage ? ` · ${entry.closedShortage} short` : ''}
+                        </Badge>
+                      ) : null}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                       {formatDate(entry.date)}
                       {entry.entryTime ? <span className="ml-1.5 text-2xs">{entry.entryTime}</span> : null}
@@ -114,9 +133,20 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                       <Badge variant={entry.isOnline ? 'info' : 'muted'}>{entry.isOnline ? 'Online' : 'Offline'}</Badge>
                     </td>
                     <td className="px-2 py-2.5">
-                      <Button variant="ghost" size="icon" aria-label={`Edit lot ${entry.lotNumber}`} disabled={!canUpdate} onClick={() => onEdit(entry)}>
+                      <Button variant="ghost" size="icon" aria-label={`Edit lot ${entry.lotNumber}`} disabled={!canUpdate || Boolean(entry.closedAt)} onClick={() => onEdit(entry)}>
                         <Pencil />
                       </Button>
+                      {canManage ? (
+                        entry.closedAt ? (
+                          <Button variant="ghost" size="icon" aria-label={`Reopen lot ${entry.lotNumber}`} title="Reopen lot" onClick={() => setReopening(entry)}>
+                            <LockOpen />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" aria-label={`Close lot ${entry.lotNumber}`} title="Close lot" onClick={() => setClosing(entry)}>
+                            <Lock />
+                          </Button>
+                        )
+                      ) : null}
                       {canDelete ? (
                         <Button variant="ghost" size="icon" aria-label={`Delete lot ${entry.lotNumber}`} className="text-destructive" onClick={() => setDeleting(entry)}>
                           <Trash2 />
@@ -139,6 +169,16 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
 
         {data ? <Pagination meta={data.pagination} onPageChange={setPage} className="border-t border-border" /> : null}
       </Card>
+      <CloseLotDialog lot={closing} onClose={() => setClosing(null)} />
+      <ConfirmDialog
+        open={reopening !== null}
+        onOpenChange={(open) => !open && setReopening(null)}
+        title={`Reopen lot ${reopening?.lotNumber ?? ''}`}
+        description="The lot will accept distribution, production, delivery and accessory entries again."
+        confirmLabel="Reopen"
+        isSubmitting={reopenMutation.isPending}
+        onConfirm={() => reopening && reopenMutation.mutate(reopening.id)}
+      />
       <DeleteLotDialog lot={deleting} canManage={canManage} onClose={() => setDeleting(null)} />
     </PageLayout>
   );

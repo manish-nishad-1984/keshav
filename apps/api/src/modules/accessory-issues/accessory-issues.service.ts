@@ -1,6 +1,7 @@
 import { badRequest, conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getCuttingEntry } from '../cutting/cutting.service';
+import { assertLotOpen } from '../cutting/lot-open';
 import { getKarigar } from '../karigars/karigars.service';
 import { assertAccessoriesExist } from '../accessories/accessories.service';
 import * as repo from './accessory-issues.repository';
@@ -123,6 +124,7 @@ const cleanLines = async (organizationId: string, lines: TransactionLine[]) => {
 
 export const createTransaction = async (organizationId: string, input: CreateTransactionInput, actorId: string | null) => {
   await Promise.all([getKarigar(organizationId, input.karigarId), getCuttingEntry(organizationId, input.cuttingEntryId)]);
+  await assertLotOpen(input.cuttingEntryId);
   const { lines: rawLines, ...header } = input;
   const lines = await cleanLines(organizationId, rawLines);
 
@@ -144,6 +146,7 @@ export const updateTransaction = async (
   actorId: string | null,
 ) => {
   const existing = await getTransaction(organizationId, id);
+  await assertLotOpen(existing.cuttingEntryId);
   const { lines: rawLines, ...header } = input;
   const lines = rawLines ? await cleanLines(organizationId, rawLines) : undefined;
 
@@ -159,6 +162,7 @@ export const updateTransaction = async (
 
 export const deleteTransaction = async (organizationId: string, id: string) => {
   const existing = await getTransaction(organizationId, id);
+  await assertLotOpen(existing.cuttingEntryId);
 
   await prisma.$transaction(async (tx) => {
     await repo.lockKarigarLot(tx, existing.karigarId, existing.cuttingEntryId);

@@ -59,7 +59,7 @@ export const findDistributionById = (organizationId: string, id: string) =>
 // Lots of a book with how many of their pieces are already distributed.
 export const listLotsWithDistributed = async (organizationId: string, bookId: string) => {
   const lots = await prisma.cuttingEntry.findMany({
-    where: { organizationId, bookId, deletedAt: null },
+    where: { organizationId, bookId, deletedAt: null, closedAt: null },
     select: {
       id: true,
       lotNumber: true,

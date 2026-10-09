@@ -25,6 +25,8 @@ export const createPaymentSchema = z.object({
   amount: z.coerce.number().positive().optional(),
   paymentMode: newPaymentModeEnum,
   remarks: z.string().optional(),
+  // The user saw the advance / duplicate warning and wants to go ahead.
+  confirmed: z.boolean().optional(),
   ...attendanceSchema,
 });
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
@@ -34,6 +36,7 @@ export const updatePaymentSchema = z.object({
   paymentMode: paymentModeEnum.optional(),
   referenceNo: z.string().optional(),
   remarks: z.string().optional(),
+  confirmed: z.boolean().optional(),
   ...attendanceSchema,
 });
 export type UpdatePaymentInput = z.infer<typeof updatePaymentSchema>;

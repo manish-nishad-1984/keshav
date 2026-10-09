@@ -1,7 +1,8 @@
-import { badRequest, notFound } from '../../lib/httpError';
+import { badRequest, conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getKarigar } from '../karigars/karigars.service';
 import * as repo from './payments.repository';
+import { getKarigarPending } from './earnings';
 import type { CreatePaymentInput, ListPaymentsQuery, UpdatePaymentInput } from './payments.schema';
 
 export const listPayments = (organizationId: string, query: ListPaymentsQuery) =>
@@ -11,6 +12,33 @@ export const getPayment = async (organizationId: string, id: string) => {
   const payment = await repo.findPaymentById(organizationId, id);
   if (!payment) throw notFound('Payment not found');
   return payment;
+};
+
+const inr = (n: number) => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+// A payment above what is owed is allowed (an advance) but only after the user confirms it.
+const assertAdvanceConfirmed = async (organizationId: string, karigarId: string, amount: number, confirmed: boolean | undefined, excludePaymentId?: string) => {
+  if (confirmed) return;
+  const pending = await getKarigarPending(organizationId, karigarId, excludePaymentId);
+  const owed = Math.max(pending, 0);
+  if (amount > owed + 0.005) {
+    throw conflict(
+      `Only ${inr(owed)} is pending for this karigar. This payment of ${inr(amount)} is ${inr(amount - owed)} more than owed and will be recorded as an advance.`,
+      'ADVANCE_CONFIRM',
+    );
+  }
+};
+
+// The same karigar, amount and mode within the last two minutes is almost always a double click.
+const assertNotDuplicate = async (organizationId: string, karigarId: string, amount: number, paymentMode: string, confirmed: boolean | undefined) => {
+  if (confirmed) return;
+  const recent = await prisma.payment.findFirst({
+    where: { organizationId, karigarId, amount, paymentMode: paymentMode as never, deletedAt: null, createdAt: { gte: new Date(Date.now() - 2 * 60_000) } },
+    select: { id: true },
+  });
+  if (recent) {
+    throw conflict('The same payment to this karigar was just recorded. Is this a second payment?', 'DUPLICATE_PAYMENT');
+  }
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -70,6 +98,8 @@ export const createPayment = async (organizationId: string, input: CreatePayment
   }
 
   if (!input.amount) throw badRequest('Enter the payment amount');
+  await assertNotDuplicate(organizationId, input.karigarId, input.amount, input.paymentMode, input.confirmed);
+  await assertAdvanceConfirmed(organizationId, input.karigarId, input.amount, input.confirmed);
   return repo.createPayment(organizationId, { ...base, amount: input.amount }, actorId);
 };
 
@@ -80,7 +110,14 @@ export const updatePayment = async (
   actorId: string | null,
 ) => {
   const existing = await getPayment(organizationId, id);
-  const { presentDays, absentDays, overtimeHours, ...rest } = input;
+  const { presentDays, absentDays, overtimeHours, confirmed, ...rest } = input;
+
+  if (existing.perDayRate !== null) {
+    // A salary payment is worked out from attendance; its amount is never typed.
+    if (rest.amount !== undefined) throw badRequest('This is a salary payment — change the present days or overtime instead of the amount');
+  } else if (rest.amount !== undefined) {
+    await assertAdvanceConfirmed(organizationId, existing.karigarId, rest.amount, confirmed, id);
+  }
 
   // A salary payment is recomputed from its attendance at the per-day rate it was made with.
   if (existing.perDayRate !== null && (presentDays !== undefined || overtimeHours !== undefined)) {

@@ -49,7 +49,7 @@ export const findTransactionById = (organizationId: string, id: string) =>
 export const listKarigarLots = async (organizationId: string, karigarId: string, bookId: string) => {
   const sums = await prisma.cuttingDistribution.groupBy({
     by: ['cuttingEntryId'],
-    where: { organizationId, karigarId, cuttingEntry: { bookId, deletedAt: null } },
+    where: { organizationId, karigarId, cuttingEntry: { bookId, deletedAt: null, closedAt: null } },
     _sum: { totalQuantity: true },
   });
   const lots = await prisma.cuttingEntry.findMany({

@@ -8,6 +8,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { FormField } from '../ui/form-field';
 import { FormAlert } from '../ui/form-alert';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '../../lib/utils';
 import type { Karigar } from '../karigars/karigar-constants';
@@ -68,9 +69,13 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
   const overtimePay = (overtime * perDay) / 8;
   const salary = round2(presentPay + overtimePay);
 
+  // Set when the server warns (advance / possible duplicate) and the user must confirm.
+  const [warning, setWarning] = useState<string | null>(null);
+
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (confirmed: boolean) =>
       apiClient.post('/payments', {
+        confirmed: confirmed || undefined,
         karigarId: form.karigarId,
         paymentMode: form.paymentMode,
         remarks: form.remarks || undefined,
@@ -86,7 +91,13 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
       void queryClient.invalidateQueries({ queryKey: ['payments'] });
       onDone();
     },
-    onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.'),
+    onError: (err) => {
+      if (err instanceof ApiRequestError && (err.code === 'ADVANCE_CONFIRM' || err.code === 'DUPLICATE_PAYMENT')) {
+        setWarning(err.message);
+        return;
+      }
+      setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.');
+    },
   });
 
   const isValid = Boolean(form.karigarId && (fixed ? monthly > 0 && salary > 0 : Number(form.amount) > 0));
@@ -102,7 +113,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
           onSubmit={(e) => {
             e.preventDefault();
             setError(null);
-            mutation.mutate();
+            mutation.mutate(false);
           }}
         >
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
@@ -251,6 +262,18 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
           </div>
         </form>
       </CardContent>
+      <ConfirmDialog
+        open={warning !== null}
+        onOpenChange={(open) => !open && setWarning(null)}
+        title="Please confirm this payment"
+        description={warning}
+        confirmLabel="Yes, record payment"
+        isSubmitting={mutation.isPending}
+        onConfirm={() => {
+          setWarning(null);
+          mutation.mutate(true);
+        }}
+      />
     </Card>
   );
 };

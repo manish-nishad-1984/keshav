@@ -71,6 +71,8 @@ export const karigarLotsQuerySchema = z.object({
 
 // Lot and karigar are fixed once saved; the grid can change (older entries without one keep theirs).
 export const updateProductionEntrySchema = z.object({
+  // The user saw the "karigar was paid after this entry" warning and wants to go ahead.
+  confirmed: z.boolean().optional(),
   date: z.coerce.date().optional(),
   entryTime: entryTimeSchema,
   quantities: quantitiesSchema.optional(),

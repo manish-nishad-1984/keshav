@@ -1,55 +1,24 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
+import { getEarningsByKarigar } from '../payments/earnings';
 
 const dateFilter = (dateFrom?: Date, dateTo?: Date): Prisma.ProductionEntryWhereInput['date'] | undefined =>
   dateFrom || dateTo ? { ...(dateFrom ? { gte: dateFrom } : {}), ...(dateTo ? { lte: dateTo } : {}) } : undefined;
 
-// A karigar can earn from up to three different roles on the same production entry (carrier,
-// overlock carrier, flatlock karigar) — same reasoning as payments.repository.ts's getLedger,
-// summed the same way (three separate groupBy calls merged, since there's no single column to
-// group by across all three roles).
+// Per-karigar report on the shared earnings (stitching, overlock, flatlock, press, salary) — the
+// same figures as the Payments ledger and the dashboard.
 export const getKarigarSummary = async (organizationId: string, dateFrom?: Date, dateTo?: Date) => {
-  const date = dateFilter(dateFrom, dateTo);
-  const baseWhere = { organizationId, deletedAt: null, ...(date ? { date } : {}) };
-  const [karigars, carrierSums, overlockSums, flatlockSums] = await Promise.all([
+  const [karigars, earnings] = await Promise.all([
     prisma.karigar.findMany({ where: { organizationId, deletedAt: null }, orderBy: { fullName: 'asc' } }),
-    prisma.productionEntry.groupBy({
-      by: ['carrierId'],
-      where: baseWhere,
-      _sum: { carrierQuantity: true, carrierTotal: true },
-    }),
-    prisma.productionEntry.groupBy({
-      by: ['overlockCarrierId'],
-      where: { ...baseWhere, overlockCarrierId: { not: null } },
-      _sum: { overlockTotal: true },
-    }),
-    prisma.productionEntry.groupBy({
-      by: ['flatlockKarigarId'],
-      where: { ...baseWhere, flatlockKarigarId: { not: null } },
-      _sum: { flatlockTotal: true },
-    }),
+    getEarningsByKarigar(organizationId, { dateFrom, dateTo }),
   ]);
-
-  const quantityByKarigar = new Map<string, number>();
-  const amountByKarigar = new Map<string, number>();
-  const addAmount = (id: string | null, amount: number) => {
-    if (!id) return;
-    amountByKarigar.set(id, (amountByKarigar.get(id) ?? 0) + amount);
-  };
-  carrierSums.forEach((s) => {
-    quantityByKarigar.set(s.carrierId, Number(s._sum.carrierQuantity ?? 0));
-    addAmount(s.carrierId, Number(s._sum.carrierTotal ?? 0));
-  });
-  overlockSums.forEach((s) => addAmount(s.overlockCarrierId, Number(s._sum.overlockTotal ?? 0)));
-  flatlockSums.forEach((s) => addAmount(s.flatlockKarigarId, Number(s._sum.flatlockTotal ?? 0)));
-
   return karigars
     .map((karigar) => ({
       karigarId: karigar.id,
       karigarName: karigar.fullName,
       karigarCode: karigar.code,
-      totalQuantity: quantityByKarigar.get(karigar.id) ?? 0,
-      totalAmount: amountByKarigar.get(karigar.id) ?? 0,
+      totalQuantity: earnings.get(karigar.id)?.pieces ?? 0,
+      totalAmount: earnings.get(karigar.id)?.total ?? 0,
     }))
     .filter((row) => row.totalQuantity > 0 || row.totalAmount > 0);
 };
@@ -86,24 +55,47 @@ export const getItemSummary = async (organizationId: string, dateFrom?: Date, da
 // serialized back to a JS Date. A plain string sidesteps that entirely; the frontend formats it
 // without ever constructing a Date from it.
 export const getMonthlySummary = async (organizationId: string, dateFrom?: Date, dateTo?: Date) => {
-  const conditions = [Prisma.sql`"organizationId" = ${organizationId}::uuid`, Prisma.sql`"deletedAt" IS NULL`];
-  if (dateFrom) conditions.push(Prisma.sql`"date" >= ${dateFrom}`);
-  if (dateTo) conditions.push(Prisma.sql`"date" <= ${dateTo}`);
-  const where = Prisma.join(conditions, ' AND ');
+  const where = (extra: Prisma.Sql[] = []) => {
+    const conditions = [Prisma.sql`"organizationId" = ${organizationId}::uuid`, Prisma.sql`"deletedAt" IS NULL`, ...extra];
+    if (dateFrom) conditions.push(Prisma.sql`"date" >= ${dateFrom}`);
+    if (dateTo) conditions.push(Prisma.sql`"date" <= ${dateTo}`);
+    return Prisma.join(conditions, ' AND ');
+  };
 
-  const rows = await prisma.$queryRaw<{ month: string; totalQuantity: number; totalAmount: string }[]>(Prisma.sql`
-    SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month,
-           SUM("carrierQuantity")::int AS "totalQuantity",
-           SUM("carrierTotal")::numeric(14,2) AS "totalAmount"
-    FROM "production_entries"
-    WHERE ${where}
-    GROUP BY month
-    ORDER BY month ASC
-  `);
+  const [production, press, salary] = await Promise.all([
+    prisma.$queryRaw<{ month: string; totalQuantity: number; totalAmount: string }[]>(Prisma.sql`
+      SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month,
+             SUM("carrierQuantity")::int AS "totalQuantity",
+             SUM("carrierTotal" + COALESCE("overlockTotal", 0) + COALESCE("flatlockTotal", 0))::numeric(14,2) AS "totalAmount"
+      FROM "production_entries"
+      WHERE ${where()}
+      GROUP BY month
+    `),
+    prisma.$queryRaw<{ month: string; totalAmount: string }[]>(Prisma.sql`
+      SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month, SUM("total")::numeric(14,2) AS "totalAmount"
+      FROM "press_entries"
+      WHERE ${where()}
+      GROUP BY month
+    `),
+    prisma.$queryRaw<{ month: string; totalAmount: string }[]>(Prisma.sql`
+      SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month, SUM("salaryAmount")::numeric(14,2) AS "totalAmount"
+      FROM "payments"
+      WHERE ${where([Prisma.sql`"salaryAmount" IS NOT NULL`])}
+      GROUP BY month
+    `),
+  ]);
 
-  return rows.map((row) => ({
-    month: row.month,
-    totalQuantity: row.totalQuantity,
-    totalAmount: Number(row.totalAmount),
-  }));
+  // Pieces are production pieces; the amount is everything earned that month (same as the ledger).
+  const months = new Map<string, { month: string; totalQuantity: number; totalAmount: number }>();
+  const row = (month: string) => {
+    let r = months.get(month);
+    if (!r) months.set(month, (r = { month, totalQuantity: 0, totalAmount: 0 }));
+    return r;
+  };
+  production.forEach((r) => {
+    row(r.month).totalQuantity += r.totalQuantity;
+    row(r.month).totalAmount += Number(r.totalAmount);
+  });
+  [...press, ...salary].forEach((r) => (row(r.month).totalAmount += Number(r.totalAmount)));
+  return [...months.values()].sort((x, y) => x.month.localeCompare(y.month));
 };

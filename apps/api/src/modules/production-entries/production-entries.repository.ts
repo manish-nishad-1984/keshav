@@ -182,7 +182,7 @@ export const lockKarigarLot = (db: Prisma.TransactionClient, karigarId: string, 
 export const listKarigarLots = async (organizationId: string, karigarId: string, bookId: string) => {
   const taken = await prisma.cuttingDistribution.groupBy({
     by: ['cuttingEntryId'],
-    where: { organizationId, karigarId, cuttingEntry: { bookId, deletedAt: null } },
+    where: { organizationId, karigarId, cuttingEntry: { bookId, deletedAt: null, closedAt: null } },
     _sum: { totalQuantity: true },
   });
   const lotIds = taken.map((t) => t.cuttingEntryId);

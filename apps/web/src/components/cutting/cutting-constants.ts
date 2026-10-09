@@ -77,6 +77,10 @@ export interface CuttingEntry {
   patternType: PatternType;
   item: { id: string; itemName: string };
   rows: CuttingEntryRow[];
+  closedAt: string | null;
+  closeReason: 'DAMAGED' | 'SHORTAGE' | 'RETURNED_BY_PARTY' | null;
+  closeNote: string | null;
+  closedShortage: number | null;
 }
 
 export const AVERAGE_UNIT_SHORT: Record<AverageUnit, string> = {

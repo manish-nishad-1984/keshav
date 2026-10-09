@@ -6,6 +6,7 @@ import { apiClient, ApiRequestError } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -123,6 +124,9 @@ export const ProductionEntryPage = () => {
   // Pieces handed in now per colour + size, keyed "colorId:sizeId".
   const [qtys, setQtys] = useState<Record<string, number | ''>>({});
   const [saved, setSaved] = useState(false);
+  // The karigar was paid after this entry: the user must confirm changing it.
+  const [paidWarning, setPaidWarning] = useState<string | null>(null);
+  const [pendingNew, setPendingNew] = useState(false);
   const { selectedBook } = useSelectedBook();
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -206,7 +210,7 @@ export const ProductionEntryPage = () => {
   const grandTotal = stitchingTotal + flatlockTotal + overlockTotal;
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (confirmed: boolean) => {
       const payload = {
         date: form.date,
         entryTime: form.entryTime || null,
@@ -216,6 +220,7 @@ export const ProductionEntryPage = () => {
         overlockCarrierId: overlockOn ? form.overlockCarrierId : null,
         overlockRate: overlockOn ? rateOrNull(form.overlockRate) : null,
         photoUrl: form.photoUrl ?? undefined,
+        confirmed: confirmed || undefined,
         remarks: form.remarks || (isEdit ? null : undefined),
         ...(hasGrid && availability
           ? {
@@ -228,7 +233,13 @@ export const ProductionEntryPage = () => {
       if (isEdit) return apiClient.patch(`/production-entries/${editId}`, payload);
       return apiClient.post('/production-entries', { ...payload, cuttingEntryId: form.cuttingEntryId, carrierId: form.carrierId });
     },
-    onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.'),
+    onError: (err) => {
+      if (err instanceof ApiRequestError && err.code === 'PAID_CHANGE') {
+        setPaidWarning(err.message);
+        return;
+      }
+      setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.');
+    },
   });
 
   useEffect(() => {
@@ -240,9 +251,10 @@ export const ProductionEntryPage = () => {
   // Older entries may predate lots; they can still be edited (e.g. to fill in rates).
   const isValid = Boolean(form.carrierId && (isEdit || form.cuttingEntryId) && form.date && form.photoUrl && quantity > 0 && !grid.over);
 
-  const save = (andNew: boolean) => {
+  const save = (andNew: boolean, confirmed = false) => {
     setError(null);
-    mutation.mutate(undefined, {
+    setPendingNew(andNew);
+    mutation.mutate(confirmed, {
       onSuccess: () => {
         void queryClient.invalidateQueries({ queryKey: ['production-entries'] });
         void queryClient.invalidateQueries({ queryKey: ['accessory-issues'] });
@@ -498,6 +510,18 @@ export const ProductionEntryPage = () => {
           </form>
         </CardContent>
       </Card>
+      <ConfirmDialog
+        open={paidWarning !== null}
+        onOpenChange={(open) => !open && setPaidWarning(null)}
+        title="Karigar was already paid"
+        description={paidWarning}
+        confirmLabel="Yes, save the change"
+        isSubmitting={mutation.isPending}
+        onConfirm={() => {
+          setPaidWarning(null);
+          save(pendingNew, true);
+        }}
+      />
     </PageLayout>
   );
 };

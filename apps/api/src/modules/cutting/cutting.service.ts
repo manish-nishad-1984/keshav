@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { conflict, notFound } from '../../lib/httpError';
+import { badRequest, conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { reserveNextLotNumber } from '../books/books.service';
 import { getParty } from '../parties/parties.service';
@@ -9,6 +9,7 @@ import { getItem } from '../items/items.service';
 import { getColor } from '../colors/colors.service';
 import { countDistributionsForCuttingEntry, sumDistributedByCell } from '../cutting-distribution/cutting-distribution.repository';
 import { lockCuttingEntry } from '../deliveries/deliveries.repository';
+import { assertLotOpen } from './lot-open';
 import * as repo from './cutting.repository';
 import type { CuttingRowData } from './cutting.repository';
 import type { CreateCuttingEntryInput, ListCuttingEntriesQuery, UpdateCuttingEntryInput } from './cutting.schema';
@@ -109,20 +110,30 @@ export const updateCuttingEntry = async (
   actorId: string | null,
 ) => {
   const existing = await getCuttingEntry(organizationId, id);
+  await assertLotOpen(id);
   await validateReferences(organizationId, input);
 
   const built = input.rows ? buildRows(input.rows) : undefined;
   const { rows: _rows, ...header } = input;
   void _rows;
 
-  if (built) await assertCoversDistributed(existing.lotNumber, id, built.rows);
+  // The design can't change once pieces were produced, nor the party once something was delivered.
+  if (input.itemId && input.itemId !== existing.itemId && (await prisma.productionEntry.count({ where: { cuttingEntryId: id, deletedAt: null } })) > 0) {
+    throw conflict('Production is already entered for this lot — its design can no longer be changed');
+  }
+  if (input.partyId && input.partyId !== existing.partyId && (await prisma.delivery.count({ where: { cuttingEntryId: id } })) > 0) {
+    throw conflict('This lot already has deliveries — its party can no longer be changed');
+  }
 
-  return repo.updateCuttingEntry(id, header, built?.rows, built?.totalQuantity, actorId);
+  // Checked inside the transaction with the lot row locked, so a distribution can't slip in between.
+  return repo.updateCuttingEntry(id, header, built?.rows, built?.totalQuantity, actorId, async (tx) => {
+    if (built) await assertCoversDistributed(existing.lotNumber, id, built.rows, tx);
+  });
 };
 
 // An edited grid must still hold every piece already handed to karigars (Cutting Distribution).
-const assertCoversDistributed = async (lotNumber: string, id: string, rows: CuttingRowData[]) => {
-  const distributed = await sumDistributedByCell(prisma, id);
+const assertCoversDistributed = async (lotNumber: string, id: string, rows: CuttingRowData[], db: Prisma.TransactionClient) => {
+  const distributed = await sumDistributedByCell(db, id);
   if (distributed.size === 0) return;
 
   const cut = new Map<string, number>();
@@ -191,4 +202,42 @@ export const deleteCuttingEntryWithEverything = async (organizationId: string, i
     await tx.cuttingEntry.delete({ where: { id } });
   });
   return summary;
+};
+
+export const CLOSE_REASONS = ['DAMAGED', 'SHORTAGE', 'RETURNED_BY_PARTY'] as const;
+
+// Closing a lot (admin): freezes it and records why the cut pieces and the delivered pieces differ.
+export const closeCuttingEntry = async (
+  organizationId: string,
+  id: string,
+  input: { reason?: (typeof CLOSE_REASONS)[number]; note?: string | null },
+  actorId: string | null,
+) => {
+  const lot = await getCuttingEntry(organizationId, id);
+  if (lot.closedAt) throw conflict(`Lot ${lot.lotNumber} is already closed`);
+  const delivered = await prisma.delivery.aggregate({ where: { cuttingEntryId: id }, _sum: { totalQuantity: true } });
+  const shortage = Math.max(lot.totalQuantity - (delivered._sum.totalQuantity ?? 0), 0);
+  if (shortage > 0 && !input.reason) {
+    throw badRequest(`${shortage} pieces of lot ${lot.lotNumber} were never delivered — choose why (damaged, shortage or returned by party)`);
+  }
+  return prisma.cuttingEntry.update({
+    where: { id },
+    data: {
+      closedAt: new Date(),
+      closeReason: shortage > 0 ? input.reason : (input.reason ?? null),
+      closeNote: input.note?.trim() || null,
+      closedShortage: shortage,
+      closedById: actorId,
+      updatedById: actorId ?? undefined,
+    },
+  });
+};
+
+export const reopenCuttingEntry = async (organizationId: string, id: string, actorId: string | null) => {
+  const lot = await getCuttingEntry(organizationId, id);
+  if (!lot.closedAt) throw conflict(`Lot ${lot.lotNumber} is not closed`);
+  return prisma.cuttingEntry.update({
+    where: { id },
+    data: { closedAt: null, closeReason: null, closeNote: null, closedShortage: null, closedById: null, updatedById: actorId ?? undefined },
+  });
 };

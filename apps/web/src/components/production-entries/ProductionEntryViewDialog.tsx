@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2, ImageOff } from 'lucide-react';
-import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
+import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -34,9 +34,18 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Set when the server warns that the karigar was paid after this entry (or the lot is closed).
+  const [deleteWarning, setDeleteWarning] = useState<{ message: string; canForce: boolean } | null>(null);
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiClient.delete(`/production-entries/${id}`),
+    mutationFn: ({ id, confirmed }: { id: string; confirmed: boolean }) =>
+      apiClient.delete(`/production-entries/${id}${confirmed ? '?confirmed=true' : ''}`),
+    onError: (err) =>
+      setDeleteWarning({
+        message: err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.',
+        canForce: err instanceof ApiRequestError && err.code === 'PAID_CHANGE',
+      }),
     onSuccess: () => {
+      setDeleteWarning(null);
       void queryClient.invalidateQueries({ queryKey: ['production-entries'] });
       setConfirmOpen(false);
       onOpenChange(false);
@@ -155,13 +164,16 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
 
       <ConfirmDialog
         open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) setDeleteWarning(null);
+        }}
         title="Delete production entry"
-        description="This cannot be undone."
-        confirmLabel="Delete"
+        description={deleteWarning ? deleteWarning.message : 'This cannot be undone.'}
+        confirmLabel={deleteWarning?.canForce ? 'Yes, delete anyway' : 'Delete'}
         tone="destructive"
         isSubmitting={deleteMutation.isPending}
-        onConfirm={() => entry && deleteMutation.mutate(entry.id)}
+        onConfirm={() => entry && deleteMutation.mutate({ id: entry.id, confirmed: Boolean(deleteWarning?.canForce) })}
       />
     </>
   );

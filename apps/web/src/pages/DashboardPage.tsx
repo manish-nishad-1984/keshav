@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Users, Layers, Wallet, HandCoins, ImageOff, TrendingUp, PieChart as PieChartIcon, Trophy } from 'lucide-react';
+import { AlertTriangle, Users, Layers, Wallet, HandCoins, ImageOff, TrendingUp, PieChart as PieChartIcon, Trophy } from 'lucide-react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { LoadingState } from '../components/ui/loading-state';
 import { formatDate } from '../lib/date';
 import { cn } from '../lib/utils';
+import { Link } from 'react-router-dom';
 import { LotStatusCard } from '../components/dashboard/LotStatusCard';
 
 interface TopKarigar {
@@ -47,6 +48,7 @@ interface DashboardSummary {
   todayPieces: number;
   todayAmount: number;
   pendingPayment: number;
+  entriesWithoutRate: number;
   productionTrend: TrendPoint[];
   topKarigars: TopKarigar[];
   workTypeBreakdown: WorkTypeSlice[];
@@ -114,6 +116,18 @@ export const DashboardPage = () => {
               );
             })}
           </div>
+
+          {data && data.entriesWithoutRate > 0 ? (
+            <Link
+              to="/production-history"
+              className="flex items-center gap-3 rounded-lg border border-status-warning/40 bg-status-warning/10 px-4 py-3 text-sm font-medium text-status-warning hover:bg-status-warning/15"
+            >
+              <AlertTriangle className="size-5 shrink-0" />
+              <span>
+                <span className="numeric font-semibold">{data.entriesWithoutRate}</span> production entries have no rate yet, so the karigar&apos;s wage for them is ₹0. Tap to open and fill the rates.
+              </span>
+            </Link>
+          ) : null}
 
           <LotStatusCard />
 

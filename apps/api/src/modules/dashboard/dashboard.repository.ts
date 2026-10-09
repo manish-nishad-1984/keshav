@@ -1,4 +1,6 @@
 import { prisma } from '../../lib/prisma';
+import { getLedger } from '../payments/payments.repository';
+import { getEarningsByKarigar } from '../payments/earnings';
 
 // `date` columns are stored as UTC-midnight instants of the calendar day the user picked (a plain
 // "YYYY-MM-DD" input parses that way per the JS Date spec — see ProductionEntryPage's date input).
@@ -29,33 +31,48 @@ const daysAgo = (n: number) => {
   return utcMidnight(localDateKey(d));
 };
 
+// Production entries whose wage is still ₹0 because a rate was left empty (stitching, or a chosen
+// overlock / flatlock karigar).
+export const countEntriesWithoutRate = (organizationId: string) =>
+  prisma.productionEntry.count({
+    where: {
+      organizationId,
+      deletedAt: null,
+      OR: [
+        { carrierRate: null },
+        { carrierRate: 0 },
+        { overlockCarrierId: { not: null }, overlockRate: null },
+        { flatlockKarigarId: { not: null }, flatlockRate: null },
+      ],
+    },
+  });
+
 export const getCounts = async (organizationId: string) => {
   const today = startOfToday();
 
-  const [totalKarigars, todayAgg, allTimeProduction, allTimePayments] = await Promise.all([
+  const [totalKarigars, todayAgg, todayPress, ledger, pendingRates] = await Promise.all([
     prisma.karigar.count({ where: { organizationId, deletedAt: null, isActive: true } }),
     prisma.productionEntry.aggregate({
       where: { organizationId, deletedAt: null, date: today },
-      _sum: { carrierQuantity: true, carrierTotal: true },
+      _sum: { carrierQuantity: true, carrierTotal: true, overlockTotal: true, flatlockTotal: true },
     }),
-    prisma.productionEntry.aggregate({
-      where: { organizationId, deletedAt: null },
-      _sum: { carrierTotal: true },
-    }),
-    prisma.payment.aggregate({
-      where: { organizationId, deletedAt: null },
-      _sum: { amount: true },
-    }),
+    prisma.pressEntry.aggregate({ where: { organizationId, deletedAt: null, date: today }, _sum: { total: true } }),
+    getLedger(organizationId),
+    countEntriesWithoutRate(organizationId),
   ]);
-
-  const totalProduced = Number(allTimeProduction._sum.carrierTotal ?? 0);
-  const totalPaid = Number(allTimePayments._sum.amount ?? 0);
 
   return {
     totalKarigars,
     todayPieces: todayAgg._sum.carrierQuantity ?? 0,
-    todayAmount: Number(todayAgg._sum.carrierTotal ?? 0),
-    pendingPayment: Math.max(totalProduced - totalPaid, 0),
+    // Everything earned today: stitching + overlock + flatlock + press.
+    todayAmount:
+      Number(todayAgg._sum.carrierTotal ?? 0) +
+      Number(todayAgg._sum.overlockTotal ?? 0) +
+      Number(todayAgg._sum.flatlockTotal ?? 0) +
+      Number(todayPress._sum.total ?? 0),
+    // Same figure as the Payments ledger: what is still owed to karigars (advances don't reduce it).
+    pendingPayment: ledger.reduce((sum, row) => sum + Math.max(row.pending, 0), 0),
+    entriesWithoutRate: pendingRates,
   };
 };
 
@@ -88,34 +105,27 @@ export const getProductionTrend = async (organizationId: string) => {
   return result;
 };
 
+// Top earners this month, on the same earnings as the ledger.
 export const getTopKarigars = async (organizationId: string, limit = 5) => {
-  const month = startOfMonth();
-
-  const sums = await prisma.productionEntry.groupBy({
-    by: ['carrierId'],
-    where: { organizationId, deletedAt: null, date: { gte: month } },
-    _sum: { carrierQuantity: true, carrierTotal: true },
-    orderBy: { _sum: { carrierTotal: 'desc' } },
-    take: limit,
-  });
-
-  if (sums.length === 0) return [];
+  const earnings = await getEarningsByKarigar(organizationId, { dateFrom: startOfMonth() });
+  const top = [...earnings.entries()].sort((x, y) => y[1].total - x[1].total).filter(([, e]) => e.total > 0 || e.pieces > 0).slice(0, limit);
+  if (top.length === 0) return [];
 
   const karigars = await prisma.karigar.findMany({
-    where: { id: { in: sums.map((s) => s.carrierId) } },
+    where: { id: { in: top.map(([id]) => id) } },
     select: { id: true, fullName: true, code: true, photoUrl: true },
   });
   const karigarMap = new Map(karigars.map((k) => [k.id, k]));
 
-  return sums.map((s) => {
-    const karigar = karigarMap.get(s.carrierId);
+  return top.map(([id, e]) => {
+    const karigar = karigarMap.get(id);
     return {
-      karigarId: s.carrierId,
+      karigarId: id,
       karigarName: karigar?.fullName ?? 'Unknown',
       karigarCode: karigar?.code ?? '',
       photoUrl: karigar?.photoUrl ?? null,
-      totalQuantity: s._sum.carrierQuantity ?? 0,
-      totalAmount: Number(s._sum.carrierTotal ?? 0),
+      totalQuantity: e.pieces,
+      totalAmount: e.total,
     };
   });
 };
@@ -146,7 +156,7 @@ export const getWorkTypeBreakdown = async (organizationId: string) => {
     .sort((a, b) => b.totalQuantity - a.totalQuantity);
 };
 
-export type LotStage = 'not_given' | 'with_karigars' | 'in_production' | 'ready' | 'delivered';
+export type LotStage = 'not_given' | 'with_karigars' | 'in_production' | 'ready' | 'delivered' | 'closed';
 
 // One line per lot of the book: cut, given to karigars, finished, delivered, and where each karigar
 // stands. "With karigar" is what was given minus what they handed in.
@@ -159,6 +169,9 @@ export const getLotStatus = async (organizationId: string, bookId?: string) => {
       date: true,
       totalQuantity: true,
       isOnline: true,
+      closedAt: true,
+      closeReason: true,
+      closedShortage: true,
       item: { select: { itemName: true } },
       party: { select: { name: true } },
     },
@@ -188,8 +201,9 @@ export const getLotStatus = async (organizationId: string, bookId?: string) => {
     const distributed = rows.reduce((s, r) => s + r.given, 0);
     const produced = rows.reduce((s, r) => s + r.handedIn, 0);
     const deliveredQty = deliveredBy.get(lot.id) ?? 0;
-    const stage: LotStage =
-      deliveredQty > 0 && deliveredQty >= lot.totalQuantity
+    const stage: LotStage = lot.closedAt
+      ? 'closed'
+      : deliveredQty > 0 && deliveredQty >= lot.totalQuantity
         ? 'delivered'
         : produced >= lot.totalQuantity && produced > deliveredQty
           ? 'ready'
@@ -212,6 +226,8 @@ export const getLotStatus = async (organizationId: string, bookId?: string) => {
       readyToDeliver: Math.max(produced - deliveredQty, 0),
       delivered: deliveredQty,
       stage,
+      closeReason: lot.closeReason,
+      closedShortage: lot.closedShortage,
       karigars: rows.sort((a, b) => b.pending - a.pending),
     };
   });

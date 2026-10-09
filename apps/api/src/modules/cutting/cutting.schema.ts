@@ -69,3 +69,9 @@ export const updateCuttingEntrySchema = z.object({
   rows: z.array(cuttingRowSchema).min(1).optional(),
 });
 export type UpdateCuttingEntryInput = z.infer<typeof updateCuttingEntrySchema>;
+
+// Closing a lot: why the undelivered pieces are missing (required only when there are any).
+export const closeLotSchema = z.object({
+  reason: z.enum(['DAMAGED', 'SHORTAGE', 'RETURNED_BY_PARTY']).optional(),
+  note: z.string().trim().max(500).nullable().optional(),
+});

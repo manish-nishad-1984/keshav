@@ -33,7 +33,7 @@ export const update = async (req: Request, res: Response) => {
 };
 
 export const remove = async (req: Request, res: Response) => {
-  await service.deleteProductionEntry(req.auth!.organizationId, req.params.id, req.auth!.userId);
+  await service.deleteProductionEntry(req.auth!.organizationId, req.params.id, req.auth!.userId, req.query.confirmed === 'true');
   ok(res, { deleted: true });
 };
 

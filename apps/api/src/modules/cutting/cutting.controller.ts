@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { ok, okList } from '../../lib/response';
 import {
+  closeLotSchema,
   createCuttingEntrySchema,
   listCuttingEntriesQuerySchema,
   lotLookupQuerySchema,
@@ -48,4 +49,13 @@ export const deletionSummary = async (req: Request, res: Response) => {
 
 export const removeWithEverything = async (req: Request, res: Response) => {
   ok(res, await service.deleteCuttingEntryWithEverything(req.auth!.organizationId, req.params.id));
+};
+
+export const close = async (req: Request, res: Response) => {
+  const input = closeLotSchema.parse(req.body);
+  ok(res, await service.closeCuttingEntry(req.auth!.organizationId, req.params.id, input, req.auth!.userId));
+};
+
+export const reopen = async (req: Request, res: Response) => {
+  ok(res, await service.reopenCuttingEntry(req.auth!.organizationId, req.params.id, req.auth!.userId));
 };

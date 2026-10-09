@@ -1,6 +1,7 @@
 import { badRequest, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getCuttingEntry } from '../cutting/cutting.service';
+import { assertLotOpen } from '../cutting/lot-open';
 import { describeLot } from '../cutting-distribution/cutting-distribution.service';
 import * as repo from './deliveries.repository';
 import type { DeliveryCell } from './deliveries.repository';
@@ -97,6 +98,7 @@ const checkCells = async (
 
 export const createDelivery = async (organizationId: string, input: CreateDeliveryInput, actorId: string | null) => {
   const { cuttingEntryId, quantities, ...header } = input;
+  await assertLotOpen(cuttingEntryId);
 
   return prisma.$transaction(async (tx) => {
     await repo.lockCuttingEntry(tx, cuttingEntryId);
@@ -114,6 +116,7 @@ export const createDelivery = async (organizationId: string, input: CreateDelive
 
 export const updateDelivery = async (organizationId: string, id: string, input: UpdateDeliveryInput, actorId: string | null) => {
   const existing = await getDelivery(organizationId, id);
+  await assertLotOpen(existing.cuttingEntryId);
   const { quantities, ...header } = input;
 
   return prisma.$transaction(async (tx) => {
@@ -128,6 +131,7 @@ export const updateDelivery = async (organizationId: string, id: string, input: 
 };
 
 export const deleteDelivery = async (organizationId: string, id: string) => {
-  await getDelivery(organizationId, id);
+  const existing = await getDelivery(organizationId, id);
+  await assertLotOpen(existing.cuttingEntryId);
   await prisma.delivery.delete({ where: { id } });
 };

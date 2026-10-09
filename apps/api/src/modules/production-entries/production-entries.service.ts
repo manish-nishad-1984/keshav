@@ -1,7 +1,8 @@
-import { badRequest, notFound } from '../../lib/httpError';
+import { badRequest, conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getKarigar } from '../karigars/karigars.service';
 import { getCuttingEntry } from '../cutting/cutting.service';
+import { assertLotOpen } from '../cutting/lot-open';
 import { describeLot } from '../cutting-distribution/cutting-distribution.service';
 import { assertDeliveriesCovered, lockCuttingEntry } from '../deliveries/deliveries.repository';
 import * as repo from './production-entries.repository';
@@ -102,6 +103,28 @@ const checkCells = async (
   return cells;
 };
 
+// Changing wages after the karigar was paid moves what they are owed, so the user has to confirm it.
+// "Paid after" = a payment recorded later than the entry itself, to any karigar on the entry.
+const assertPaidChangeConfirmed = async (
+  entry: { createdAt: Date; carrierId: string; overlockCarrierId: string | null; flatlockKarigarId: string | null },
+  extraKarigarIds: (string | null | undefined)[],
+  confirmed: boolean | undefined,
+) => {
+  if (confirmed) return;
+  const ids = [entry.carrierId, entry.overlockCarrierId, entry.flatlockKarigarId, ...extraKarigarIds].filter((id): id is string => Boolean(id));
+  const paid = await prisma.payment.findMany({
+    where: { karigarId: { in: ids }, deletedAt: null, createdAt: { gt: entry.createdAt } },
+    select: { karigar: { select: { fullName: true } } },
+    distinct: ['karigarId'],
+  });
+  if (paid.length) {
+    throw conflict(
+      `${paid.map((p) => p.karigar.fullName).join(', ')} was paid after this entry was made. Changing it will change what they are owed. Do you want to continue?`,
+      'PAID_CHANGE',
+    );
+  }
+};
+
 // Each stage's total is its rate × the entry's quantity; an empty rate (to be filled in later)
 // leaves the stitching total at 0 and the overlock/flatlock totals empty.
 const stageTotals = (
@@ -135,7 +158,10 @@ export const createProductionEntry = async (
     flatlockRate: input.flatlockKarigarId ? (input.flatlockRate ?? null) : null,
   };
 
+  await assertLotOpen(lot.id);
+
   return prisma.$transaction(async (tx) => {
+    await lockCuttingEntry(tx, lot.id);
     await repo.lockKarigarLot(tx, input.carrierId, lot.id);
     const { taken } = await repo.piecesTakenAndProduced(tx, input.carrierId, lot.id);
     if (taken === 0) {
@@ -176,6 +202,19 @@ export const updateProductionEntry = async (
   actorId: string | null,
 ) => {
   const existing = await getProductionEntry(organizationId, id);
+  await assertLotOpen(existing.cuttingEntryId);
+  // Only a real change to pieces, rates or the finishing karigars counts (not date, photo or remarks).
+  const num = (v: unknown) => Number(v ?? 0);
+  const gridKey = (cells: { colorId: string; sizeId: string; quantity: number }[]) =>
+    cells.filter((c) => c.quantity > 0).map((c) => `${c.colorId}:${c.sizeId}=${c.quantity}`).sort().join('|');
+  const changesWages =
+    (input.quantities !== undefined && gridKey(input.quantities) !== gridKey(existing.quantities)) ||
+    (input.carrierRate !== undefined && num(input.carrierRate) !== num(existing.carrierRate)) ||
+    (input.overlockRate !== undefined && num(input.overlockRate) !== num(existing.overlockRate)) ||
+    (input.flatlockRate !== undefined && num(input.flatlockRate) !== num(existing.flatlockRate)) ||
+    (input.overlockCarrierId !== undefined && (input.overlockCarrierId ?? null) !== existing.overlockCarrierId) ||
+    (input.flatlockKarigarId !== undefined && (input.flatlockKarigarId ?? null) !== existing.flatlockKarigarId);
+  if (changesWages) await assertPaidChangeConfirmed(existing, [input.overlockCarrierId, input.flatlockKarigarId], input.confirmed);
 
   await Promise.all([
     input.overlockCarrierId ? getKarigar(organizationId, input.overlockCarrierId) : Promise.resolve(),
@@ -225,8 +264,10 @@ export const updateProductionEntry = async (
   });
 };
 
-export const deleteProductionEntry = async (organizationId: string, id: string, actorId: string | null) => {
+export const deleteProductionEntry = async (organizationId: string, id: string, actorId: string | null, confirmed?: boolean) => {
   const existing = await getProductionEntry(organizationId, id);
+  await assertLotOpen(existing.cuttingEntryId);
+  await assertPaidChangeConfirmed(existing, [], confirmed);
   const { cuttingEntryId } = existing;
   if (!cuttingEntryId) {
     await repo.softDeleteProductionEntry(id, actorId);

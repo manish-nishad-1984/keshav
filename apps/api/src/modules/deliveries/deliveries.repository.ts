@@ -71,7 +71,7 @@ export const findOrganizationHeader = (organizationId: string) =>
 export const listLotsWithProduction = async (organizationId: string, bookId: string) => {
   const produced = await prisma.productionEntry.groupBy({
     by: ['cuttingEntryId'],
-    where: { organizationId, deletedAt: null, cuttingEntry: { bookId, deletedAt: null } },
+    where: { organizationId, deletedAt: null, cuttingEntry: { bookId, deletedAt: null, closedAt: null } },
     _sum: { carrierQuantity: true },
   });
   const lotIds = produced.map((p) => p.cuttingEntryId).filter((id): id is string => Boolean(id));

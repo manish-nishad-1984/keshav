@@ -11,7 +11,7 @@ import { useSelectedBook } from '../../hooks/use-selected-book';
 import { formatDate } from '../../lib/date';
 import { cn } from '../../lib/utils';
 
-type Stage = 'not_given' | 'with_karigars' | 'in_production' | 'ready' | 'delivered';
+type Stage = 'not_given' | 'with_karigars' | 'in_production' | 'ready' | 'delivered' | 'closed';
 
 interface LotStatus {
   id: string;
@@ -27,21 +27,25 @@ interface LotStatus {
   readyToDeliver: number;
   delivered: number;
   stage: Stage;
+  closeReason: 'DAMAGED' | 'SHORTAGE' | 'RETURNED_BY_PARTY' | null;
+  closedShortage: number | null;
   karigars: { karigarId: string; name: string; workType: string; given: number; handedIn: number; pending: number }[];
 }
 
-const STAGES: Record<Stage, { label: string; variant: 'muted' | 'warning' | 'info' | 'progress' | 'success' }> = {
+const STAGES: Record<Stage, { label: string; variant: 'muted' | 'warning' | 'info' | 'progress' | 'success' | 'neutral' }> = {
   not_given: { label: 'Cut — not given yet', variant: 'muted' },
   with_karigars: { label: 'With karigars', variant: 'warning' },
   in_production: { label: 'Production running', variant: 'info' },
   ready: { label: 'Ready to deliver', variant: 'progress' },
   delivered: { label: 'Delivered', variant: 'success' },
+  closed: { label: 'Closed', variant: 'neutral' },
 };
 
 const FILTERS = [
   { key: 'running', label: 'Running' },
   { key: 'all', label: 'All lots' },
   { key: 'delivered', label: 'Delivered' },
+  { key: 'closed', label: 'Closed' },
 ] as const;
 
 export const LotStatusCard = () => {
@@ -55,7 +59,7 @@ export const LotStatusCard = () => {
     enabled: Boolean(selectedBook),
   });
 
-  const lots = (data ?? []).filter((l) => (filter === 'all' ? true : filter === 'delivered' ? l.stage === 'delivered' : l.stage !== 'delivered'));
+  const lots = (data ?? []).filter((l) => (filter === 'all' ? true : filter === 'running' ? l.stage !== 'delivered' && l.stage !== 'closed' : l.stage === filter));
 
   return (
     <Card>
@@ -126,6 +130,11 @@ export const LotStatusCard = () => {
                         </td>
                         <td className="px-2 py-2">
                           <Badge variant={stage.variant}>{stage.label}</Badge>
+                          {lot.stage === 'closed' && lot.closedShortage ? (
+                            <span className="mt-0.5 block text-2xs text-muted-foreground">
+                              {lot.closedShortage} not delivered{lot.closeReason ? ` — ${lot.closeReason === 'DAMAGED' ? 'damaged' : lot.closeReason === 'SHORTAGE' ? 'shortage' : 'returned by party'}` : ''}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="px-2 py-2 text-center"><QtyChip tone="total" size="sm" value={lot.cut} /></td>
                         <td className="px-2 py-2 text-center"><QtyChip tone="earlier" size="sm" value={lot.notGiven} /></td>

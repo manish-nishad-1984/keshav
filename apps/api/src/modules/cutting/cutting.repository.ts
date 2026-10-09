@@ -124,8 +124,12 @@ export const updateCuttingEntry = (
   rows: CuttingRowData[] | undefined,
   totalQuantity: number | undefined,
   updatedById: string | null,
+  // Runs inside the transaction once the lot row is locked (e.g. checks against distributions).
+  guard?: (tx: Prisma.TransactionClient) => Promise<void>,
 ) =>
   prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT 1 FROM "cutting_entries" WHERE "id" = ${id}::uuid FOR UPDATE`;
+    if (guard) await guard(tx);
     if (rows) {
       await tx.cuttingEntryRow.deleteMany({ where: { cuttingEntryId: id } });
     }

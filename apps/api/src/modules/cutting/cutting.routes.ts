@@ -24,3 +24,5 @@ cuttingRouter.delete('/:id', requirePermission('cutting:delete'), asyncHandler(c
 // Admin reset of a lot: lists, then removes, everything entered against it.
 cuttingRouter.get('/:id/deletion-summary', requirePermission('cutting:manage'), asyncHandler(controller.deletionSummary));
 cuttingRouter.delete('/:id/everything', requirePermission('cutting:manage'), asyncHandler(controller.removeWithEverything));
+cuttingRouter.post('/:id/close', requirePermission('cutting:manage'), asyncHandler(controller.close));
+cuttingRouter.post('/:id/reopen', requirePermission('cutting:manage'), asyncHandler(controller.reopen));

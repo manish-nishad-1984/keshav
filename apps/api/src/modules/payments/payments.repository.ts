@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
 import type { Prisma } from '@prisma/client';
+import { getEarningsByKarigar, getPaidByKarigar } from './earnings';
 
 export const listPayments = async (
   organizationId: string,
@@ -80,62 +81,17 @@ export const softDeletePayment = (id: string, updatedById: string | null) =>
   prisma.payment.update({ where: { id }, data: { deletedAt: new Date(), updatedById: updatedById ?? undefined } });
 
 // One row per active karigar (even those with zero production or payments, matching the mockup's
-// ledger which lists every karigar), aggregated via groupBy queries rather than a per-karigar N+1
-// loop. A karigar can now earn from up to three different roles on the same production entry
-// (carrier, overlock carrier, flatlock karigar), so each role is summed separately and merged —
-// there's no single column to group by across all three.
+// ledger which lists every karigar). Earnings come from the shared earnings function so the
+// dashboard and reports show the same figures.
 export const getLedger = async (organizationId: string) => {
-  const [karigars, carrierSums, overlockSums, flatlockSums, pressSums, salarySums, paymentSums] = await Promise.all([
+  const [karigars, earnings, paidByKarigar] = await Promise.all([
     prisma.karigar.findMany({ where: { organizationId, deletedAt: null }, orderBy: { fullName: 'asc' } }),
-    prisma.productionEntry.groupBy({
-      by: ['carrierId'],
-      where: { organizationId, deletedAt: null },
-      _sum: { carrierTotal: true },
-    }),
-    prisma.productionEntry.groupBy({
-      by: ['overlockCarrierId'],
-      where: { organizationId, deletedAt: null, overlockCarrierId: { not: null } },
-      _sum: { overlockTotal: true },
-    }),
-    prisma.productionEntry.groupBy({
-      by: ['flatlockKarigarId'],
-      where: { organizationId, deletedAt: null, flatlockKarigarId: { not: null } },
-      _sum: { flatlockTotal: true },
-    }),
-    // Press karigars earn from Press Entry, not from production entries.
-    prisma.pressEntry.groupBy({
-      by: ['karigarId'],
-      where: { organizationId, deletedAt: null },
-      _sum: { total: true },
-    }),
-    // A Fixed karigar's salary is earned when it is worked out at payment time.
-    prisma.payment.groupBy({
-      by: ['karigarId'],
-      where: { organizationId, deletedAt: null, salaryAmount: { not: null } },
-      _sum: { salaryAmount: true },
-    }),
-    prisma.payment.groupBy({
-      by: ['karigarId'],
-      where: { organizationId, deletedAt: null },
-      _sum: { amount: true },
-    }),
+    getEarningsByKarigar(organizationId),
+    getPaidByKarigar(organizationId),
   ]);
 
-  const totalByKarigar = new Map<string, number>();
-  const addAmount = (id: string | null, amount: number) => {
-    if (!id) return;
-    totalByKarigar.set(id, (totalByKarigar.get(id) ?? 0) + amount);
-  };
-  carrierSums.forEach((row) => addAmount(row.carrierId, Number(row._sum.carrierTotal ?? 0)));
-  overlockSums.forEach((row) => addAmount(row.overlockCarrierId, Number(row._sum.overlockTotal ?? 0)));
-  flatlockSums.forEach((row) => addAmount(row.flatlockKarigarId, Number(row._sum.flatlockTotal ?? 0)));
-  pressSums.forEach((row) => addAmount(row.karigarId, Number(row._sum.total ?? 0)));
-  salarySums.forEach((row) => addAmount(row.karigarId, Number(row._sum.salaryAmount ?? 0)));
-
-  const paidByKarigar = new Map(paymentSums.map((row) => [row.karigarId, Number(row._sum.amount ?? 0)]));
-
   return karigars.map((karigar) => {
-    const totalAmount = totalByKarigar.get(karigar.id) ?? 0;
+    const totalAmount = earnings.get(karigar.id)?.total ?? 0;
     const paidAmount = paidByKarigar.get(karigar.id) ?? 0;
     return {
       karigarId: karigar.id,

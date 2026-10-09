@@ -582,6 +582,13 @@ model CuttingEntry {
   // Legacy: lots created before rates were removed (Oct 2026) keep their old amount; new lots
   // leave it null.
   totalAmount    Decimal?    @db.Decimal(12, 2)
+  // Closing a lot (admin): no more distribution / production / delivery / accessory entries.
+  // closeReason is DAMAGED, SHORTAGE or RETURNED_BY_PARTY; closedShortage = cut - delivered then.
+  closedAt       DateTime?
+  closeReason    String?
+  closeNote      String?
+  closedShortage Int?
+  closedById     String?     @db.Uuid
   deletedAt      DateTime?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
