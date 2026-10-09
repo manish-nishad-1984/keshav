@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { ok, okList } from '../../lib/response';
 import {
   createProductionEntrySchema,
+  availabilityQuerySchema,
   karigarLotsQuerySchema,
   listProductionEntriesQuerySchema,
   updateProductionEntrySchema,
@@ -39,4 +40,9 @@ export const remove = async (req: Request, res: Response) => {
 export const karigarLots = async (req: Request, res: Response) => {
   const { karigarId, bookId } = karigarLotsQuerySchema.parse(req.query);
   ok(res, await service.listKarigarLots(req.auth!.organizationId, karigarId, bookId));
+};
+
+export const availability = async (req: Request, res: Response) => {
+  const { karigarId, cuttingEntryId, excludeId } = availabilityQuerySchema.parse(req.query);
+  ok(res, await service.getAvailability(req.auth!.organizationId, karigarId, cuttingEntryId, excludeId));
 };

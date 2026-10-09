@@ -103,35 +103,15 @@ export const listLotsWithProduction = async (organizationId: string, bookId: str
   }));
 };
 
-// Finished pieces of a lot per colour + size, keyed "colorId:sizeId". Production is entered per
-// karigar as a count (always everything they still had pending), so each karigar's count is laid
-// over their distributions oldest first — that gives exactly the colours and sizes they finished.
+// Finished pieces of a lot per colour + size, keyed "colorId:sizeId": what the stitching karigars
+// handed in as production.
 export const sumProducedByCell = async (db: Prisma.TransactionClient, cuttingEntryId: string) => {
-  const [distributions, produced] = await Promise.all([
-    db.cuttingDistribution.findMany({
-      where: { cuttingEntryId },
-      select: { karigarId: true, quantities: { select: { colorId: true, sizeId: true, quantity: true } } },
-      orderBy: { createdAt: 'asc' },
-    }),
-    db.productionEntry.groupBy({
-      by: ['carrierId'],
-      where: { cuttingEntryId, deletedAt: null },
-      _sum: { carrierQuantity: true },
-    }),
-  ]);
-  const left = new Map(produced.map((p) => [p.carrierId, p._sum.carrierQuantity ?? 0]));
-  const cells = new Map<string, number>();
-  for (const distribution of distributions) {
-    for (const q of distribution.quantities) {
-      const available = left.get(distribution.karigarId) ?? 0;
-      if (available <= 0) break;
-      const take = Math.min(available, q.quantity);
-      left.set(distribution.karigarId, available - take);
-      const key = cellKey(q.colorId, q.sizeId);
-      cells.set(key, (cells.get(key) ?? 0) + take);
-    }
-  }
-  return cells;
+  const sums = await db.productionEntryQuantity.groupBy({
+    by: ['colorId', 'sizeId'],
+    where: { productionEntry: { cuttingEntryId, deletedAt: null } },
+    _sum: { quantity: true },
+  });
+  return new Map(sums.map((s) => [cellKey(s.colorId, s.sizeId), s._sum.quantity ?? 0]));
 };
 
 // Pieces already delivered per colour + size of a lot, keyed "colorId:sizeId".

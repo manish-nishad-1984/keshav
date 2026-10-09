@@ -2,13 +2,20 @@ import { badRequest, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getKarigar } from '../karigars/karigars.service';
 import { getCuttingEntry } from '../cutting/cutting.service';
+import { describeLot } from '../cutting-distribution/cutting-distribution.service';
 import { assertDeliveriesCovered, lockCuttingEntry } from '../deliveries/deliveries.repository';
 import * as repo from './production-entries.repository';
+import type { ProductionCell } from './production-entries.repository';
 import type {
   CreateProductionEntryInput,
   ListProductionEntriesQuery,
   UpdateProductionEntryInput,
 } from './production-entries.schema';
+
+type CuttingEntryWithRows = Awaited<ReturnType<typeof getCuttingEntry>>;
+
+const cellKey = (colorId: string, sizeId: string) => `${colorId}:${sizeId}`;
+const sumCells = (cells: ProductionCell[]) => cells.reduce((sum, c) => sum + c.quantity, 0);
 
 // Never trust a client-supplied total — always derive it from quantity * rate server-side.
 const computeTotal = (quantity: number, rate: number) => Math.round(quantity * rate * 100) / 100;
@@ -34,6 +41,67 @@ export const listKarigarLots = async (organizationId: string, karigarId: string,
   return repo.listKarigarLots(organizationId, karigarId, bookId);
 };
 
+// The grid for the form: the colour × size cells the karigar took, what they already handed in
+// (other entries) and what is still with them.
+export const getAvailability = async (organizationId: string, karigarId: string, cuttingEntryId: string, excludeId?: string) => {
+  const [entry, karigar] = await Promise.all([getCuttingEntry(organizationId, cuttingEntryId), getKarigar(organizationId, karigarId)]);
+  const { colors, sizes } = describeLot(entry);
+  const [given, handedIn] = await Promise.all([
+    repo.sumGivenByCell(prisma, karigarId, cuttingEntryId),
+    repo.sumHandedInByCell(prisma, karigarId, cuttingEntryId, excludeId),
+  ]);
+
+  return {
+    cuttingEntry: {
+      id: entry.id,
+      lotNumber: entry.lotNumber,
+      isOnline: entry.isOnline,
+      item: { id: entry.item.id, itemName: entry.item.itemName },
+      party: { id: entry.party.id, name: entry.party.name },
+    },
+    karigar: { id: karigar.id, fullName: karigar.fullName },
+    sizes: sizes.map(({ id, name, detail }) => ({ id, name, detail })),
+    colors: colors.map((color) => ({
+      ...color,
+      cells: sizes.map((size) => {
+        const key = cellKey(color.colorId, size.id);
+        const took = given.get(key) ?? 0;
+        const done = handedIn.get(key) ?? 0;
+        return { sizeId: size.id, given: took, handedIn: done, remaining: Math.max(took - done, 0) };
+      }),
+    })),
+  };
+};
+
+// Drops empty cells and checks the rest against what the karigar took and has not yet handed in.
+const checkCells = async (
+  db: Parameters<typeof repo.sumGivenByCell>[0],
+  entry: CuttingEntryWithRows,
+  karigarId: string,
+  input: ProductionCell[],
+  excludeId?: string,
+): Promise<ProductionCell[]> => {
+  const cells = input.filter((c) => c.quantity > 0);
+  const { colors, sizes } = describeLot(entry);
+  const [given, handedIn] = await Promise.all([
+    repo.sumGivenByCell(db, karigarId, entry.id),
+    repo.sumHandedInByCell(db, karigarId, entry.id, excludeId),
+  ]);
+  const colorName = (id: string) => colors.find((c) => c.colorId === id)?.name ?? 'this colour';
+  const sizeName = (id: string) => sizes.find((s) => s.id === id)?.name ?? 'this size';
+
+  for (const cell of cells) {
+    const key = cellKey(cell.colorId, cell.sizeId);
+    const remaining = (given.get(key) ?? 0) - (handedIn.get(key) ?? 0);
+    if (cell.quantity > remaining) {
+      throw badRequest(
+        `Only ${Math.max(remaining, 0)} ${colorName(cell.colorId)} / ${sizeName(cell.sizeId)} pieces of lot ${entry.lotNumber} are left with this karigar`,
+      );
+    }
+  }
+  return cells;
+};
+
 // Each stage's total is its rate × the entry's quantity; an empty rate (to be filled in later)
 // leaves the stitching total at 0 and the overlock/flatlock totals empty.
 const stageTotals = (
@@ -45,9 +113,8 @@ const stageTotals = (
   flatlockTotal: rates.flatlockKarigarId && rates.flatlockRate ? computeTotal(quantity, rates.flatlockRate) : null,
 });
 
-// The stitching karigar hands in the full production of what they took: the quantity is every
-// piece of the lot given to them (Cutting Distribution) not yet entered — never typed, never less.
-// Overlock and flatlock are done by other karigars on those same pieces.
+// The stitching karigar hands in pieces of the lot they took (Cutting Distribution), per colour and
+// size — all of it or part. Overlock and flatlock are done by other karigars on those same pieces.
 export const createProductionEntry = async (
   organizationId: string,
   input: CreateProductionEntryInput,
@@ -70,14 +137,12 @@ export const createProductionEntry = async (
 
   return prisma.$transaction(async (tx) => {
     await repo.lockKarigarLot(tx, input.carrierId, lot.id);
-    const { taken, produced } = await repo.piecesTakenAndProduced(tx, input.carrierId, lot.id);
+    const { taken } = await repo.piecesTakenAndProduced(tx, input.carrierId, lot.id);
     if (taken === 0) {
       throw badRequest(`${karigar.fullName} has not taken any pieces of lot ${lot.lotNumber} (Cutting Distribution)`);
     }
-    const pending = taken - produced;
-    if (pending <= 0) {
-      throw badRequest(`All ${taken} pieces of lot ${lot.lotNumber} given to ${karigar.fullName} are already entered`);
-    }
+    const cells = await checkCells(tx, lot, input.carrierId, input.quantities);
+    const quantity = sumCells(cells);
 
     return repo.createProductionEntry(
       tx,
@@ -90,19 +155,20 @@ export const createProductionEntry = async (
         workTypeId: karigar.workTypeId,
         itemId: lot.itemId,
         carrierId: input.carrierId,
-        carrierQuantity: pending,
+        carrierQuantity: quantity,
         ...rates,
-        ...stageTotals(pending, rates),
+        ...stageTotals(quantity, rates),
         photoUrl: input.photoUrl,
         remarks: input.remarks,
       },
+      cells,
       actorId,
     );
   });
 };
 
-// Rates, the overlock/flatlock karigars, date/time, photo and remarks can change; the lot,
-// stitching karigar and quantity cannot. Totals are recomputed from the result.
+// The grid, rates, the overlock/flatlock karigars, date/time, photo and remarks can change; the lot
+// and stitching karigar cannot. Totals are recomputed from the result.
 export const updateProductionEntry = async (
   organizationId: string,
   id: string,
@@ -129,18 +195,34 @@ export const updateProductionEntry = async (
     flatlockRate: flatlockKarigarId ? pick(input.flatlockRate, toNumber(existing.flatlockRate)) : null,
   };
 
-  return repo.updateProductionEntry(
-    id,
-    {
-      date: input.date,
-      ...(input.entryTime !== undefined ? { entryTime: input.entryTime } : {}),
-      ...rates,
-      ...stageTotals(existing.carrierQuantity, rates),
-      photoUrl: input.photoUrl,
-      ...(input.remarks !== undefined ? { remarks: input.remarks } : {}),
-    },
-    actorId,
-  );
+  const data = (quantity: number) => ({
+    date: input.date,
+    ...(input.entryTime !== undefined ? { entryTime: input.entryTime } : {}),
+    ...rates,
+    carrierQuantity: quantity,
+    ...stageTotals(quantity, rates),
+    photoUrl: input.photoUrl,
+    ...(input.remarks !== undefined ? { remarks: input.remarks } : {}),
+  });
+
+  const { cuttingEntryId } = existing;
+  const quantities = input.quantities;
+  if (!quantities || !cuttingEntryId) {
+    return prisma.$transaction((tx) =>
+      repo.updateProductionEntry(tx, id, data(existing.carrierQuantity), undefined, actorId),
+    );
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await lockCuttingEntry(tx, cuttingEntryId);
+    await repo.lockKarigarLot(tx, existing.carrierId, cuttingEntryId);
+    const lot = await getCuttingEntry(organizationId, cuttingEntryId);
+    const cells = await checkCells(tx, lot, existing.carrierId, quantities, id);
+    const updated = await repo.updateProductionEntry(tx, id, data(sumCells(cells)), cells, actorId);
+    // Fewer pieces than were already delivered to the party isn't allowed.
+    await assertDeliveriesCovered(tx, cuttingEntryId);
+    return updated;
+  });
 };
 
 export const deleteProductionEntry = async (organizationId: string, id: string, actorId: string | null) => {

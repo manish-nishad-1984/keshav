@@ -392,6 +392,7 @@ model Color {
   cuttingRows            CuttingEntryRow[]
   distributionQuantities CuttingDistributionQuantity[]
   deliveryQuantities     DeliveryQuantity[]
+  productionQuantities   ProductionEntryQuantity[]
 
   @@unique([organizationId, name])
   @@map("colors")
@@ -620,6 +621,7 @@ model Size {
   quantities             CuttingRowQuantity[]
   distributionQuantities CuttingDistributionQuantity[]
   deliveryQuantities     DeliveryQuantity[]
+  productionQuantities   ProductionEntryQuantity[]
 
   @@unique([organizationId, name])
   @@map("sizes")
@@ -906,8 +908,26 @@ model ProductionEntry {
   carrier         Karigar       @relation("ProductionEntryCarrier", fields: [carrierId], references: [id])
   overlockCarrier Karigar?      @relation("ProductionEntryOverlockCarrier", fields: [overlockCarrierId], references: [id])
   flatlockKarigar Karigar?      @relation("ProductionEntryFlatlockKarigar", fields: [flatlockKarigarId], references: [id])
+  quantities      ProductionEntryQuantity[]
 
   @@map("production_entries")
+}
+
+// Pieces handed in by the stitching karigar per colour + size. carrierQuantity on the entry is
+// their sum, recomputed server-side on every write.
+model ProductionEntryQuantity {
+  id                String @id @default(uuid()) @db.Uuid
+  productionEntryId String @db.Uuid
+  colorId           String @db.Uuid
+  sizeId            String @db.Uuid
+  quantity          Int
+
+  productionEntry ProductionEntry @relation(fields: [productionEntryId], references: [id], onDelete: Cascade)
+  color           Color           @relation(fields: [colorId], references: [id])
+  size            Size            @relation(fields: [sizeId], references: [id])
+
+  @@unique([productionEntryId, colorId, sizeId])
+  @@map("production_entry_quantities")
 }
 
 // A small, universal, fixed set — unlike WorkType/ItemCategory this isn't something the client

@@ -3,7 +3,7 @@ import { badRequest, conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getCuttingEntry } from '../cutting/cutting.service';
 import { getKarigar } from '../karigars/karigars.service';
-import { piecesTakenAndProduced } from '../production-entries/production-entries.repository';
+import { findUncoveredProduction } from '../production-entries/production-entries.repository';
 import { assertDeliveriesCovered } from '../deliveries/deliveries.repository';
 import * as repo from './cutting-distribution.repository';
 import type { DistributionCell } from './cutting-distribution.repository';
@@ -133,11 +133,10 @@ export const createDistribution = async (
 // A karigar's distributions of a lot must still cover the pieces they already handed in as
 // production (Daily Production Entry). Checked after the change, inside the same transaction.
 const assertCoversProduction = async (tx: Prisma.TransactionClient, karigarId: string, cuttingEntryId: string) => {
-  const { taken, produced } = await piecesTakenAndProduced(tx, karigarId, cuttingEntryId);
-  if (taken < produced) {
+  if (await findUncoveredProduction(tx, karigarId, cuttingEntryId)) {
     const karigar = await tx.karigar.findUnique({ where: { id: karigarId }, select: { fullName: true } });
     throw conflict(
-      `${karigar?.fullName ?? 'This karigar'} already handed in ${produced} pieces of this lot as production — the distribution can't go below that`,
+      `${karigar?.fullName ?? 'This karigar'} already handed in pieces of this lot as production in these sizes — the distribution can't go below that`,
     );
   }
 };

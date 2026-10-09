@@ -116,6 +116,20 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                 </table>
               </div>
 
+              {entry.quantities?.length ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Pieces handed in, by size</p>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {entry.quantities.map((q) => (
+                      <li key={q.id} className="rounded-md border border-border bg-muted/50 px-2 py-1 text-sm">
+                        {q.color.name} · <span className="font-medium">{q.size.name}</span>:{' '}
+                        <span className="numeric font-semibold">{q.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               {entry.remarks ? <Field label="Remarks" value={entry.remarks} /> : null}
             </DialogBody>
           ) : null}

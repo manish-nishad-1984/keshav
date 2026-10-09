@@ -33,6 +33,7 @@ export interface ProductionEntry {
   workType: WorkType;
   item: Item;
   cuttingEntry: { id: string; lotNumber: string; bookId: string; isOnline: boolean } | null;
+  quantities: { id: string; colorId: string; sizeId: string; quantity: number; color: { name: string }; size: { name: string } }[];
 }
 
 // A lot the stitching karigar took (Cutting Distribution), as the entry form shows it.
@@ -57,3 +58,18 @@ export const ratePending = (entry: ProductionEntry) =>
   !entry.carrierRate ||
   (Boolean(entry.overlockCarrierId) && !entry.overlockRate) ||
   (Boolean(entry.flatlockKarigarId) && !entry.flatlockRate);
+
+export const cellKey = (colorId: string, sizeId: string) => `${colorId}:${sizeId}`;
+
+// The karigar's colour × size grid: what they took, handed in earlier and still have.
+export interface ProductionAvailability {
+  cuttingEntry: { id: string; lotNumber: string; isOnline: boolean; item: { id: string; itemName: string }; party: { id: string; name: string } };
+  karigar: { id: string; fullName: string };
+  sizes: { id: string; name: string; detail: string | null }[];
+  colors: {
+    colorId: string;
+    name: string;
+    photoUrl: string | null;
+    cells: { sizeId: string; given: number; handedIn: number; remaining: number }[];
+  }[];
+}

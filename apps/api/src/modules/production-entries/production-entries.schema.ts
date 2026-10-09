@@ -21,14 +21,36 @@ const entryTimeSchema = z
 // Rates may be left empty and filled in later (edit); totals are then 0 until they are.
 const rateSchema = z.coerce.number().positive().nullable().optional();
 
-// The stitching karigar and the lot they took (Cutting Distribution). Quantity, design and work
-// type are not sent: the service takes all pieces still pending for that karigar + lot, the
-// lot's design and the karigar's work type.
+// Zero cells are allowed in the payload (empty boxes) and dropped by the service.
+const quantitiesSchema = z
+  .array(
+    z.object({
+      colorId: z.string().uuid(),
+      sizeId: z.string().uuid(),
+      quantity: z.coerce.number().int().min(0),
+    }),
+  )
+  .refine((cells) => cells.some((c) => c.quantity > 0), { message: 'Enter pieces in at least one size' })
+  .refine((cells) => new Set(cells.map((c) => `${c.colorId}:${c.sizeId}`)).size === cells.length, {
+    message: 'A colour and size can appear only once',
+  });
+
+// While editing, the entry's own pieces count as still available to it.
+export const availabilityQuerySchema = z.object({
+  karigarId: z.string().uuid(),
+  cuttingEntryId: z.string().uuid(),
+  excludeId: z.string().uuid().optional(),
+});
+
+// The stitching karigar, the lot they took (Cutting Distribution) and the pieces they hand in per
+// colour + size. The total, design and work type are not sent: the service sums the grid and takes
+// the lot's design and the karigar's work type.
 export const createProductionEntrySchema = z.object({
   cuttingEntryId: z.string().uuid(),
   carrierId: z.string().uuid(),
   date: z.coerce.date(),
   entryTime: entryTimeSchema,
+  quantities: quantitiesSchema,
   carrierRate: rateSchema,
 
   overlockCarrierId: z.string().uuid().nullable().optional(),
@@ -47,10 +69,11 @@ export const karigarLotsQuerySchema = z.object({
   bookId: z.string().uuid(),
 });
 
-// Lot, karigar and quantity are fixed once saved.
+// Lot and karigar are fixed once saved; the grid can change (older entries without one keep theirs).
 export const updateProductionEntrySchema = z.object({
   date: z.coerce.date().optional(),
   entryTime: entryTimeSchema,
+  quantities: quantitiesSchema.optional(),
   carrierRate: rateSchema,
 
   overlockCarrierId: z.string().uuid().nullable().optional(),

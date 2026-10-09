@@ -8,6 +8,7 @@ const includeRelations = {
   workType: true,
   item: { include: { category: true } },
   cuttingEntry: true,
+  quantities: { include: { color: true, size: true } },
 } as const;
 
 export const listProductionEntries = async (
@@ -79,25 +80,39 @@ interface ProductionEntryData {
   remarks?: string | null;
 }
 
+export interface ProductionCell {
+  colorId: string;
+  sizeId: string;
+  quantity: number;
+}
+
 export const createProductionEntry = (
   db: Prisma.TransactionClient,
   organizationId: string,
   data: ProductionEntryData,
+  cells: ProductionCell[],
   createdById: string | null,
 ) =>
   db.productionEntry.create({
-    data: { organizationId, ...data, createdById: createdById ?? undefined },
+    data: { organizationId, ...data, createdById: createdById ?? undefined, quantities: { create: cells } },
     include: includeRelations,
   });
 
+// Quantities, when given, are replaced wholesale (like distributions).
 export const updateProductionEntry = (
+  db: Prisma.TransactionClient,
   id: string,
   data: Partial<Omit<ProductionEntryData, 'cuttingEntryId' | 'lotNumber'>>,
+  cells: ProductionCell[] | undefined,
   updatedById: string | null,
 ) =>
-  prisma.productionEntry.update({
+  db.productionEntry.update({
     where: { id },
-    data: { ...data, updatedById: updatedById ?? undefined },
+    data: {
+      ...data,
+      updatedById: updatedById ?? undefined,
+      ...(cells ? { quantities: { deleteMany: {}, create: cells } } : {}),
+    },
     include: includeRelations,
   });
 
@@ -117,6 +132,45 @@ export const piecesTakenAndProduced = async (db: Prisma.TransactionClient, karig
     }),
   ]);
   return { taken: taken._sum.totalQuantity ?? 0, produced: produced._sum.carrierQuantity ?? 0 };
+};
+
+const cellKey = (colorId: string, sizeId: string) => `${colorId}:${sizeId}`;
+
+// Pieces of a lot given to a karigar per colour + size, keyed "colorId:sizeId" (Cutting Distribution).
+export const sumGivenByCell = async (db: Prisma.TransactionClient, karigarId: string, cuttingEntryId: string) => {
+  const sums = await db.cuttingDistributionQuantity.groupBy({
+    by: ['colorId', 'sizeId'],
+    where: { distribution: { karigarId, cuttingEntryId } },
+    _sum: { quantity: true },
+  });
+  return new Map(sums.map((s) => [cellKey(s.colorId, s.sizeId), s._sum.quantity ?? 0]));
+};
+
+// Pieces a karigar already handed in for a lot per colour + size; `excludeId` leaves out the entry being edited.
+export const sumHandedInByCell = async (
+  db: Prisma.TransactionClient,
+  karigarId: string,
+  cuttingEntryId: string,
+  excludeId?: string,
+) => {
+  const sums = await db.productionEntryQuantity.groupBy({
+    by: ['colorId', 'sizeId'],
+    where: {
+      productionEntry: { carrierId: karigarId, cuttingEntryId, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    },
+    _sum: { quantity: true },
+  });
+  return new Map(sums.map((s) => [cellKey(s.colorId, s.sizeId), s._sum.quantity ?? 0]));
+};
+
+// A karigar's distributions must cover, in every colour + size, what they handed in as production.
+export const findUncoveredProduction = async (db: Prisma.TransactionClient, karigarId: string, cuttingEntryId: string) => {
+  const [given, handedIn] = await Promise.all([
+    sumGivenByCell(db, karigarId, cuttingEntryId),
+    sumHandedInByCell(db, karigarId, cuttingEntryId),
+  ]);
+  for (const [key, qty] of handedIn) if (qty > (given.get(key) ?? 0)) return true;
+  return false;
 };
 
 // Serializes entries for one karigar + lot so two saves can't both take the same pending pieces.

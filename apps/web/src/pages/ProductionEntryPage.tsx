@@ -15,10 +15,11 @@ import { LoadingState } from '../components/ui/loading-state';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { DatePicker } from '../components/ui/date-picker';
 import { ProductionPhotoCompare } from '../components/production-entries/ProductionPhotoCompare';
+import { ProductionSizeGrid, summarizeGrid } from '../components/production-entries/ProductionSizeGrid';
 import { cn } from '../lib/utils';
 import type { Karigar } from '../components/karigars/karigar-constants';
-import type { ProductionEntry, ProductionKarigarLot } from '../components/production-entries/production-entry-constants';
-import { STAGE_LABELS } from '../components/production-entries/production-entry-constants';
+import type { ProductionAvailability, ProductionEntry, ProductionKarigarLot } from '../components/production-entries/production-entry-constants';
+import { cellKey, STAGE_LABELS } from '../components/production-entries/production-entry-constants';
 import { localIsoDate } from '../lib/date';
 import { useSelectedBook } from '../hooks/use-selected-book';
 
@@ -119,6 +120,8 @@ export const ProductionEntryPage = () => {
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  // Pieces handed in now per colour + size, keyed "colorId:sizeId".
+  const [qtys, setQtys] = useState<Record<string, number | ''>>({});
   const [saved, setSaved] = useState(false);
   const { selectedBook } = useSelectedBook();
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
@@ -146,6 +149,7 @@ export const ProductionEntryPage = () => {
       photoUrl: editing.photoUrl,
       remarks: editing.remarks ?? '',
     });
+    setQtys(Object.fromEntries(editing.quantities.map((q) => [cellKey(q.colorId, q.sizeId), q.quantity])));
   }, [editing]);
 
   const { data: karigars } = useQuery({
@@ -169,8 +173,31 @@ export const ProductionEntryPage = () => {
     if (!isEdit && form.cuttingEntryId && lots && !lotOptions.some((l) => l.id === form.cuttingEntryId)) set({ cuttingEntryId: '' });
   }, [lots]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The full production: every pending piece of the lot (fixed once saved).
-  const quantity = isEdit ? (editing?.carrierQuantity ?? 0) : (lot?.piecesPending ?? 0);
+  const { data: availability, isFetching: availabilityLoading } = useQuery({
+    queryKey: ['production-entries', 'availability', form.carrierId, form.cuttingEntryId, editId],
+    queryFn: () =>
+      apiClient.get<ProductionAvailability>('/production-entries/availability', {
+        karigarId: form.carrierId,
+        cuttingEntryId: form.cuttingEntryId,
+        excludeId: editId ?? undefined,
+      }),
+    enabled: Boolean(form.carrierId && form.cuttingEntryId),
+  });
+
+  // A different karigar or lot starts with an empty grid (an edit keeps its own pieces).
+  const pickKarigar = (carrierId: string) => {
+    set({ carrierId, cuttingEntryId: '' });
+    setQtys({});
+  };
+  const pickLot = (cuttingEntryId: string) => {
+    set({ cuttingEntryId });
+    setQtys({});
+  };
+
+  // Old entries without a lot have no grid; they keep their saved quantity.
+  const hasGrid = Boolean(form.cuttingEntryId);
+  const grid = summarizeGrid(availability, qtys);
+  const quantity = hasGrid ? grid.total : (editing?.carrierQuantity ?? 0);
   const flatlockOn = form.flatlockKarigarId !== NONE;
   const overlockOn = form.overlockCarrierId !== NONE;
   const stitchingTotal = form.carrierRate ? quantity * Number(form.carrierRate) : 0;
@@ -190,6 +217,13 @@ export const ProductionEntryPage = () => {
         overlockRate: overlockOn ? rateOrNull(form.overlockRate) : null,
         photoUrl: form.photoUrl ?? undefined,
         remarks: form.remarks || (isEdit ? null : undefined),
+        ...(hasGrid && availability
+          ? {
+              quantities: availability.colors.flatMap((c) =>
+                c.cells.map((cell) => ({ colorId: c.colorId, sizeId: cell.sizeId, quantity: Number(qtys[cellKey(c.colorId, cell.sizeId)]) || 0 })),
+              ),
+            }
+          : {}),
       };
       if (isEdit) return apiClient.patch(`/production-entries/${editId}`, payload);
       return apiClient.post('/production-entries', { ...payload, cuttingEntryId: form.cuttingEntryId, carrierId: form.carrierId });
@@ -204,7 +238,7 @@ export const ProductionEntryPage = () => {
   }, [saved]);
 
   // Older entries may predate lots; they can still be edited (e.g. to fill in rates).
-  const isValid = Boolean(form.carrierId && (isEdit || form.cuttingEntryId) && form.date && form.photoUrl && quantity > 0);
+  const isValid = Boolean(form.carrierId && (isEdit || form.cuttingEntryId) && form.date && form.photoUrl && quantity > 0 && !grid.over);
 
   const save = (andNew: boolean) => {
     setError(null);
@@ -218,6 +252,7 @@ export const ProductionEntryPage = () => {
         }
         setSaved(true);
         // Save & New keeps the date and the karigar — the next lot is often theirs too.
+        setQtys({});
         setForm(andNew ? { ...emptyForm(), date: form.date, carrierId: form.carrierId } : emptyForm());
       },
     });
@@ -250,7 +285,7 @@ export const ProductionEntryPage = () => {
   return (
     <PageLayout
       title={isEdit ? 'Edit Production Entry' : 'Daily Production Entry'}
-      description="Full production of a lot handed in by the karigar — stitching, flatlock and overlock."
+      description="Pieces the karigar hands in, size by size — stitching, flatlock and overlock."
     >
       <Card>
         <CardContent className="p-3 sm:p-4">
@@ -270,7 +305,7 @@ export const ProductionEntryPage = () => {
             {/* Karigar → lot → date & time */}
             <div className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]">
               <FormField label="Stitching Karigar" required htmlFor="pe-karigar">
-                <Select value={form.carrierId} disabled={isEdit} onValueChange={(v) => set({ carrierId: v })}>
+                <Select value={form.carrierId} disabled={isEdit} onValueChange={pickKarigar}>
                   <SelectTrigger id="pe-karigar">
                     <SelectValue placeholder="Select karigar" />
                   </SelectTrigger>
@@ -296,14 +331,14 @@ export const ProductionEntryPage = () => {
                       : undefined
                 }
               >
-                <Select value={form.cuttingEntryId} disabled={isEdit || !form.carrierId} onValueChange={(v) => set({ cuttingEntryId: v })}>
+                <Select value={form.cuttingEntryId} disabled={isEdit || !form.carrierId} onValueChange={pickLot}>
                   <SelectTrigger id="pe-lot">
                     <SelectValue placeholder={form.carrierId ? 'Select lot' : 'Select a karigar first'} />
                   </SelectTrigger>
                   <SelectContent>
                     {lotOptions.map((l) => (
                       <SelectItem key={l.id} value={l.id}>
-                        Lot {l.lotNumber} · {l.item.itemName} · {isEdit ? `${l.piecesTaken} pcs` : `${l.piecesPending} pcs to hand in`}
+                        Lot {l.lotNumber} · {l.item.itemName} · {isEdit ? `${l.piecesTaken} pcs` : `${l.piecesPending} pcs with karigar`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -343,10 +378,25 @@ export const ProductionEntryPage = () => {
                   ) : null}
                 </span>
                 <span className="ml-auto font-semibold text-primary">
-                  Full production: <span className="numeric">{quantity}</span> pcs
+                  Handing in now: <span className="numeric">{quantity}</span> pcs
                 </span>
               </div>
             ) : null}
+
+            {/* Size-wise pieces handed in */}
+            {hasGrid ? (
+              <ProductionSizeGrid
+                availability={availability}
+                loading={availabilityLoading}
+                emptyText="This karigar has no pieces of this lot."
+                values={qtys}
+                onChange={setQtys}
+              />
+            ) : (
+              <div className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                {isEdit ? `${quantity} pcs (this older entry has no size details)` : 'Select a karigar and a lot to enter the pieces size by size.'}
+              </div>
+            )}
 
             {/* Stitching · Flatlock · Overlock */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
