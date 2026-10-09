@@ -196,6 +196,15 @@
   --tint-h: 215;
   --tint-s: 14%;
 }
+/* Deep royal indigo (#211965) with soft lavender-grey surfaces. */
+[data-palette='royal'] {
+  --brand-h: 246;
+  --brand-s: 60%;
+  --brand-l: 25%;
+  --brand-hover-l: 20%;
+  --tint-h: 245;
+  --tint-s: 14%;
+}
 
 body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';

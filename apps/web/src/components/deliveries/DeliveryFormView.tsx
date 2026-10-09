@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ImageOff, PackageCheck, Save } from 'lucide-react';
+import { Factory, History, Hourglass, ImageOff, PackageCheck, Save, Truck, type LucideIcon } from 'lucide-react';
+import { QtyChip, QtyLegend, QtyRowLabel, type QtyTone } from '../ui/qty-tone';
 import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card, CardContent } from '../ui/card';
@@ -24,6 +25,14 @@ interface DeliveryFormViewProps {
   onDone: (saved: Delivery) => void;
   onCancel: () => void;
 }
+
+// The grid's summary rows, in order; their colours also tint the cells (see qty-tone).
+const LEGEND = [
+  { tone: 'total', icon: Factory, label: 'Produced' },
+  { tone: 'earlier', icon: History, label: 'Delivered earlier' },
+  { tone: 'now', icon: Truck, label: 'Delivering now' },
+  { tone: 'pending', icon: Hourglass, label: 'Still ready' },
+] as const satisfies readonly { tone: QtyTone; icon: LucideIcon; label: string }[];
 
 const nowTime = () => {
   const d = new Date();
@@ -236,12 +245,12 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
 
             <section aria-labelledby="del-sizes-heading" className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 id="del-sizes-heading" className="text-sm font-semibold">
-                  Sizes
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
-                    Fill the pieces delivered now — “ready” is produced and not yet delivered
-                  </span>
-                </h3>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <h3 id="del-sizes-heading" className="text-sm font-semibold">
+                    Sizes
+                  </h3>
+                  <QtyLegend items={LEGEND} />
+                </div>
                 {colors.length ? (
                   <Button type="button" variant="ghost" size="sm" onClick={deliverAllReady} disabled={totalOf('remaining') === 0}>
                     <PackageCheck />
@@ -268,12 +277,12 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
                         <th className="w-14 px-2 py-2 text-left">Photo</th>
                         <th className="min-w-[8rem] px-2 py-2 text-left">Colour</th>
                         {sizes.map((size) => (
-                          <th key={size.id} className="min-w-[5rem] px-1.5 py-1.5 text-center normal-case tracking-normal">
-                            <span className="block text-xs font-semibold">{size.name}</span>
-                            {size.detail ? <span className="block text-2xs font-normal opacity-80">{size.detail}</span> : null}
+                          <th key={size.id} className="w-28 px-1.5 py-2 text-center normal-case tracking-normal">
+                            <span className="block text-sm font-semibold">{size.name}</span>
+                            {size.detail ? <span className="block text-xs font-normal opacity-80">{size.detail}</span> : null}
                           </th>
                         ))}
-                        <th className="w-20 px-2 py-2 text-right">Total</th>
+                        <th className="w-24 px-3 py-2 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -301,9 +310,6 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
                                     <span className="inline-block pt-2 text-muted-foreground">—</span>
                                   ) : (
                                     <>
-                                      <span className={cn('mb-0.5 block text-2xs', over ? 'font-semibold text-destructive' : 'text-muted-foreground')}>
-                                        {cell.remaining === 0 ? 'all sent' : `${formatQty(cell.remaining)} ready`}
-                                      </span>
                                       <Input
                                         type="number"
                                         min={0}
@@ -314,51 +320,51 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
                                         aria-invalid={over || undefined}
                                         disabled={cell.remaining === 0 && !qty(key)}
                                         className={cn(
-                                          'numeric mx-auto h-9 w-[4.75rem] px-2 text-center',
-                                          over && 'border-destructive text-destructive focus-visible:ring-destructive/20',
+                                          'numeric mx-auto h-10 w-20 px-2 text-center text-base font-semibold',
+                                          qty(key) > 0 && 'border-primary/50 bg-primary/10 text-primary',
+                                          over && 'border-destructive bg-destructive/10 text-destructive focus-visible:ring-destructive/20',
                                         )}
                                         value={sent[key] ?? ''}
                                         onChange={(e) => setSent((g) => ({ ...g, [key]: toNumberOrEmpty(e.target.value) }))}
                                       />
+                                      <QtyChip size="sm" tone="pending" value={cell.remaining} className="mt-1" />
                                     </>
                                   )}
                                 </td>
                               );
                             })}
-                            <td className="numeric px-2 py-1.5 text-right font-semibold">{formatQty(rowTotal(color.colorId))}</td>
+                            <td className="px-2 py-1.5 text-right">
+                              <QtyChip tone="now" value={rowTotal(color.colorId)} className="min-w-[4rem] text-base" />
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                     {/* Produced, delivered earlier, delivering now and what will still be ready */}
-                    <tfoot className="text-xs">
+                    <tfoot className="text-sm">
                       {(
                         [
-                          { label: 'Produced', value: (id: string) => column(id, 'produced'), total: totalOf('produced'), className: 'text-muted-foreground' },
-                          { label: 'Delivered earlier', value: (id: string) => column(id, 'delivered'), total: totalOf('delivered'), className: 'text-muted-foreground' },
-                          { label: 'Delivering now', value: sentColumn, total: totalSent, className: 'font-semibold' },
+                          { ...LEGEND[0], value: (id: string) => column(id, 'produced'), total: totalOf('produced') },
+                          { ...LEGEND[1], value: (id: string) => column(id, 'delivered'), total: totalOf('delivered') },
+                          { ...LEGEND[2], value: sentColumn, total: totalSent },
                           {
-                            label: 'Still ready',
+                            ...LEGEND[3],
                             value: (id: string) => column(id, 'remaining') - sentColumn(id),
                             total: totalOf('remaining') - totalSent,
-                            className: 'font-semibold text-primary',
                           },
                         ] as const
                       ).map((line) => (
-                        <tr key={line.label} className="border-t border-border">
-                          <td colSpan={2} className={cn('px-2 py-1.5 text-left', line.className)}>
-                            {line.label}
+                        <tr key={line.label} className="border-t border-border bg-card">
+                          <td colSpan={2} className="px-2 py-1.5 text-left">
+                            <QtyRowLabel tone={line.tone} icon={line.icon} label={line.label} />
                           </td>
-                          {sizes.map((size) => {
-                            const v = line.value(size.id);
-                            return (
-                              <td key={size.id} className={cn('numeric px-2 py-1.5 text-center', line.className, v < 0 && 'text-destructive')}>
-                                {formatQty(v)}
-                              </td>
-                            );
-                          })}
-                          <td className={cn('numeric px-2 py-1.5 text-right', line.className, line.total < 0 && 'text-destructive')}>
-                            {formatQty(line.total)}
+                          {sizes.map((size) => (
+                            <td key={size.id} className="px-1 py-1.5 text-center">
+                              <QtyChip tone={line.tone} value={line.value(size.id)} />
+                            </td>
+                          ))}
+                          <td className="px-2 py-1.5 text-right">
+                            <QtyChip tone={line.tone} value={line.total} className="min-w-[4rem] text-base" />
                           </td>
                         </tr>
                       ))}

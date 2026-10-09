@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export type Theme = 'comfort' | 'light' | 'dark' | 'system';
 /** Colour palette (brand + surface tint), independent of the mode. See [data-palette] in index.css. */
-export type Palette = 'blue' | 'teal' | 'green' | 'indigo' | 'purple' | 'maroon' | 'saffron' | 'graphite';
+export type Palette = 'blue' | 'teal' | 'green' | 'indigo' | 'purple' | 'maroon' | 'saffron' | 'graphite' | 'royal';
 
 interface UiState {
   theme: Theme;
@@ -41,7 +41,7 @@ export const useUiStore = create<UiState>()(
         applyTheme(theme);
         set({ theme });
       },
-      palette: 'blue',
+      palette: 'royal',
       setPalette: (palette: Palette) => {
         applyPalette(palette);
         set({ palette });
@@ -55,10 +55,12 @@ export const useUiStore = create<UiState>()(
       name: 'ckfast-ui',
       // v1: 'comfort' became the default. 'light' was the old default rather than an explicit
       // choice, so move it to comfort; dark/system choices are kept.
-      version: 1,
+      // v2: Royal Indigo became the default palette; blue was the old default, so move it too.
+      version: 2,
       migrate: (persisted, version) => {
-        const state = (persisted ?? {}) as { theme?: Theme };
-        if (version < 1 && state.theme === 'light') return { ...state, theme: 'comfort' } as UiState;
+        let state = (persisted ?? {}) as { theme?: Theme; palette?: Palette };
+        if (version < 1 && state.theme === 'light') state = { ...state, theme: 'comfort' };
+        if (version < 2 && (!state.palette || state.palette === 'blue')) state = { ...state, palette: 'royal' };
         return state as UiState;
       },
       partialize: (state) => ({
