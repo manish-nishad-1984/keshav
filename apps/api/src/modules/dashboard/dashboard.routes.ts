@@ -6,3 +6,4 @@ import * as controller from './dashboard.controller';
 export const dashboardRouter = Router();
 
 dashboardRouter.get('/summary', requirePermission('dashboard:view'), asyncHandler(controller.summary));
+dashboardRouter.get('/lot-status', requirePermission('dashboard:view'), asyncHandler(controller.lotStatus));

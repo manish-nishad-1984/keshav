@@ -41,3 +41,11 @@ export const remove = async (req: Request, res: Response) => {
   await service.deleteCuttingEntry(req.auth!.organizationId, req.params.id, req.auth!.userId);
   ok(res, { deleted: true });
 };
+
+export const deletionSummary = async (req: Request, res: Response) => {
+  ok(res, await service.getLotDeletionSummary(req.auth!.organizationId, req.params.id));
+};
+
+export const removeWithEverything = async (req: Request, res: Response) => {
+  ok(res, await service.deleteCuttingEntryWithEverything(req.auth!.organizationId, req.params.id));
+};

@@ -145,3 +145,74 @@ export const getWorkTypeBreakdown = async (organizationId: string) => {
     }))
     .sort((a, b) => b.totalQuantity - a.totalQuantity);
 };
+
+export type LotStage = 'not_given' | 'with_karigars' | 'in_production' | 'ready' | 'delivered';
+
+// One line per lot of the book: cut, given to karigars, finished, delivered, and where each karigar
+// stands. "With karigar" is what was given minus what they handed in.
+export const getLotStatus = async (organizationId: string, bookId?: string) => {
+  const lots = await prisma.cuttingEntry.findMany({
+    where: { organizationId, deletedAt: null, ...(bookId ? { bookId } : {}) },
+    select: {
+      id: true,
+      lotNumber: true,
+      date: true,
+      totalQuantity: true,
+      isOnline: true,
+      item: { select: { itemName: true } },
+      party: { select: { name: true } },
+    },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+  });
+  if (!lots.length) return [];
+  const lotIds = lots.map((l) => l.id);
+
+  const [given, handedIn, delivered] = await Promise.all([
+    prisma.cuttingDistribution.groupBy({ by: ['cuttingEntryId', 'karigarId'], where: { cuttingEntryId: { in: lotIds } }, _sum: { totalQuantity: true } }),
+    prisma.productionEntry.groupBy({ by: ['cuttingEntryId', 'carrierId'], where: { cuttingEntryId: { in: lotIds }, deletedAt: null }, _sum: { carrierQuantity: true } }),
+    prisma.delivery.groupBy({ by: ['cuttingEntryId'], where: { cuttingEntryId: { in: lotIds } }, _sum: { totalQuantity: true } }),
+  ]);
+  const karigarIds = [...new Set([...given.map((g) => g.karigarId), ...handedIn.map((h) => h.carrierId)])];
+  const karigars = await prisma.karigar.findMany({ where: { id: { in: karigarIds } }, select: { id: true, fullName: true, workType: { select: { name: true } } } });
+  const karigarById = new Map(karigars.map((k) => [k.id, k]));
+  const handedBy = new Map(handedIn.map((h) => [`${h.cuttingEntryId}:${h.carrierId}`, h._sum.carrierQuantity ?? 0]));
+  const deliveredBy = new Map(delivered.map((d) => [d.cuttingEntryId, d._sum.totalQuantity ?? 0]));
+
+  return lots.map((lot) => {
+    const rows = given.filter((g) => g.cuttingEntryId === lot.id).map((g) => {
+      const took = g._sum.totalQuantity ?? 0;
+      const done = handedBy.get(`${lot.id}:${g.karigarId}`) ?? 0;
+      const k = karigarById.get(g.karigarId);
+      return { karigarId: g.karigarId, name: k?.fullName ?? 'Unknown', workType: k?.workType.name ?? '', given: took, handedIn: done, pending: Math.max(took - done, 0) };
+    });
+    const distributed = rows.reduce((s, r) => s + r.given, 0);
+    const produced = rows.reduce((s, r) => s + r.handedIn, 0);
+    const deliveredQty = deliveredBy.get(lot.id) ?? 0;
+    const stage: LotStage =
+      deliveredQty > 0 && deliveredQty >= lot.totalQuantity
+        ? 'delivered'
+        : produced >= lot.totalQuantity && produced > deliveredQty
+          ? 'ready'
+          : produced > 0
+            ? 'in_production'
+            : distributed > 0
+              ? 'with_karigars'
+              : 'not_given';
+    return {
+      id: lot.id,
+      lotNumber: lot.lotNumber,
+      date: lot.date,
+      isOnline: lot.isOnline,
+      itemName: lot.item.itemName,
+      partyName: lot.party.name,
+      cut: lot.totalQuantity,
+      notGiven: Math.max(lot.totalQuantity - distributed, 0),
+      withKarigars: rows.reduce((s, r) => s + r.pending, 0),
+      produced,
+      readyToDeliver: Math.max(produced - deliveredQty, 0),
+      delivered: deliveredQty,
+      stage,
+      karigars: rows.sort((a, b) => b.pending - a.pending),
+    };
+  });
+};

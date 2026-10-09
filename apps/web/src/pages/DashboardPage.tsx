@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { LoadingState } from '../components/ui/loading-state';
 import { formatDate } from '../lib/date';
 import { cn } from '../lib/utils';
+import { LotStatusCard } from '../components/dashboard/LotStatusCard';
 
 interface TopKarigar {
   karigarId: string;
@@ -113,6 +114,8 @@ export const DashboardPage = () => {
               );
             })}
           </div>
+
+          <LotStatusCard />
 
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <Card>

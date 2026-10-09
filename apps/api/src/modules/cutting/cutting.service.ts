@@ -8,6 +8,7 @@ import { getPatternType } from '../pattern-types/pattern-types.service';
 import { getItem } from '../items/items.service';
 import { getColor } from '../colors/colors.service';
 import { countDistributionsForCuttingEntry, sumDistributedByCell } from '../cutting-distribution/cutting-distribution.repository';
+import { lockCuttingEntry } from '../deliveries/deliveries.repository';
 import * as repo from './cutting.repository';
 import type { CuttingRowData } from './cutting.repository';
 import type { CreateCuttingEntryInput, ListCuttingEntriesQuery, UpdateCuttingEntryInput } from './cutting.schema';
@@ -147,11 +148,47 @@ const assertCoversDistributed = async (lotNumber: string, id: string, rows: Cutt
 export const deleteCuttingEntry = async (organizationId: string, id: string, actorId: string | null) => {
   await getCuttingEntry(organizationId, id);
   if ((await countDistributionsForCuttingEntry(id)) > 0) {
-    throw conflict('This lot is already distributed to karigars — remove its distributions before deleting it');
+    throw conflict('This lot is already distributed to karigars — remove its distributions first, or ask an admin to delete the lot with everything in it');
   }
   const usageCount = await repo.countProductionEntriesForCuttingEntry(id);
   if (usageCount > 0) {
     throw conflict('Daily production entries already reference this lot — remove them before deleting it');
   }
   await repo.softDeleteCuttingEntry(id, actorId);
+};
+
+// What deleting the lot would also remove: everything entered against it.
+export const getLotDeletionSummary = async (organizationId: string, id: string) => {
+  const lot = await getCuttingEntry(organizationId, id);
+  const [distributions, production, accessories, deliveries] = await Promise.all([
+    prisma.cuttingDistribution.aggregate({ where: { cuttingEntryId: id }, _count: true, _sum: { totalQuantity: true } }),
+    prisma.productionEntry.aggregate({ where: { cuttingEntryId: id }, _count: true, _sum: { carrierQuantity: true } }),
+    prisma.accessoryTransaction.count({ where: { cuttingEntryId: id } }),
+    prisma.delivery.findMany({ where: { cuttingEntryId: id }, select: { challanNumber: true, totalQuantity: true }, orderBy: { challanNumber: 'asc' } }),
+  ]);
+  return {
+    lotNumber: lot.lotNumber,
+    totalQuantity: lot.totalQuantity,
+    distributions: { count: distributions._count, pieces: distributions._sum.totalQuantity ?? 0 },
+    production: { count: production._count, pieces: production._sum.carrierQuantity ?? 0 },
+    accessories: { count: accessories },
+    deliveries: { count: deliveries.length, pieces: deliveries.reduce((s, d) => s + d.totalQuantity, 0), challans: deliveries.map((d) => d.challanNumber) },
+  };
+};
+
+// Admin reset: removes the lot and every entry against it (deliveries, production, accessory
+// issues/returns, distributions) permanently, so the work can be started again from scratch.
+// Payments and press entries are by karigar, not by lot, and are left alone.
+export const deleteCuttingEntryWithEverything = async (organizationId: string, id: string) => {
+  await getCuttingEntry(organizationId, id);
+  const summary = await getLotDeletionSummary(organizationId, id);
+  await prisma.$transaction(async (tx) => {
+    await lockCuttingEntry(tx, id);
+    await tx.delivery.deleteMany({ where: { cuttingEntryId: id } });
+    await tx.productionEntry.deleteMany({ where: { cuttingEntryId: id } });
+    await tx.accessoryTransaction.deleteMany({ where: { cuttingEntryId: id } });
+    await tx.cuttingDistribution.deleteMany({ where: { cuttingEntryId: id } });
+    await tx.cuttingEntry.delete({ where: { id } });
+  });
+  return summary;
 };

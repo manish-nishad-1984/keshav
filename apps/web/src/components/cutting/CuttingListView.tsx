@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Pencil } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card } from '../ui/card';
@@ -12,6 +12,7 @@ import { Pagination } from '../ui/pagination';
 import { usePermissions } from '../../hooks/use-permissions';
 import { useSelectedBook } from '../../hooks/use-selected-book';
 import type { CuttingEntry } from './cutting-constants';
+import { DeleteLotDialog } from './DeleteLotDialog';
 import { AVERAGE_UNIT_SHORT, fabricRequired } from './cutting-constants';
 import { formatDate } from '../../lib/date';
 
@@ -31,11 +32,14 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
   const { hasPermission, isSuperAdmin } = usePermissions();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [deleting, setDeleting] = useState<CuttingEntry | null>(null);
   const { selectedBook, isLoading: booksLoading } = useSelectedBook();
   const bookId = selectedBook?.id;
 
   const canCreate = isSuperAdmin || hasPermission('cutting:create');
   const canUpdate = isSuperAdmin || hasPermission('cutting:update');
+  const canManage = isSuperAdmin || hasPermission('cutting:manage');
+  const canDelete = canManage || hasPermission('cutting:delete');
 
   const { data, isLoading } = useQuery({
     // Lots belong to a book: the list shows only the header's selected book.
@@ -113,6 +117,11 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
                       <Button variant="ghost" size="icon" aria-label={`Edit lot ${entry.lotNumber}`} disabled={!canUpdate} onClick={() => onEdit(entry)}>
                         <Pencil />
                       </Button>
+                      {canDelete ? (
+                        <Button variant="ghost" size="icon" aria-label={`Delete lot ${entry.lotNumber}`} className="text-destructive" onClick={() => setDeleting(entry)}>
+                          <Trash2 />
+                        </Button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -130,6 +139,7 @@ export const CuttingListView = ({ onAdd, onEdit }: CuttingListViewProps) => {
 
         {data ? <Pagination meta={data.pagination} onPageChange={setPage} className="border-t border-border" /> : null}
       </Card>
+      <DeleteLotDialog lot={deleting} canManage={canManage} onClose={() => setDeleting(null)} />
     </PageLayout>
   );
 };
