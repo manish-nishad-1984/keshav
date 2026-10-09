@@ -16,6 +16,8 @@ export interface Karigar {
   address: string | null;
   remarks: string | null;
   isActive: boolean;
+  // Fixed (attendance-paid) karigars: per day = this ÷ 30.
+  monthlySalary: string | null;
   // Only on a single karigar (GET /karigars/:id), not in lists.
   documents?: KarigarDocument[];
 }

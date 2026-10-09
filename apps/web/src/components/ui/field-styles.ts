@@ -6,7 +6,7 @@
 //  - read-only (Input/Textarea only, see readOnlyField): gray fill, normal text, no focus ring
 //  - error: see invalidField
 export const fieldBase =
-  'rounded-md border border-input bg-muted text-sm text-input-foreground transition-[color,background-color,border-color,box-shadow] duration-150 placeholder:text-placeholder hover:bg-input-hover focus-visible:border-ring focus-visible:bg-card focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/10 disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground disabled:hover:border-input disabled:hover:bg-secondary max-sm:text-base';
+  'rounded-md border border-input bg-muted text-[0.9375rem] font-medium text-input-foreground transition-[color,background-color,border-color,box-shadow] duration-150 placeholder:text-placeholder hover:bg-input-hover focus-visible:border-ring focus-visible:bg-card focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/10 disabled:cursor-not-allowed disabled:bg-secondary disabled:text-foreground/75 disabled:hover:border-input disabled:hover:bg-secondary max-sm:text-base';
 
 // Not applied to SelectTrigger: a <button> always matches :read-only.
 export const readOnlyField =

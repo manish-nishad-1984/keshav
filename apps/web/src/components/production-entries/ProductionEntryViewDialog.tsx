@@ -11,6 +11,7 @@ import { usePermissions } from '../../hooks/use-permissions';
 import type { ProductionEntry } from './production-entry-constants';
 import { ratePending } from './production-entry-constants';
 import { formatDate } from '../../lib/date';
+import { formatMoney } from '../../lib/format';
 
 interface ProductionEntryViewDialogProps {
   entry: ProductionEntry | null;
@@ -90,16 +91,16 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                       <td className="px-3 py-2 text-muted-foreground">Stitching</td>
                       <td className="px-3 py-2 font-medium">{`${entry.carrier.fullName} (${entry.carrier.code})`}</td>
                       <td className="numeric px-3 py-2 text-right">{entry.carrierQuantity}</td>
-                      <td className="numeric px-3 py-2 text-right">{entry.carrierRate ? Number(entry.carrierRate).toFixed(2) : '—'}</td>
-                      <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.carrierTotal).toFixed(2)}</td>
+                      <td className="numeric px-3 py-2 text-right">{entry.carrierRate ? formatMoney(entry.carrierRate) : '—'}</td>
+                      <td className="numeric px-3 py-2 text-right font-medium">{formatMoney(entry.carrierTotal)}</td>
                     </tr>
                     {entry.flatlockKarigar ? (
                       <tr>
                         <td className="px-3 py-2 text-muted-foreground">Flatlock</td>
                         <td className="px-3 py-2 font-medium">{`${entry.flatlockKarigar.fullName} (${entry.flatlockKarigar.code})`}</td>
                         <td className="numeric px-3 py-2 text-right text-muted-foreground">{entry.carrierQuantity}</td>
-                        <td className="numeric px-3 py-2 text-right">{entry.flatlockRate ? Number(entry.flatlockRate).toFixed(2) : '—'}</td>
-                        <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.flatlockTotal ?? 0).toFixed(2)}</td>
+                        <td className="numeric px-3 py-2 text-right">{entry.flatlockRate ? formatMoney(entry.flatlockRate) : '—'}</td>
+                        <td className="numeric px-3 py-2 text-right font-medium">{formatMoney(entry.flatlockTotal ?? 0)}</td>
                       </tr>
                     ) : null}
                     {entry.overlockCarrier ? (
@@ -107,8 +108,8 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                         <td className="px-3 py-2 text-muted-foreground">Overlock</td>
                         <td className="px-3 py-2 font-medium">{`${entry.overlockCarrier.fullName} (${entry.overlockCarrier.code})`}</td>
                         <td className="numeric px-3 py-2 text-right text-muted-foreground">{entry.carrierQuantity}</td>
-                        <td className="numeric px-3 py-2 text-right">{entry.overlockRate ? Number(entry.overlockRate).toFixed(2) : '—'}</td>
-                        <td className="numeric px-3 py-2 text-right font-medium">{Number(entry.overlockTotal ?? 0).toFixed(2)}</td>
+                        <td className="numeric px-3 py-2 text-right">{entry.overlockRate ? formatMoney(entry.overlockRate) : '—'}</td>
+                        <td className="numeric px-3 py-2 text-right font-medium">{formatMoney(entry.overlockTotal ?? 0)}</td>
                       </tr>
                     ) : null}
                   </tbody>

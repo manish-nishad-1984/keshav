@@ -35,6 +35,8 @@ export const createKarigarSchema = z.object({
   joinDate: z.coerce.date().optional(),
   address: z.string().optional(),
   remarks: z.string().optional(),
+  // Fixed (attendance-paid) karigars only.
+  monthlySalary: z.coerce.number().positive().nullable().optional(),
   documents: documentsSchema.optional(),
 });
 export type CreateKarigarInput = z.infer<typeof createKarigarSchema>;
@@ -48,6 +50,7 @@ export const updateKarigarSchema = z.object({
   address: z.string().optional(),
   remarks: z.string().optional(),
   isActive: z.boolean().optional(),
+  monthlySalary: z.coerce.number().positive().nullable().optional(),
   documents: documentsSchema.optional(),
 });
 export type UpdateKarigarInput = z.infer<typeof updateKarigarSchema>;

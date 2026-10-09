@@ -2,6 +2,7 @@ import { badRequest, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getKarigar } from '../karigars/karigars.service';
 import { getCuttingEntry } from '../cutting/cutting.service';
+import { assertDeliveriesCovered, lockCuttingEntry } from '../deliveries/deliveries.repository';
 import * as repo from './production-entries.repository';
 import type {
   CreateProductionEntryInput,
@@ -143,6 +144,16 @@ export const updateProductionEntry = async (
 };
 
 export const deleteProductionEntry = async (organizationId: string, id: string, actorId: string | null) => {
-  await getProductionEntry(organizationId, id);
-  await repo.softDeleteProductionEntry(id, actorId);
+  const existing = await getProductionEntry(organizationId, id);
+  const { cuttingEntryId } = existing;
+  if (!cuttingEntryId) {
+    await repo.softDeleteProductionEntry(id, actorId);
+    return;
+  }
+  // Pieces already delivered to the party can't stop being produced.
+  await prisma.$transaction(async (tx) => {
+    await lockCuttingEntry(tx, cuttingEntryId);
+    await tx.productionEntry.update({ where: { id }, data: { deletedAt: new Date(), updatedById: actorId ?? undefined } });
+    await assertDeliveriesCovered(tx, cuttingEntryId);
+  });
 };

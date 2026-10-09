@@ -37,8 +37,14 @@ export const createPayment = (
     karigarId: string;
     amount: number;
     paymentMode: 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE';
+    entryTime?: string | null;
     referenceNo?: string;
     remarks?: string;
+    presentDays?: number | null;
+    absentDays?: number | null;
+    overtimeHours?: number | null;
+    perDayRate?: number | null;
+    salaryAmount?: number | null;
   },
   createdById: string | null,
 ) =>
@@ -56,6 +62,11 @@ export const updatePayment = (
     paymentMode: 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE';
     referenceNo: string;
     remarks: string;
+    presentDays: number | null;
+    absentDays: number | null;
+    overtimeHours: number | null;
+    perDayRate: number | null;
+    salaryAmount: number | null;
   }>,
   updatedById: string | null,
 ) =>
@@ -74,7 +85,7 @@ export const softDeletePayment = (id: string, updatedById: string | null) =>
 // (carrier, overlock carrier, flatlock karigar), so each role is summed separately and merged —
 // there's no single column to group by across all three.
 export const getLedger = async (organizationId: string) => {
-  const [karigars, carrierSums, overlockSums, flatlockSums, pressSums, paymentSums] = await Promise.all([
+  const [karigars, carrierSums, overlockSums, flatlockSums, pressSums, salarySums, paymentSums] = await Promise.all([
     prisma.karigar.findMany({ where: { organizationId, deletedAt: null }, orderBy: { fullName: 'asc' } }),
     prisma.productionEntry.groupBy({
       by: ['carrierId'],
@@ -97,6 +108,12 @@ export const getLedger = async (organizationId: string) => {
       where: { organizationId, deletedAt: null },
       _sum: { total: true },
     }),
+    // A Fixed karigar's salary is earned when it is worked out at payment time.
+    prisma.payment.groupBy({
+      by: ['karigarId'],
+      where: { organizationId, deletedAt: null, salaryAmount: { not: null } },
+      _sum: { salaryAmount: true },
+    }),
     prisma.payment.groupBy({
       by: ['karigarId'],
       where: { organizationId, deletedAt: null },
@@ -113,6 +130,7 @@ export const getLedger = async (organizationId: string) => {
   overlockSums.forEach((row) => addAmount(row.overlockCarrierId, Number(row._sum.overlockTotal ?? 0)));
   flatlockSums.forEach((row) => addAmount(row.flatlockKarigarId, Number(row._sum.flatlockTotal ?? 0)));
   pressSums.forEach((row) => addAmount(row.karigarId, Number(row._sum.total ?? 0)));
+  salarySums.forEach((row) => addAmount(row.karigarId, Number(row._sum.salaryAmount ?? 0)));
 
   const paidByKarigar = new Map(paymentSums.map((row) => [row.karigarId, Number(row._sum.amount ?? 0)]));
 

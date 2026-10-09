@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { getCuttingEntry } from '../cutting/cutting.service';
 import { getKarigar } from '../karigars/karigars.service';
 import { piecesTakenAndProduced } from '../production-entries/production-entries.repository';
+import { assertDeliveriesCovered } from '../deliveries/deliveries.repository';
 import * as repo from './cutting-distribution.repository';
 import type { DistributionCell } from './cutting-distribution.repository';
 import type {
@@ -18,7 +19,7 @@ const cellKey = (colorId: string, sizeId: string) => `${colorId}:${sizeId}`;
 
 // The lot's cut pieces per colour + size, plus the colours (in row order, a colour listed twice
 // merged into one) and the sizes that have any pieces (in Size Master order).
-const describeLot = (entry: CuttingEntryWithRows) => {
+export const describeLot = (entry: CuttingEntryWithRows) => {
   const cut = new Map<string, number>();
   const colors = new Map<string, { colorId: string; name: string; photoUrl: string | null }>();
   const sizes = new Map<string, { id: string; name: string; detail: string | null; sortOrder: number }>();
@@ -160,6 +161,7 @@ export const updateDistribution = async (
     }
     const updated = await repo.updateDistribution(tx, id, header, cells, actorId);
     await assertCoversProduction(tx, existing.karigarId, existing.cuttingEntryId);
+    await assertDeliveriesCovered(tx, existing.cuttingEntryId);
     return updated;
   });
 };
@@ -170,5 +172,6 @@ export const deleteDistribution = async (organizationId: string, id: string) => 
     await repo.lockCuttingEntry(tx, existing.cuttingEntryId);
     await tx.cuttingDistribution.delete({ where: { id } });
     await assertCoversProduction(tx, existing.karigarId, existing.cuttingEntryId);
+    await assertDeliveriesCovered(tx, existing.cuttingEntryId);
   });
 };

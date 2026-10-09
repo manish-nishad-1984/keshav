@@ -70,6 +70,7 @@ export const createKarigar = (
     joinDate?: Date;
     address?: string;
     remarks?: string;
+    monthlySalary?: number | null;
   },
   createdById: string | null,
 ) =>
@@ -94,6 +95,7 @@ export const updateKarigar = (
     address: string;
     remarks: string;
     isActive: boolean;
+    monthlySalary: number | null;
   }>,
   updatedById: string | null,
 ) =>

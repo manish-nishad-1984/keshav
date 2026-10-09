@@ -6,6 +6,7 @@ import { Badge } from '../ui/badge';
 import { LoadingState } from '../ui/loading-state';
 import { PAYMENT_MODE_LABELS, type LedgerRow, type Payment } from './payment-constants';
 import { formatDate } from '../../lib/date';
+import { formatMoney } from '../../lib/format';
 
 interface KarigarPaymentHistoryDialogProps {
   karigar: LedgerRow | null;
@@ -30,15 +31,15 @@ export const KarigarPaymentHistoryDialog = ({ karigar, onOpenChange }: KarigarPa
             <div className="mb-4 grid grid-cols-3 gap-3 rounded-md border border-border p-3 text-center">
               <div>
                 <p className="text-2xs uppercase tracking-wider text-muted-foreground">Total</p>
-                <p className="numeric text-sm font-semibold">{karigar.totalAmount.toFixed(2)}</p>
+                <p className="numeric text-sm font-semibold">{formatMoney(karigar.totalAmount)}</p>
               </div>
               <div>
                 <p className="text-2xs uppercase tracking-wider text-muted-foreground">Paid</p>
-                <p className="numeric text-sm font-semibold">{karigar.paidAmount.toFixed(2)}</p>
+                <p className="numeric text-sm font-semibold">{formatMoney(karigar.paidAmount)}</p>
               </div>
               <div>
                 <p className="text-2xs uppercase tracking-wider text-muted-foreground">Pending</p>
-                <p className="numeric text-sm font-semibold">{karigar.pending.toFixed(2)}</p>
+                <p className="numeric text-sm font-semibold">{formatMoney(karigar.pending)}</p>
               </div>
             </div>
           ) : null}
@@ -53,19 +54,26 @@ export const KarigarPaymentHistoryDialog = ({ karigar, onOpenChange }: KarigarPa
                     <th className="px-3 py-2 font-medium">Date</th>
                     <th className="px-3 py-2 font-medium text-right">Amount</th>
                     <th className="px-3 py-2 font-medium">Mode</th>
-                    <th className="px-3 py-2 font-medium">Reference</th>
+                    <th className="px-3 py-2 font-medium">Salary details</th>
                     <th className="px-3 py-2 font-medium">Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.items.map((payment) => (
                     <tr key={payment.id} className="border-b border-border last:border-0">
-                      <td className="px-3 py-2 text-muted-foreground">{formatDate(payment.date)}</td>
-                      <td className="numeric px-3 py-2 font-medium text-right">{Number(payment.amount).toFixed(2)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                        {formatDate(payment.date)}
+                        {payment.entryTime ? <span className="ml-1.5 text-2xs">{payment.entryTime}</span> : null}
+                      </td>
+                      <td className="numeric px-3 py-2 font-medium text-right">{formatMoney(payment.amount)}</td>
                       <td className="px-3 py-2">
                         <Badge variant="muted">{PAYMENT_MODE_LABELS[payment.paymentMode]}</Badge>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">{payment.referenceNo ?? '—'}</td>
+                      <td className="px-3 py-2 text-muted-foreground">
+                        {payment.salaryAmount
+                          ? `${payment.presentDays ?? 0} present · ${payment.absentDays ?? 0} absent · ${Number(payment.overtimeHours ?? 0)} h OT`
+                          : '—'}
+                      </td>
                       <td className="px-3 py-2 text-muted-foreground">{payment.remarks ?? '—'}</td>
                     </tr>
                   ))}

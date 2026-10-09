@@ -37,6 +37,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
     isActive: true,
     address: '',
     remarks: '',
+    monthlySalary: '',
   });
 
   const [documents, setDocuments] = useState<DocumentDraft[]>([]);
@@ -70,6 +71,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
             isActive: karigar.isActive,
             address: karigar.address ?? '',
             remarks: karigar.remarks ?? '',
+            monthlySalary: karigar.monthlySalary ? String(Number(karigar.monthlySalary)) : '',
           }
         : {
             fullName: '',
@@ -80,6 +82,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
             isActive: true,
             address: '',
             remarks: '',
+            monthlySalary: '',
           },
     );
   }, [karigar]);
@@ -101,6 +104,8 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
         joinDate: form.joinDate || undefined,
         address: form.address || undefined,
         remarks: form.remarks || undefined,
+        // Only Fixed karigars carry a monthly salary.
+        monthlySalary: isFixedType && form.monthlySalary ? Number(form.monthlySalary) : null,
         // A proof without a photo is just an empty slot — not sent.
         documents: documents
           .filter((d) => d.fileUrl)
@@ -118,6 +123,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
     onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.'),
   });
 
+  const isFixedType = workTypes?.find((w) => w.id === form.workTypeId)?.name.trim().toLowerCase() === 'fixed';
   const unnamedProof = documents.some((d) => d.type === 'OTHER' && d.fileUrl && !d.label.trim());
 
   return (
@@ -176,6 +182,20 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
                   </SelectContent>
                 </Select>
               </FormField>
+              {isFixedType ? (
+                <FormField label="Monthly Salary (₹)" required hint="Paid by attendance: per day = salary ÷ 30">
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="decimal"
+                    required
+                    className="numeric text-right"
+                    value={form.monthlySalary}
+                    onChange={(e) => setForm((f) => ({ ...f, monthlySalary: e.target.value }))}
+                  />
+                </FormField>
+              ) : null}
               <FormField label="Join Date">
                 <DatePicker value={form.joinDate} onChange={(joinDate) => setForm((f) => ({ ...f, joinDate }))} />
               </FormField>

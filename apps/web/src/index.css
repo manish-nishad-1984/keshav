@@ -33,7 +33,7 @@
   --secondary: var(--tint-h) calc(var(--tint-s) * 1.07) 91.5%;
   --secondary-foreground: 217 32.6% 17.5%;
   --muted: var(--tint-h) calc(var(--tint-s) * 1.33) 96.1%; /* #F1F5F9 input fill */
-  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.54) 40%; /* secondary text */
+  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.54) 33%; /* secondary text */
   --accent: var(--brand-h) calc(var(--brand-s) * 0.76) 94.7%; /* #E8F2FB hover surface */
   --accent-foreground: var(--brand-h) var(--brand-s) var(--brand-l);
   --destructive: 4 74.3% 48.8%;
@@ -41,8 +41,8 @@
   --border: var(--tint-h) calc(var(--tint-s) * 1.15) 88.6%; /* #D8E2EC */
   --input: var(--tint-h) calc(var(--tint-s) * 0.9) 83.9%; /* #CBD5E1 */
   --input-hover: var(--tint-h) calc(var(--tint-s) * 1.28) 94.9%; /* #EDF2F7 */
-  --input-foreground: 217 32.6% 17.5%; /* #1E293B */
-  --placeholder: var(--tint-h) calc(var(--tint-s) * 0.43) 54.5%; /* #7C899A */
+  --input-foreground: 222 47% 11%; /* what the user types: as dark as body text */
+  --placeholder: var(--tint-h) calc(var(--tint-s) * 0.43) 47%;
   --ring: var(--brand-h) calc(var(--brand-s) * 0.88) calc(var(--brand-l) + 5%); /* #1683D8 focus */
   --table-header: var(--tint-h) calc(var(--tint-s) * 1.46) 93.7%; /* #E8EFF6 */
   --table-stripe: var(--tint-h) calc(var(--tint-s) * 1.33) 98%; /* #F8FAFC */
@@ -76,12 +76,13 @@
   --popover-foreground: 222 40% 10%;
   --secondary: var(--tint-h) calc(var(--tint-s) * 0.8) 88%;
   --muted: var(--tint-h) calc(var(--tint-s) * 0.93) 93.5%; /* input fill */
-  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.53) 35%;
+  --muted-foreground: var(--tint-h) calc(var(--tint-s) * 0.53) 29%;
   --accent: var(--brand-h) calc(var(--brand-s) * 0.6) 91%;
   --border: var(--tint-h) calc(var(--tint-s) * 0.8) 83%;
   --input: var(--tint-h) calc(var(--tint-s) * 0.67) 76%;
   --input-hover: var(--tint-h) calc(var(--tint-s) * 0.93) 91%;
-  --placeholder: var(--tint-h) calc(var(--tint-s) * 0.4) 50%;
+  --placeholder: var(--tint-h) calc(var(--tint-s) * 0.4) 44%;
+  --input-foreground: 222 40% 10%;
   --table-header: var(--tint-h) calc(var(--tint-s) * 1.07) 89%;
   --table-stripe: var(--tint-h) calc(var(--tint-s) * 0.93) 95.5%;
   --table-hover: var(--brand-h) calc(var(--brand-s) * 0.65) 91.5%;
@@ -201,9 +202,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Figures in the regular UI font (easier to read than monospace), with equal-width digits so
+   columns of amounts still line up. */
 .numeric {
   font-variant-numeric: tabular-nums;
-  @apply font-mono text-[0.8125rem];
+  font-feature-settings: 'tnum';
 }
 
 .section-label {

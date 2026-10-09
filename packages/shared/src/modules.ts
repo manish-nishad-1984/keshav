@@ -121,6 +121,17 @@ export const MODULES: ModuleDefinition[] = [
     description: 'Search and review past production entries.',
   },
   {
+    key: 'deliveries',
+    label: 'Delivery',
+    singular: 'Delivery',
+    path: '/deliveries',
+    icon: 'Truck',
+    group: 'general',
+    order: 18,
+    permission: 'deliveries:view',
+    description: 'Finished pieces of a lot sent to its party, by colour and size, with a challan.',
+  },
+  {
     key: 'photo_gallery',
     label: 'Photo Gallery',
     singular: 'Photo',

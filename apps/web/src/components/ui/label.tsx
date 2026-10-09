@@ -6,7 +6,7 @@ export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
 }
 
 export const Label = forwardRef<HTMLLabelElement, LabelProps>(({ className, required, children, ...props }, ref) => (
-  <label ref={ref} className={cn('text-xs font-medium text-foreground', className)} {...props}>
+  <label ref={ref} className={cn('text-[0.8125rem] font-semibold text-foreground', className)} {...props}>
     {children}
     {required ? <span className="ml-0.5 text-destructive">*</span> : null}
   </label>

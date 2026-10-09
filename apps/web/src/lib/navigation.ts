@@ -19,6 +19,7 @@ const SECTION_DEFINITIONS: NavSectionDefinition[] = [
   { key: 'cutting', label: 'Cutting', icon: 'Scissors', modules: ['cutting', 'cutting_distribution'] },
   { key: 'accessories', label: 'Accessories', icon: 'Package', modules: ['accessory_issues', 'accessories'] },
   { key: 'production', label: 'Production', icon: 'Factory', modules: ['production_entries', 'press_entries', 'production_history', 'photo_gallery'] },
+  { key: 'delivery', label: 'Delivery', icon: 'Truck', modules: ['deliveries'] },
   { key: 'payments', label: 'Payments', icon: 'Wallet', modules: ['payments'] },
   { key: 'reports', label: 'Reports', icon: 'ChartColumn', modules: ['reports'] },
   { key: 'admin', label: 'Admin', icon: 'ShieldCheck', modules: ['users', 'roles', 'audit_logs'] },

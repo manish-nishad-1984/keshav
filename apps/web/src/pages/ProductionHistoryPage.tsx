@@ -17,6 +17,7 @@ import type { ProductionEntry } from '../components/production-entries/productio
 import type { Karigar } from '../components/karigars/karigar-constants';
 import type { Item } from '../components/items/item-constants';
 import { formatDate, fileDateStamp } from '../lib/date';
+import { formatMoney } from '../lib/format';
 
 const toCsvValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
@@ -188,9 +189,9 @@ export const ProductionHistoryPage = () => {
                       <td className="px-4 py-2.5 text-muted-foreground">{entry.item.itemName}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground text-right">{entry.carrierQuantity}</td>
                       <td className="numeric px-4 py-2.5 text-muted-foreground text-right">
-                        {entry.carrierRate ? Number(entry.carrierRate).toFixed(2) : <Badge variant="warning">Rate pending</Badge>}
+                        {entry.carrierRate ? formatMoney(entry.carrierRate) : <Badge variant="warning">Rate pending</Badge>}
                       </td>
-                      <td className="numeric px-4 py-2.5 font-medium text-right">{Number(entry.carrierTotal).toFixed(2)}</td>
+                      <td className="numeric px-4 py-2.5 font-medium text-right">{formatMoney(entry.carrierTotal)}</td>
                       <td className="px-4 py-2">
                         <div className="flex size-9 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground">
                           {photoUrl ? (

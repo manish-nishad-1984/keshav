@@ -11,6 +11,7 @@ import { REPORT_TYPES, formatMonthKey, type ReportKey } from './report-constants
 import type { ProductionEntry } from '../production-entries/production-entry-constants';
 import type { LedgerRow } from '../payments/payment-constants';
 import { formatDate, fileDateStamp } from '../../lib/date';
+import { formatMoney } from '../../lib/format';
 
 interface OrganizationDto {
   name: string;
@@ -177,8 +178,8 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td className="px-3 py-2">{e.carrier.fullName}</td>
                 <td className="px-3 py-2">{e.item.itemName}</td>
                 <td className="numeric px-3 py-2 text-right">{e.carrierQuantity}</td>
-                <td className="numeric px-3 py-2 text-right">{e.carrierRate ? Number(e.carrierRate).toFixed(2) : '—'}</td>
-                <td className="numeric px-3 py-2 text-right">{Number(e.carrierTotal).toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{e.carrierRate ? formatMoney(e.carrierRate) : '—'}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(e.carrierTotal)}</td>
               </tr>
             ))}
             {!items.length ? (
@@ -195,7 +196,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td colSpan={6} className="px-3 py-2 text-right">
                   Total
                 </td>
-                <td className="numeric px-3 py-2 text-right">{total.toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(total)}</td>
               </tr>
             </tfoot>
           ) : null}
@@ -237,7 +238,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                   <td className="px-3 py-2">{e.carrier.fullName}</td>
                   <td className="px-3 py-2">{e.item.itemName}</td>
                   <td className="numeric px-3 py-2 text-right">{e.carrierQuantity}</td>
-                  <td className="numeric px-3 py-2 text-right">{Number(e.carrierTotal).toFixed(2)}</td>
+                  <td className="numeric px-3 py-2 text-right">{formatMoney(e.carrierTotal)}</td>
                 </tr>
               );
             })}
@@ -274,7 +275,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td className="px-3 py-2">{r.karigarName}</td>
                 <td className="numeric px-3 py-2">{r.karigarCode}</td>
                 <td className="numeric px-3 py-2 text-right">{r.totalQuantity}</td>
-                <td className="numeric px-3 py-2 text-right">{r.totalAmount.toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(r.totalAmount)}</td>
               </tr>
             ))}
             {!rows.length ? (
@@ -291,7 +292,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td colSpan={4} className="px-3 py-2 text-right">
                   Total
                 </td>
-                <td className="numeric px-3 py-2 text-right">{total.toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(total)}</td>
               </tr>
             </tfoot>
           ) : null}
@@ -318,7 +319,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td className="px-3 py-2">{i + 1}</td>
                 <td className="px-3 py-2">{r.itemName}</td>
                 <td className="numeric px-3 py-2 text-right">{r.totalQuantity}</td>
-                <td className="numeric px-3 py-2 text-right">{r.totalAmount.toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(r.totalAmount)}</td>
               </tr>
             ))}
             {!rows.length ? (
@@ -335,7 +336,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td colSpan={3} className="px-3 py-2 text-right">
                   Total
                 </td>
-                <td className="numeric px-3 py-2 text-right">{total.toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(total)}</td>
               </tr>
             </tfoot>
           ) : null}
@@ -362,7 +363,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td className="px-3 py-2">{i + 1}</td>
                 <td className="px-3 py-2">{formatMonthKey(r.month)}</td>
                 <td className="numeric px-3 py-2 text-right">{r.totalQuantity}</td>
-                <td className="numeric px-3 py-2 text-right">{r.totalAmount.toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(r.totalAmount)}</td>
               </tr>
             ))}
             {!rows.length ? (
@@ -379,7 +380,7 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
                 <td colSpan={3} className="px-3 py-2 text-right">
                   Total
                 </td>
-                <td className="numeric px-3 py-2 text-right">{total.toFixed(2)}</td>
+                <td className="numeric px-3 py-2 text-right">{formatMoney(total)}</td>
               </tr>
             </tfoot>
           ) : null}
@@ -413,9 +414,9 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
             <tr key={r.karigarId} className="border-b border-border last:border-0">
               <td className="px-3 py-2">{i + 1}</td>
               <td className="px-3 py-2">{r.karigarName}</td>
-              <td className="numeric px-3 py-2 text-right">{r.totalAmount.toFixed(2)}</td>
-              <td className="numeric px-3 py-2 text-right">{r.paidAmount.toFixed(2)}</td>
-              <td className="numeric px-3 py-2 text-right">{r.pending.toFixed(2)}</td>
+              <td className="numeric px-3 py-2 text-right">{formatMoney(r.totalAmount)}</td>
+              <td className="numeric px-3 py-2 text-right">{formatMoney(r.paidAmount)}</td>
+              <td className="numeric px-3 py-2 text-right">{formatMoney(r.pending)}</td>
             </tr>
           ))}
           {!rows.length ? (
@@ -432,9 +433,9 @@ export const ReportPreviewView = ({ reportKey, onBack }: ReportPreviewViewProps)
               <td colSpan={2} className="px-3 py-2 text-right">
                 Total
               </td>
-              <td className="numeric px-3 py-2 text-right">{totals.totalAmount.toFixed(2)}</td>
-              <td className="numeric px-3 py-2 text-right">{totals.paidAmount.toFixed(2)}</td>
-              <td className="numeric px-3 py-2 text-right">{totals.pending.toFixed(2)}</td>
+              <td className="numeric px-3 py-2 text-right">{formatMoney(totals.totalAmount)}</td>
+              <td className="numeric px-3 py-2 text-right">{formatMoney(totals.paidAmount)}</td>
+              <td className="numeric px-3 py-2 text-right">{formatMoney(totals.pending)}</td>
             </tr>
           </tfoot>
         ) : null}

@@ -10,6 +10,7 @@ import { LoadingState } from '../ui/loading-state';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { KarigarPaymentHistoryDialog } from './KarigarPaymentHistoryDialog';
 import type { LedgerRow } from './payment-constants';
+import { formatMoney } from '../../lib/format';
 
 interface KarigarLedgerViewProps {
   onAddPayment: () => void;
@@ -88,9 +89,9 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
                 {rows.map((row) => (
                   <tr key={row.karigarId} className="border-b border-border last:border-0">
                     <td className="px-4 py-2.5 font-medium">{row.karigarName}</td>
-                    <td className="numeric px-4 py-2.5 text-right">{row.totalAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5 text-right">{row.paidAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5 font-medium text-right">{row.pending.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{formatMoney(row.totalAmount)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{formatMoney(row.paidAmount)}</td>
+                    <td className="numeric px-4 py-2.5 font-medium text-right">{formatMoney(row.pending)}</td>
                     <td className="px-4 py-2.5">
                       <Badge variant={row.pending > 0 ? 'danger' : 'success'}>
                         {row.pending > 0 ? 'Due' : 'Settled'}
@@ -115,9 +116,9 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
                 <tfoot>
                   <tr className="border-t border-border font-semibold">
                     <td className="px-4 py-2.5">Total</td>
-                    <td className="numeric px-4 py-2.5 text-right">{totals.totalAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5 text-right">{totals.paidAmount.toFixed(2)}</td>
-                    <td className="numeric px-4 py-2.5 text-right">{totals.pending.toFixed(2)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{formatMoney(totals.totalAmount)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{formatMoney(totals.paidAmount)}</td>
+                    <td className="numeric px-4 py-2.5 text-right">{formatMoney(totals.pending)}</td>
                     <td />
                     <td />
                   </tr>
