@@ -78,7 +78,7 @@ interface LotHistory {
     remarks: string | null;
     lines: { name: string; unit: string; quantity: number }[];
   }[];
-  deliveries: { id: string; challanNumber: number; date: string; entryTime: string | null; total: number; remarks: string | null; cells: Cell[] }[];
+  deliveries: { id: string; challanNumber: number; billNumber: string | null; date: string; entryTime: string | null; total: number; remarks: string | null; cells: Cell[] }[];
 }
 
 const STAGES: Record<Stage, { label: string; variant: 'muted' | 'warning' | 'info' | 'progress' | 'success' | 'neutral' }> = {
@@ -430,7 +430,10 @@ export const LotHistoryPage = () => {
             <tbody>
               {data.deliveries.map((d) => (
                 <tr key={d.id} className="border-b border-border last:border-0">
-                  <td className={`${td} numeric font-medium`}>#{d.challanNumber}</td>
+                  <td className={`${td} numeric font-medium`}>
+                    #{d.challanNumber}
+                    {d.billNumber ? <span className="block text-xs font-normal text-muted-foreground">Bill {d.billNumber}</span> : null}
+                  </td>
                   <td className={`${td} whitespace-nowrap`}>{when(d.date, d.entryTime)}</td>
                   <td className={td}>
                     <CellList cells={d.cells} />

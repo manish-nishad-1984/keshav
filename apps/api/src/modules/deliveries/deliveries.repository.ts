@@ -38,6 +38,7 @@ export const listDeliveries = async (
           OR: [
             { cuttingEntry: { lotNumber: { contains: search, mode: 'insensitive' } } },
             { party: { name: { contains: search, mode: 'insensitive' } } },
+            { billNumber: { contains: search, mode: 'insensitive' } },
             ...(challan !== undefined ? [{ challanNumber: challan }] : []),
           ],
         }
@@ -157,6 +158,7 @@ export interface DeliveryCell {
 interface DeliveryHeaderData {
   date: Date;
   entryTime?: string | null;
+  billNumber?: string | null;
   remarks?: string | null;
 }
 

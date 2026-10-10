@@ -77,7 +77,7 @@ export const DeliveryListView = ({ onAdd, onEdit, onChallan }: DeliveryListViewP
           <div className="relative w-full max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search challan, lot or party…"
+              placeholder="Search challan, bill, lot or party…"
               className="pl-8"
               value={search}
               onChange={(e) => {
@@ -96,6 +96,7 @@ export const DeliveryListView = ({ onAdd, onEdit, onChallan }: DeliveryListViewP
               <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2 font-medium">Challan</th>
+                  <th className="px-4 py-2 font-medium">Bill No.</th>
                   <th className="px-4 py-2 font-medium">Date</th>
                   <th className="px-4 py-2 font-medium">Lot No.</th>
                   <th className="px-4 py-2 font-medium">Design</th>
@@ -109,6 +110,7 @@ export const DeliveryListView = ({ onAdd, onEdit, onChallan }: DeliveryListViewP
                 {data?.items.map((d) => (
                   <tr key={d.id} className="border-b border-border last:border-0">
                     <td className="numeric px-4 py-2.5 font-semibold">#{d.challanNumber}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{d.billNumber ?? '—'}</td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                       {formatDate(d.date)}
                       {d.entryTime ? <span className="ml-1.5 text-2xs">{d.entryTime}</span> : null}
@@ -145,7 +147,7 @@ export const DeliveryListView = ({ onAdd, onEdit, onChallan }: DeliveryListViewP
                 ))}
                 {!data?.items.length ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                       {selectedBook ? 'No deliveries in this book yet.' : 'Add a book in Book Master and select it in the header.'}
                     </td>
                   </tr>

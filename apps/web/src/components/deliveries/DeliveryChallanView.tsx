@@ -70,6 +70,12 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-right">
             <dt className="text-muted-foreground">Challan No.</dt>
             <dd className="numeric font-semibold">{delivery.challanNumber}</dd>
+            {delivery.billNumber ? (
+              <>
+                <dt className="text-muted-foreground">Bill No.</dt>
+                <dd className="numeric font-semibold">{delivery.billNumber}</dd>
+              </>
+            ) : null}
             <dt className="text-muted-foreground">Date</dt>
             <dd className="numeric">
               {formatDate(delivery.date)}

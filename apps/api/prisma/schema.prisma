@@ -835,6 +835,8 @@ model Delivery {
   organizationId String   @db.Uuid
   // Running challan number per organization, assigned by the server.
   challanNumber  Int
+  // Optional: the client's own bill number, for their reference (typed by the user).
+  billNumber     String?
   cuttingEntryId String   @db.Uuid
   partyId        String   @db.Uuid
   date           DateTime @db.Date

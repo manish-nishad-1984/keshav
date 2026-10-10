@@ -54,6 +54,7 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
   const [date, setDate] = useState(delivery?.date.slice(0, 10) ?? localIsoDate());
   const [entryTime, setEntryTime] = useState(delivery ? (delivery.entryTime ?? '') : nowTime());
   const [remarks, setRemarks] = useState(delivery?.remarks ?? '');
+  const [billNumber, setBillNumber] = useState(delivery?.billNumber ?? '');
   // Pieces delivered now, keyed "colorId:sizeId".
   const [sent, setSent] = useState<Record<string, number | ''>>(() =>
     Object.fromEntries(delivery?.quantities.map((q) => [cellKey(q.colorId, q.sizeId), q.quantity]) ?? []),
@@ -105,7 +106,7 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
           quantity: qty(cellKey(c.colorId, cell.sizeId)),
         })),
       );
-      const payload = { date, entryTime: entryTime || null, remarks: remarks.trim() || null, quantities };
+      const payload = { date, entryTime: entryTime || null, billNumber: billNumber.trim() || null, remarks: remarks.trim() || null, quantities };
       if (isEdit && delivery) return apiClient.patch<Delivery>(`/deliveries/${delivery.id}`, payload);
       return apiClient.post<Delivery>('/deliveries', { ...payload, cuttingEntryId: lotId });
     },
@@ -185,6 +186,10 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
                     onChange={(e) => setEntryTime(e.target.value)}
                   />
                 </div>
+              </FormField>
+
+              <FormField label="Bill No." htmlFor="del-bill" hint="Client's reference (optional)">
+                <Input id="del-bill" maxLength={50} value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
               </FormField>
 
               <FormField label="Party" htmlFor="del-party" hint="The lot's party">

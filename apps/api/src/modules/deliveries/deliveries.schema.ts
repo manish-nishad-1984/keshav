@@ -41,6 +41,7 @@ export const createDeliverySchema = z.object({
   cuttingEntryId: z.string().uuid(),
   date: z.coerce.date(),
   entryTime: entryTimeSchema,
+  billNumber: z.string().trim().max(50).nullable().optional(),
   remarks: z.string().trim().max(500).nullable().optional(),
   quantities: quantitiesSchema,
 });
@@ -50,6 +51,7 @@ export type CreateDeliveryInput = z.infer<typeof createDeliverySchema>;
 export const updateDeliverySchema = z.object({
   date: z.coerce.date().optional(),
   entryTime: entryTimeSchema,
+  billNumber: z.string().trim().max(50).nullable().optional(),
   remarks: z.string().trim().max(500).nullable().optional(),
   quantities: quantitiesSchema.optional(),
 });

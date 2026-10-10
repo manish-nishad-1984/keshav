@@ -177,6 +177,7 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
     deliveries: lot.deliveries.map((d) => ({
       id: d.id,
       challanNumber: d.challanNumber,
+      billNumber: d.billNumber,
       date: d.date,
       entryTime: d.entryTime,
       total: d.totalQuantity,

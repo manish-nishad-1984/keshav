@@ -14,6 +14,7 @@ export interface DeliveryQuantity {
 export interface Delivery {
   id: string;
   challanNumber: number;
+  billNumber: string | null;
   cuttingEntryId: string;
   partyId: string;
   date: string;
