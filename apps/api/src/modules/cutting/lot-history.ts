@@ -13,7 +13,7 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
     where: { organizationId, bookId, lotNumber: lotNumber.trim(), deletedAt: null },
     include: {
       book: { select: { name: true } },
-      item: { select: { itemName: true } },
+      item: { select: { itemName: true, photoUrl: true } },
       party: { select: { name: true } },
       patternType: { select: { name: true } },
       rows: {
@@ -125,6 +125,7 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
       date: lot.date,
       entryTime: lot.entryTime,
       itemName: lot.item.itemName,
+      itemPhotoUrl: lot.item.photoUrl,
       partyName: lot.party.name,
       patternType: lot.patternType.name,
       isOnline: lot.isOnline,

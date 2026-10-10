@@ -1,7 +1,9 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftRight, Hourglass, Package, Scissors, Truck, Users } from 'lucide-react';
-import { apiClient, ApiRequestError } from '../lib/api-client';
+import { ArrowLeftRight, Hourglass, ImageOff, Package, Scissors, Truck, Users } from 'lucide-react';
+import { QTY_TONE_CLASSES, QtyChip, type QtyTone } from '../components/ui/qty-tone';
+import { cn } from '../lib/utils';
+import { apiClient, ApiRequestError, resolvePhotoUrl } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -26,6 +28,7 @@ interface LotHistory {
     date: string;
     entryTime: string | null;
     itemName: string;
+    itemPhotoUrl: string | null;
     partyName: string;
     patternType: string;
     isOnline: boolean;
@@ -50,7 +53,7 @@ interface LotHistory {
     labourCost: number;
   };
   sizes: { id: string; name: string; detail: string | null }[];
-  cutGrid: { color: string; cells: Record<string, number>; total: number }[];
+  cutGrid: { color: string; photoUrl: string | null; cells: Record<string, number>; total: number }[];
   karigars: { karigarId: string; name: string; workType: string; given: number; handedIn: number; pending: number }[];
   distributions: { id: string; date: string; entryTime: string | null; karigar: string; workType: string; total: number; remarks: string | null; cells: Cell[] }[];
   production: {
@@ -109,23 +112,22 @@ const CellList = ({ cells }: { cells: Cell[] }) => {
   );
 };
 
-const SummaryTile = ({ icon: Icon, label, value, hint }: { icon: typeof Scissors; label: string; value: number; hint?: string }) => (
-  <div className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5">
-    <Icon className="size-6 shrink-0 text-muted-foreground" />
+const SummaryTile = ({ icon: Icon, label, value, tone }: { icon: typeof Scissors; label: string; value: number; tone: QtyTone }) => (
+  <div className={cn('flex items-center gap-3 rounded-lg border px-3 py-3', QTY_TONE_CLASSES[tone].chip)}>
+    <Icon className="size-7 shrink-0" />
     <div className="min-w-0">
-      <p className="truncate text-xs text-muted-foreground">{label}</p>
-      <p className="numeric text-xl font-semibold leading-tight">
-        {n(value)} <span className="text-xs font-normal text-muted-foreground">pcs</span>
+      <p className="truncate text-xs font-medium">{label}</p>
+      <p className="numeric text-2xl font-bold leading-tight">
+        {n(value)} <span className="text-xs font-normal opacity-80">pcs</span>
       </p>
-      {hint ? <p className="truncate text-2xs text-muted-foreground">{hint}</p> : null}
     </div>
   </div>
 );
 
-const Section = ({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>
+const Section = ({ title, count, tone, children }: { title: string; count?: number; tone: QtyTone; children: React.ReactNode }) => (
+  <Card className="overflow-hidden">
+    <CardHeader className={cn('border-l-4', QTY_TONE_CLASSES[tone].chip, 'border-l-current')}>
+      <CardTitle className="text-base">
         {title}
         {count !== undefined ? <span className="ml-2 font-normal text-muted-foreground">({count})</span> : null}
       </CardTitle>
@@ -179,6 +181,7 @@ export const LotHistoryPage = () => {
 
   const { lot, summary, sizes } = data;
   const stage = STAGES[data.stage];
+  const designPhoto = resolvePhotoUrl(lot.itemPhotoUrl);
   const fabric = lot.pieces && lot.averageValue ? (lot.totalQuantity / lot.pieces) * lot.averageValue : null;
 
   return (
@@ -197,33 +200,45 @@ export const LotHistoryPage = () => {
       ) : null}
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <SummaryTile icon={Scissors} label="Cut" value={summary.cut} />
-        <SummaryTile icon={Hourglass} label="Not given yet" value={summary.notGiven} />
-        <SummaryTile icon={Users} label="With karigars" value={summary.withKarigars} />
-        <SummaryTile icon={Package} label="Produced (handed in)" value={summary.produced} />
-        <SummaryTile icon={ArrowLeftRight} label="Ready to deliver" value={summary.readyToDeliver} />
-        <SummaryTile icon={Truck} label="Delivered" value={summary.delivered} />
+        <SummaryTile icon={Scissors} label="Cut" value={summary.cut} tone="total" />
+        <SummaryTile icon={Hourglass} label="Not given yet" value={summary.notGiven} tone="pending" />
+        <SummaryTile icon={Users} label="With karigars" value={summary.withKarigars} tone="earlier" />
+        <SummaryTile icon={Package} label="Produced (handed in)" value={summary.produced} tone="now" />
+        <SummaryTile icon={ArrowLeftRight} label="Ready to deliver" value={summary.readyToDeliver} tone="now" />
+        <SummaryTile icon={Truck} label="Delivered" value={summary.delivered} tone="done" />
       </div>
 
-      <Card>
-        <CardContent className="grid gap-x-6 gap-y-2 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            ['Design', lot.itemName],
-            ['Party', lot.partyName],
-            ['Pattern', `${lot.patternType} · ${lot.isOnline ? 'Online' : 'Offline'}`],
-            ['Average', lot.pieces && lot.averageValue ? `${lot.averageValue} ${lot.averageUnit} per ${lot.pieces} pcs` : '—'],
-            ['Total fabric', fabric ? `${fabric.toFixed(2)} ${lot.averageUnit}` : '—'],
-            ['Labour cost (production)', `₹ ${formatMoney(summary.labourCost)}`],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="font-medium">{value}</p>
-            </div>
-          ))}
+      <Card className="overflow-hidden border-primary/25 bg-primary/5">
+        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row">
+          <div className="flex size-40 shrink-0 items-center justify-center self-center overflow-hidden rounded-lg border border-border bg-card sm:self-start">
+            {designPhoto ? (
+              <img src={designPhoto} alt={`Design ${lot.itemName}`} className="size-full object-cover" />
+            ) : (
+              <span className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
+                <ImageOff className="size-8" />
+                No design photo
+              </span>
+            )}
+          </div>
+          <div className="grid flex-1 content-start gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ['Design', lot.itemName],
+              ['Party', lot.partyName],
+              ['Pattern', `${lot.patternType} · ${lot.isOnline ? 'Online' : 'Offline'}`],
+              ['Average', lot.pieces && lot.averageValue ? `${lot.averageValue} ${lot.averageUnit} per ${lot.pieces} pcs` : '—'],
+              ['Total fabric', fabric ? `${fabric.toFixed(2)} ${lot.averageUnit}` : '—'],
+              ['Labour cost (production)', `₹ ${formatMoney(summary.labourCost)}`],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-md bg-card/70 px-3 py-2">
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="text-base font-semibold">{value}</p>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
-      <Section title="Cut quantity (colour × size)">
+      <Section title="Cut quantity (colour × size)" tone="total">
         <table className="data-table w-full text-sm">
           <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
             <tr>
@@ -240,20 +255,29 @@ export const LotHistoryPage = () => {
           <tbody>
             {data.cutGrid.map((row) => (
               <tr key={row.color} className="border-b border-border last:border-0">
-                <td className={`${td} font-medium`}>{row.color}</td>
+                <td className={`${td} font-medium`}>
+                  <span className="flex items-center gap-2">
+                    {resolvePhotoUrl(row.photoUrl) ? (
+                      <img src={resolvePhotoUrl(row.photoUrl)!} alt={`${row.color} cloth`} className="size-10 rounded-md border border-border object-cover" />
+                    ) : null}
+                    {row.color}
+                  </span>
+                </td>
                 {sizes.map((s) => (
                   <td key={s.id} className="numeric px-3 py-2 text-center">
                     {row.cells[s.id] ? n(row.cells[s.id]) : '—'}
                   </td>
                 ))}
-                <td className="numeric px-3 py-2 text-right font-semibold">{n(row.total)}</td>
+                <td className="px-3 py-2 text-right">
+                  <QtyChip tone="total" value={row.total} />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </Section>
 
-      <Section title="Karigar-wise position" count={data.karigars.length}>
+      <Section title="Karigar-wise position" count={data.karigars.length} tone="earlier">
         {data.karigars.length ? (
           <table className="data-table w-full text-sm">
             <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
@@ -270,9 +294,15 @@ export const LotHistoryPage = () => {
                 <tr key={k.karigarId} className="border-b border-border last:border-0">
                   <td className={`${td} font-medium`}>{k.name}</td>
                   <td className={`${td} text-muted-foreground`}>{k.workType}</td>
-                  <td className="numeric px-3 py-2 text-right">{n(k.given)}</td>
-                  <td className="numeric px-3 py-2 text-right">{n(k.handedIn)}</td>
-                  <td className={`numeric px-3 py-2 text-right font-semibold ${k.pending > 0 ? 'text-status-danger' : ''}`}>{n(k.pending)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <QtyChip tone="earlier" value={k.given} />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <QtyChip tone="now" value={k.handedIn} />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <QtyChip tone="pending" value={k.pending} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -282,7 +312,7 @@ export const LotHistoryPage = () => {
         )}
       </Section>
 
-      <Section title="Cutting distribution" count={data.distributions.length}>
+      <Section title="Cutting distribution" count={data.distributions.length} tone="earlier">
         {data.distributions.length ? (
           <table className="data-table w-full text-sm">
             <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
@@ -304,7 +334,9 @@ export const LotHistoryPage = () => {
                   <td className={td}>
                     <CellList cells={d.cells} />
                   </td>
-                  <td className="numeric px-3 py-2 text-right font-semibold">{n(d.total)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <QtyChip tone="earlier" value={d.total} />
+                  </td>
                   <td className={`${td} text-muted-foreground`}>{d.remarks ?? ''}</td>
                 </tr>
               ))}
@@ -315,7 +347,7 @@ export const LotHistoryPage = () => {
         )}
       </Section>
 
-      <Section title="Production (handed in)" count={data.production.length}>
+      <Section title="Production (handed in)" count={data.production.length} tone="now">
         {data.production.length ? (
           <table className="data-table w-full text-sm">
             <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
@@ -337,7 +369,9 @@ export const LotHistoryPage = () => {
                   <td className={td}>
                     <CellList cells={p.cells} />
                   </td>
-                  <td className="numeric px-3 py-2 text-right font-semibold">{n(p.quantity)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <QtyChip tone="now" value={p.quantity} />
+                  </td>
                   <td className="numeric px-3 py-2 text-right">{p.rate != null ? formatMoney(p.rate) : '—'}</td>
                   <td className="numeric px-3 py-2 text-right">{formatMoney(p.total)}</td>
                   <td className={`${td} text-xs text-muted-foreground`}>
@@ -353,7 +387,7 @@ export const LotHistoryPage = () => {
         )}
       </Section>
 
-      <Section title="Accessories" count={data.accessories.length}>
+      <Section title="Accessories" count={data.accessories.length} tone="pending">
         {data.accessories.length ? (
           <table className="data-table w-full text-sm">
             <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
@@ -382,7 +416,7 @@ export const LotHistoryPage = () => {
         )}
       </Section>
 
-      <Section title="Delivery to party" count={data.deliveries.length}>
+      <Section title="Delivery to party" count={data.deliveries.length} tone="done">
         {data.deliveries.length ? (
           <table className="data-table w-full text-sm">
             <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
@@ -401,7 +435,9 @@ export const LotHistoryPage = () => {
                   <td className={td}>
                     <CellList cells={d.cells} />
                   </td>
-                  <td className="numeric px-3 py-2 text-right font-semibold">{n(d.total)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <QtyChip tone="done" value={d.total} />
+                  </td>
                 </tr>
               ))}
             </tbody>
