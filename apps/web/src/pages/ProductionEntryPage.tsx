@@ -270,6 +270,9 @@ export const ProductionEntryPage = () => {
     });
   };
 
+  // Flatlock / overlock dropdowns list only karigars whose work type is that stage (spacing and case ignored).
+  const isWorkType = (k: Karigar, stage: string) =>
+    k.workType.name.toLowerCase().replace(/[^a-z]/g, '') === stage.toLowerCase();
   const otherKarigarSelect = (id: string, value: string, onChange: (v: string) => void, label: string) => (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger id={id} aria-label={`${label} karigar`}>
@@ -277,7 +280,7 @@ export const ProductionEntryPage = () => {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={NONE}>Not done</SelectItem>
-        {karigarOptions.map((k) => (
+        {karigarOptions.filter((k) => k.id === value || isWorkType(k, label)).map((k) => (
           <SelectItem key={k.id} value={k.id}>
             {k.fullName}
           </SelectItem>
