@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Pencil, User } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, User } from 'lucide-react';
 import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card } from '../ui/card';
@@ -10,6 +10,8 @@ import { Input } from '../ui/input';
 import { LoadingState } from '../ui/loading-state';
 import { Pagination } from '../ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ConfirmDialog } from '../common/ConfirmDialog';
+import { FormAlert } from '../ui/form-alert';
 import { usePermissions } from '../../hooks/use-permissions';
 import type { Karigar, WorkType } from './karigar-constants';
 
@@ -24,8 +26,11 @@ export const KarigarListView = ({ onAdd, onEdit }: KarigarListViewProps) => {
   const [search, setSearch] = useState('');
   const [workTypeId, setWorkTypeId] = useState<string>('ALL');
   const [page, setPage] = useState(1);
+  const [toDelete, setToDelete] = useState<Karigar | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const canCreate = isSuperAdmin || hasPermission('karigars:create');
+  const canDelete = isSuperAdmin || hasPermission('karigars:delete');
   const canUpdate = isSuperAdmin || hasPermission('karigars:update');
 
   const { data: workTypes } = useQuery({
@@ -49,6 +54,23 @@ export const KarigarListView = ({ onAdd, onEdit }: KarigarListViewProps) => {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['karigars'] }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (k: Karigar) => apiClient.delete<{ deleted: boolean; deactivated: boolean }>(`/karigars/${k.id}`),
+    onSuccess: (result, k) => {
+      setNotice(
+        result.deactivated
+          ? `${k.fullName} has entries, so was made Inactive instead of deleted. Their history stays available.`
+          : `${k.fullName} was deleted.`,
+      );
+      setToDelete(null);
+      void queryClient.invalidateQueries({ queryKey: ['karigars'] });
+    },
+    onError: () => {
+      setNotice('Could not delete. Please try again.');
+      setToDelete(null);
+    },
+  });
+
   return (
     <PageLayout
       title="Karigar Master"
@@ -61,6 +83,7 @@ export const KarigarListView = ({ onAdd, onEdit }: KarigarListViewProps) => {
         ) : null
       }
     >
+      {notice ? <FormAlert tone="success">{notice}</FormAlert> : null}
       <Card>
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
           <div className="relative w-full max-w-xs">
@@ -147,6 +170,11 @@ export const KarigarListView = ({ onAdd, onEdit }: KarigarListViewProps) => {
                         <Button variant="ghost" size="icon" aria-label={`Edit ${karigar.fullName}`} disabled={!canUpdate} onClick={() => onEdit(karigar)}>
                           <Pencil />
                         </Button>
+                        {canDelete ? (
+                          <Button variant="ghost" size="icon" aria-label={`Delete ${karigar.fullName}`} onClick={() => setToDelete(karigar)}>
+                            <Trash2 />
+                          </Button>
+                        ) : null}
                       </td>
                     </tr>
                   );
@@ -165,6 +193,16 @@ export const KarigarListView = ({ onAdd, onEdit }: KarigarListViewProps) => {
 
         {data ? <Pagination meta={data.pagination} onPageChange={setPage} className="border-t border-border" /> : null}
       </Card>
+      <ConfirmDialog
+        open={Boolean(toDelete)}
+        onOpenChange={(open) => !open && setToDelete(null)}
+        title={`Delete ${toDelete?.fullName ?? 'karigar'}?`}
+        description="If this karigar has no entries, they are deleted permanently. If they have any entries (distribution, production, payment, accessories, press), they are made Inactive instead and their history stays available."
+        confirmLabel="Delete"
+        tone="destructive"
+        isSubmitting={deleteMutation.isPending}
+        onConfirm={() => toDelete && deleteMutation.mutate(toDelete)}
+      />
     </PageLayout>
   );
 };

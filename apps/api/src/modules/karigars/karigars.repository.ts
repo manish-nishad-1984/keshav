@@ -107,6 +107,8 @@ export const updateKarigar = (
     include: { workType: true },
   });
 
+export const hardDeleteKarigar = (id: string) => prisma.karigar.delete({ where: { id } });
+
 export const softDeleteKarigar = (id: string, updatedById: string | null) =>
   prisma.karigar.update({
     where: { id },

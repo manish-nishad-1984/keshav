@@ -27,6 +27,5 @@ export const update = async (req: Request, res: Response) => {
 };
 
 export const remove = async (req: Request, res: Response) => {
-  await service.deleteKarigar(req.auth!.organizationId, req.params.id, req.auth!.userId);
-  ok(res, { deleted: true });
+  ok(res, await service.deleteKarigar(req.auth!.organizationId, req.params.id, req.auth!.userId));
 };
