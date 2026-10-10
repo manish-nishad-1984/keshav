@@ -6,6 +6,7 @@ import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { RequireAuth } from './routes/RequireAuth';
 import { moduleRoutes } from './routes/module-routes';
+import { LotHistoryPage } from './pages/LotHistoryPage';
 
 export const App = () => (
   <Routes>
@@ -23,6 +24,7 @@ export const App = () => (
       }
     >
       {moduleRoutes}
+      <Route path="/lot-history" element={<LotHistoryPage />} />
     </Route>
 
     <Route path="/" element={<Navigate to="/dashboard" replace />} />

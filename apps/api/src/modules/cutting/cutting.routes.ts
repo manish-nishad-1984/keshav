@@ -16,6 +16,9 @@ cuttingRouter.use('/sizes', sizesRouter);
 // Daily Production Entry to resolve a typed-in lot number to its cutting entry.
 cuttingRouter.get('/lot/:lotNumber', requirePermission('production_entries:view'), asyncHandler(controller.getByLotNumber));
 
+// Header lot lookup: the full story of one lot (before /:id).
+cuttingRouter.get('/history/:lotNumber', requirePermission('cutting:view'), asyncHandler(controller.lotHistory));
+
 cuttingRouter.get('/', requirePermission('cutting:view'), asyncHandler(controller.list));
 cuttingRouter.get('/:id', requirePermission('cutting:view'), asyncHandler(controller.get));
 cuttingRouter.post('/', requirePermission('cutting:create'), asyncHandler(controller.create));

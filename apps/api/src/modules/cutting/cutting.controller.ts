@@ -8,6 +8,7 @@ import {
   updateCuttingEntrySchema,
 } from './cutting.schema';
 import * as service from './cutting.service';
+import { getLotHistory } from './lot-history';
 
 export const list = async (req: Request, res: Response) => {
   const query = listCuttingEntriesQuerySchema.parse(req.query);
@@ -24,6 +25,11 @@ export const getByLotNumber = async (req: Request, res: Response) => {
   const { bookId } = lotLookupQuerySchema.parse(req.query);
   const entry = await service.getCuttingEntryByLotNumber(req.auth!.organizationId, bookId, req.params.lotNumber);
   ok(res, entry);
+};
+
+export const lotHistory = async (req: Request, res: Response) => {
+  const { bookId } = lotLookupQuerySchema.parse(req.query);
+  ok(res, await getLotHistory(req.auth!.organizationId, bookId, req.params.lotNumber));
 };
 
 export const create = async (req: Request, res: Response) => {

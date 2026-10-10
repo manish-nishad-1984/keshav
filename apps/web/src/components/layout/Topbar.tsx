@@ -8,6 +8,7 @@ import { useUiStore } from '../../store/ui.store';
 import { PALETTES, THEMES } from '../../lib/themes';
 import { cn } from '../../lib/utils';
 import { BookSelector } from './BookSelector';
+import { LotLookup } from './LotLookup';
 
 const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 const SHORTCUT = isMac ? '⌘K' : 'Ctrl+K';
@@ -65,6 +66,8 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
       <div className="ml-1 sm:ml-3">
         <BookSelector />
       </div>
+
+      <LotLookup />
 
       <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5">
         {/* Opens the existing command palette (Ctrl/⌘+K). */}
