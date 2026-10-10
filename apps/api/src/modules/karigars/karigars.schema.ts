@@ -35,6 +35,7 @@ export const createKarigarSchema = z.object({
   joinDate: z.coerce.date().optional(),
   address: z.string().optional(),
   remarks: z.string().optional(),
+  salaryType: z.enum(['FIXED', 'VARIABLE']).default('VARIABLE'),
   // Fixed (attendance-paid) karigars only.
   monthlySalary: z.coerce.number().positive().nullable().optional(),
   documents: documentsSchema.optional(),
@@ -50,6 +51,7 @@ export const updateKarigarSchema = z.object({
   address: z.string().optional(),
   remarks: z.string().optional(),
   isActive: z.boolean().optional(),
+  salaryType: z.enum(['FIXED', 'VARIABLE']).optional(),
   monthlySalary: z.coerce.number().positive().nullable().optional(),
   documents: documentsSchema.optional(),
 });

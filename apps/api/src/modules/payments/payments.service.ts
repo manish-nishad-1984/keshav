@@ -43,7 +43,7 @@ const assertNotDuplicate = async (organizationId: string, karigarId: string, amo
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const isFixedKarigar = (karigar: { workType: { name: string } }) => karigar.workType.name.trim().toLowerCase() === 'fixed';
+export const isFixedKarigar = (karigar: { salaryType: string }) => karigar.salaryType === 'FIXED';
 
 // Fixed karigar salary: per day = monthly ÷ 30; overtime hours are paid at per day ÷ 8.
 export const computeSalary = (perDayRate: number, presentDays: number, overtimeHours: number) =>

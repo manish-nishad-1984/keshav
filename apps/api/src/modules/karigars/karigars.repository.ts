@@ -1,5 +1,5 @@
 import { prisma } from '../../lib/prisma';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, SalaryType } from '@prisma/client';
 import type { KarigarDocumentInput } from './karigars.schema';
 
 export const listKarigars = async (
@@ -70,6 +70,7 @@ export const createKarigar = (
     joinDate?: Date;
     address?: string;
     remarks?: string;
+    salaryType?: SalaryType;
     monthlySalary?: number | null;
   },
   createdById: string | null,
@@ -95,6 +96,7 @@ export const updateKarigar = (
     address: string;
     remarks: string;
     isActive: boolean;
+    salaryType: SalaryType;
     monthlySalary: number | null;
   }>,
   updatedById: string | null,

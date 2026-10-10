@@ -32,6 +32,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
     fullName: '',
     mobile: '',
     workTypeId: '',
+    salaryType: 'VARIABLE' as 'FIXED' | 'VARIABLE',
     photoUrl: null as string | null,
     joinDate: '',
     isActive: true,
@@ -66,6 +67,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
             fullName: karigar.fullName,
             mobile: karigar.mobile,
             workTypeId: karigar.workTypeId,
+            salaryType: karigar.salaryType,
             photoUrl: karigar.photoUrl,
             joinDate: toDateInputValue(karigar.joinDate),
             isActive: karigar.isActive,
@@ -77,6 +79,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
             fullName: '',
             mobile: '',
             workTypeId: '',
+            salaryType: 'VARIABLE',
             photoUrl: null,
             joinDate: '',
             isActive: true,
@@ -89,8 +92,9 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
 
   // Default a new karigar to the first available work type once the list loads.
   useEffect(() => {
-    if (!isEdit && !form.workTypeId && workTypes?.length) {
-      setForm((f) => ({ ...f, workTypeId: workTypes[0].id }));
+    const firstActive = workTypes?.find((w) => w.isActive);
+    if (!isEdit && !form.workTypeId && firstActive) {
+      setForm((f) => ({ ...f, workTypeId: firstActive.id }));
     }
   }, [isEdit, form.workTypeId, workTypes]);
 
@@ -100,6 +104,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
         fullName: form.fullName,
         mobile: form.mobile,
         workTypeId: form.workTypeId,
+        salaryType: form.salaryType,
         photoUrl: form.photoUrl ?? undefined,
         joinDate: form.joinDate || undefined,
         address: form.address || undefined,
@@ -123,7 +128,9 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
     onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.'),
   });
 
-  const isFixedType = workTypes?.find((w) => w.id === form.workTypeId)?.name.trim().toLowerCase() === 'fixed';
+  const isFixedType = form.salaryType === 'FIXED';
+  // Hidden work types (e.g. the retired "Fixed") stay selectable only for a karigar already on one.
+  const selectableWorkTypes = workTypes?.filter((w) => w.isActive || w.id === karigar?.workTypeId);
   const unnamedProof = documents.some((d) => d.type === 'OTHER' && d.fileUrl && !d.label.trim());
 
   return (
@@ -174,11 +181,22 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {workTypes?.map((type) => (
+                    {selectableWorkTypes?.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Salary Type" required>
+                <Select value={form.salaryType} onValueChange={(v) => setForm((f) => ({ ...f, salaryType: v as 'FIXED' | 'VARIABLE' }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VARIABLE">Variable</SelectItem>
+                    <SelectItem value="FIXED">Fixed</SelectItem>
                   </SelectContent>
                 </Select>
               </FormField>

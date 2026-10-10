@@ -28,7 +28,7 @@ const emptyForm = () => ({
 
 const money = (value: number) => value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const round2 = (n: number) => Math.round(n * 100) / 100;
-const isFixed = (k: Karigar | undefined) => k?.workType?.name.trim().toLowerCase() === 'fixed';
+const isFixed = (k: Karigar | undefined) => k?.salaryType === 'FIXED';
 
 // Ticks every 30 s so the shown date & time stay current; the server stamps the real time on save.
 const useNow = () => {
