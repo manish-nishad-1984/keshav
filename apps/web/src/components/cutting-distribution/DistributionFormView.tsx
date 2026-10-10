@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { HandCoins, History, Hourglass, ImageOff, PackageCheck, Save, Scissors, type LucideIcon } from 'lucide-react';
+import { Eraser, HandCoins, History, Hourglass, ImageOff, PackageCheck, Save, Scissors, type LucideIcon } from 'lucide-react';
 import { QtyChip, QtyLegend, QtyRowLabel, type QtyTone } from '../ui/qty-tone';
 import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
@@ -116,6 +116,8 @@ export const DistributionFormView = ({ distribution, onDone, onCancel }: Distrib
       ),
     );
 
+  const remainingAfter = totalOf('remaining') - totalGiven;
+
   const mutation = useMutation({
     mutationFn: async () => {
       const quantities = colors.flatMap((c) =>
@@ -139,7 +141,26 @@ export const DistributionFormView = ({ distribution, onDone, onCancel }: Distrib
   const canSubmit = Boolean(lotId && karigarId && date && totalGiven > 0 && overCells.length === 0);
 
   return (
-    <PageLayout title="Cutting Distribution" description="Hand cut pieces of a lot to a karigar, by colour and size.">
+    <PageLayout
+      title="Cutting Distribution"
+      description="Hand cut pieces of a lot to a karigar, by colour and size."
+      actions={
+        availability ? (
+          <div
+            className={cn(
+              'flex items-center gap-2.5 rounded-md border px-3 py-1.5',
+              remainingAfter > 0 ? 'border-status-danger/30 bg-status-danger/10 text-status-danger' : 'border-status-success/30 bg-status-success/10 text-status-success',
+            )}
+          >
+            <Hourglass className="size-5" />
+            <div className="leading-tight">
+              <p className="numeric text-sm font-semibold">{formatQty(remainingAfter)} pcs remaining</p>
+              <p className="text-xs opacity-80">from {formatQty(availability.cuttingEntry.totalQuantity)} cut pcs</p>
+            </div>
+          </div>
+        ) : null
+      }
+    >
       <Card>
         <CardContent className="p-3 sm:p-4">
           <form
@@ -241,11 +262,42 @@ export const DistributionFormView = ({ distribution, onDone, onCancel }: Distrib
             </div>
 
             {availability ? (
-              <p className="text-sm text-muted-foreground">
-                Design <span className="font-medium text-foreground">{availability.cuttingEntry.item.itemName}</span> · Party{' '}
-                <span className="font-medium text-foreground">{availability.cuttingEntry.party.name}</span> · Cut{' '}
-                <span className="numeric font-medium text-foreground">{formatQty(availability.cuttingEntry.totalQuantity)}</span> pcs
-              </p>
+              <>
+                <dl className="flex flex-wrap gap-x-6 gap-y-1 rounded-md bg-muted/40 px-3 py-2 text-sm">
+                  <div className="flex gap-1.5">
+                    <dt className="text-muted-foreground">Design:</dt>
+                    <dd className="font-medium">{availability.cuttingEntry.item.itemName}</dd>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <dt className="text-muted-foreground">Party:</dt>
+                    <dd className="font-medium">{availability.cuttingEntry.party.name}</dd>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <dt className="text-muted-foreground">Cut:</dt>
+                    <dd className="numeric font-medium">{formatQty(availability.cuttingEntry.totalQuantity)} pcs</dd>
+                  </div>
+                </dl>
+                <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  {(
+                    [
+                      { ...LEGEND[0], title: 'Cut Quantity (Lot Total)', value: totalOf('cut') },
+                      { ...LEGEND[1], title: 'Previously Given', value: totalOf('distributed') },
+                      { ...LEGEND[2], title: 'Giving Now (This Entry)', value: totalGiven },
+                      { ...LEGEND[3], title: 'Balance Remaining', value: remainingAfter },
+                    ] as const
+                  ).map((card) => (
+                    <div key={card.title} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5">
+                      <card.icon className="size-6 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <p className="truncate text-xs text-muted-foreground">{card.title}</p>
+                        <p className="numeric text-xl font-semibold leading-tight">
+                          {formatQty(card.value)} <span className="text-xs font-normal text-muted-foreground">pcs</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : null}
 
             <section aria-labelledby="dist-sizes-heading" className="space-y-2">
@@ -257,10 +309,16 @@ export const DistributionFormView = ({ distribution, onDone, onCancel }: Distrib
                   <QtyLegend items={LEGEND} />
                 </div>
                 {colors.length ? (
-                  <Button type="button" variant="ghost" size="sm" onClick={giveAllRemaining} disabled={totalOf('remaining') === 0}>
-                    <PackageCheck />
-                    Give all remaining
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button type="button" variant="ghost" size="sm" onClick={giveAllRemaining} disabled={totalOf('remaining') === 0}>
+                      <PackageCheck />
+                      Give all remaining
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setGiven({})} disabled={totalGiven === 0}>
+                      <Eraser />
+                      Clear
+                    </Button>
+                  </div>
                 ) : null}
               </div>
 
@@ -388,9 +446,10 @@ export const DistributionFormView = ({ distribution, onDone, onCancel }: Distrib
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
               />
+              <p className="numeric mt-1 text-right text-xs text-muted-foreground">{remarks.length}/500</p>
             </FormField>
 
-            <div className="flex gap-2 border-t border-border pt-4 sm:justify-end">
+            <div className="sticky bottom-0 z-10 -mx-3 -mb-3 flex gap-2 rounded-b-card border-t border-border bg-card px-3 py-3 sm:-mx-4 sm:-mb-4 sm:justify-end sm:px-4">
               <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={onCancel}>
                 Cancel
               </Button>
