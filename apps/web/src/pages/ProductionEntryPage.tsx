@@ -271,8 +271,10 @@ export const ProductionEntryPage = () => {
   };
 
   // Flatlock / overlock dropdowns list only karigars whose work type is that stage (spacing and case ignored).
+  // "Fat lock" is accepted as a spelling of flatlock (it is how the work type is named in practice).
+  const STAGE_NAMES: Record<string, string[]> = { flatlock: ['flatlock', 'fatlock'], overlock: ['overlock'] };
   const isWorkType = (k: Karigar, stage: string) =>
-    k.workType.name.toLowerCase().replace(/[^a-z]/g, '') === stage.toLowerCase();
+    (STAGE_NAMES[stage.toLowerCase()] ?? [stage.toLowerCase()]).includes(k.workType.name.toLowerCase().replace(/[^a-z]/g, ''));
   const otherKarigarSelect = (id: string, value: string, onChange: (v: string) => void, label: string) => (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger id={id} aria-label={`${label} karigar`}>
