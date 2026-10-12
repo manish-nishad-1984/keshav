@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Camera, ImageOff, Loader2, RefreshCw } from 'lucide-react';
 import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { Button } from '../ui/button';
+import { PhotoSourceMenu } from '../common/PhotoSourceMenu';
 import { cn } from '../../lib/utils';
 
 interface ProductionPhotoCompareProps {
@@ -30,7 +31,6 @@ const Frame = ({ title, children, tone }: { title: string; children: React.React
 // The lot's design next to the photo of what came back, so they can be compared at a glance. On
 // a tablet the picker offers the camera as well as the photo library.
 export const ProductionPhotoCompare = ({ lotPhotoUrl, value, onChange }: ProductionPhotoCompareProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const upload = useMutation({
     mutationFn: (file: File) => apiClient.upload<{ url: string }>('/uploads', file),
@@ -63,42 +63,27 @@ export const ProductionPhotoCompare = ({ lotPhotoUrl, value, onChange }: Product
           ) : production ? (
             <img src={production} alt="Photo of the finished production" className="size-full object-contain" />
           ) : (
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className="flex size-full flex-col items-center justify-center gap-1.5 text-sm font-medium text-primary hover:bg-accent"
-            >
-              <Camera className="size-8" />
-              Take / upload photo
-            </button>
+            <PhotoSourceMenu onFile={(file) => upload.mutate(file)} label="Production photo">
+              <button
+                type="button"
+                className="flex size-full flex-col items-center justify-center gap-1.5 text-sm font-medium text-primary hover:bg-accent"
+              >
+                <Camera className="size-8" />
+                Take / upload photo
+              </button>
+            </PhotoSourceMenu>
           )}
           {production && !upload.isPending ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="absolute bottom-2 right-2 bg-card/90"
-              onClick={() => inputRef.current?.click()}
-            >
-              <RefreshCw />
-              Retake
-            </Button>
+            <PhotoSourceMenu onFile={(file) => upload.mutate(file)} label="Production photo">
+              <Button type="button" size="sm" variant="outline" className="absolute bottom-2 right-2 bg-card/90">
+                <RefreshCw />
+                Retake
+              </Button>
+            </PhotoSourceMenu>
           ) : null}
         </Frame>
       </div>
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        aria-label="Production photo"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) upload.mutate(file);
-          e.target.value = '';
-        }}
-      />
     </div>
   );
 };
