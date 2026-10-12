@@ -33,6 +33,7 @@ interface LotHistory {
     patternType: string;
     isOnline: boolean;
     pieces: number | null;
+    remainingFabric: number | null;
     averageValue: number | null;
     averageUnit: string;
     totalQuantity: number;
@@ -227,6 +228,7 @@ export const LotHistoryPage = () => {
               ['Pattern', `${lot.patternType} · ${lot.isOnline ? 'Online' : 'Offline'}`],
               ['Average', lot.pieces && lot.averageValue ? `${lot.averageValue} ${lot.averageUnit} per ${lot.pieces} pcs` : '—'],
               ['Total fabric', fabric ? `${fabric.toFixed(2)} ${lot.averageUnit}` : '—'],
+              ['Remaining fabric', lot.remainingFabric != null ? `${lot.remainingFabric} ${lot.averageUnit}` : '—'],
               ['Labour cost (production)', `₹ ${formatMoney(summary.labourCost)}`],
             ].map(([label, value]) => (
               <div key={label} className="rounded-md bg-card/70 px-3 py-2">

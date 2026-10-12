@@ -77,6 +77,7 @@ interface CuttingEntryHeaderData {
   pieces: number;
   averageValue: number;
   averageUnit: 'KILOGRAM' | 'METER';
+  remainingFabric?: number | null;
   entryTime?: string | null;
 }
 

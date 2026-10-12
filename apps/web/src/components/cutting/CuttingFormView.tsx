@@ -58,6 +58,7 @@ const emptyHeader = () => ({
   pieces: '' as number | '',
   averageValue: '' as number | '',
   averageUnit: 'KILOGRAM' as AverageUnit,
+  remainingFabric: '' as number | '',
 });
 
 export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProps) => {
@@ -126,9 +127,10 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
         isOnline: entry.isOnline,
         itemId: entry.itemId,
         partyId: entry.partyId,
-        pieces: entry.pieces ?? '',
+        pieces: entry.pieces == null ? '' : Number(entry.pieces),
         averageValue: Number(entry.averageValue),
         averageUnit: entry.averageUnit,
+        remainingFabric: entry.remainingFabric == null ? '' : Number(entry.remainingFabric),
       });
       setRows(
         entry.rows.length
@@ -169,6 +171,7 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
         pieces: form.pieces,
         averageValue: form.averageValue,
         averageUnit: form.averageUnit,
+        remainingFabric: form.remainingFabric === '' ? null : form.remainingFabric,
         rows: rows.map((r) => ({
           colorId: r.colorId,
           photoUrl: r.photoUrl,
@@ -355,9 +358,9 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                 <Input
                   id="cutting-pieces"
                   type="number"
-                  min={1}
-                  step={1}
-                  inputMode="numeric"
+                  min={0.01}
+                  step="0.01"
+                  inputMode="decimal"
                   required
                   className="numeric text-right"
                   value={form.pieces}
@@ -393,6 +396,24 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </FormField>
+
+              <FormField label="Remaining Fabric" htmlFor="cutting-remaining" hint="Fabric left after cutting (optional)">
+                <div className="flex">
+                  <Input
+                    id="cutting-remaining"
+                    type="number"
+                    step="0.001"
+                    min={0}
+                    inputMode="decimal"
+                    className="numeric min-w-0 flex-1 rounded-r-none text-right"
+                    value={form.remainingFabric}
+                    onChange={(e) => setForm((f) => ({ ...f, remainingFabric: toNumberOrEmpty(e.target.value) }))}
+                  />
+                  <span className="flex w-28 shrink-0 items-center rounded-r-md border border-l-0 border-input bg-muted px-3 text-sm text-muted-foreground">
+                    {AVERAGE_UNIT_LABELS[form.averageUnit]}
+                  </span>
                 </div>
               </FormField>
             </div>

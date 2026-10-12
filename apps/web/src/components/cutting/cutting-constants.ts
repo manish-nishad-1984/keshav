@@ -68,9 +68,11 @@ export interface CuttingEntry {
   partyId: string;
   party: Party;
   /** PCs that use Avg of fabric. Null only for lots created before PCs existed. */
-  pieces: number | null;
+  pieces: string | null;
   averageValue: string;
   averageUnit: AverageUnit;
+  /** Fabric left after cutting, same unit as Avg. */
+  remainingFabric: string | null;
   totalQuantity: number;
   /** Legacy amount of lots created before rates were removed; null for new lots. */
   totalAmount: string | null;
@@ -89,7 +91,7 @@ export const AVERAGE_UNIT_SHORT: Record<AverageUnit, string> = {
 };
 
 // Total fabric for the lot: Avg is the fabric used for PCs pieces, so total = pieces / PCs * Avg.
-export const fabricRequired = (totalQuantity: number, pieces: number | '' | null, averageValue: number | '' | string) => {
+export const fabricRequired = (totalQuantity: number, pieces: number | '' | string | null, averageValue: number | '' | string) => {
   const pcs = Number(pieces);
   const avg = Number(averageValue);
   if (!pcs || !avg || !totalQuantity) return null;

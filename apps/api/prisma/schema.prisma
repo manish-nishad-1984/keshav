@@ -578,9 +578,11 @@ model CuttingEntry {
   // Nullable only for lots created before this field existed; required for new entries.
   // PCs and Avg go together: Avg is the fabric used for PCs pieces (e.g. 4 pcs = 1.53 kg), so the
   // lot's total fabric = totalQuantity / pieces * averageValue (computed for display).
-  pieces         Int?
+  pieces         Decimal?    @db.Decimal(10, 2)
   averageValue   Decimal     @db.Decimal(10, 3)
   averageUnit    AverageUnit
+  // Fabric left over after cutting, in the same unit as the average. Optional.
+  remainingFabric Decimal?   @db.Decimal(10, 3)
   // Optional time of day, "HH:mm", kept apart from the date-only `date` column.
   entryTime      String?
   // Denormalized sum of every row's quantities, computed server-side on every write.
