@@ -62,7 +62,8 @@ export const getMonthlySummary = async (organizationId: string, dateFrom?: Date,
     return Prisma.join(conditions, ' AND ');
   };
 
-  const [production, press, salary] = await Promise.all([
+  const [production, press, sample, salary] = await Promise.all([
+
     prisma.$queryRaw<{ month: string; totalQuantity: number; totalAmount: string }[]>(Prisma.sql`
       SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month,
              SUM("carrierQuantity")::int AS "totalQuantity",
@@ -74,6 +75,12 @@ export const getMonthlySummary = async (organizationId: string, dateFrom?: Date,
     prisma.$queryRaw<{ month: string; totalAmount: string }[]>(Prisma.sql`
       SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month, SUM("total")::numeric(14,2) AS "totalAmount"
       FROM "press_entries"
+      WHERE ${where()}
+      GROUP BY month
+    `),
+    prisma.$queryRaw<{ month: string; totalAmount: string }[]>(Prisma.sql`
+      SELECT to_char(date_trunc('month', "date"), 'YYYY-MM') AS month, SUM("total")::numeric(14,2) AS "totalAmount"
+      FROM "sample_entries"
       WHERE ${where()}
       GROUP BY month
     `),
@@ -96,6 +103,6 @@ export const getMonthlySummary = async (organizationId: string, dateFrom?: Date,
     row(r.month).totalQuantity += r.totalQuantity;
     row(r.month).totalAmount += Number(r.totalAmount);
   });
-  [...press, ...salary].forEach((r) => (row(r.month).totalAmount += Number(r.totalAmount)));
+  [...press, ...sample, ...salary].forEach((r) => (row(r.month).totalAmount += Number(r.totalAmount)));
   return [...months.values()].sort((x, y) => x.month.localeCompare(y.month));
 };

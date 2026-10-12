@@ -69,6 +69,8 @@ model Organization {
   pressEntries          PressEntry[]
   deliveries            Delivery[]
 
+    sampleEntries SampleEntry[]
+
   @@map("organizations")
 }
 
@@ -358,6 +360,8 @@ model WorkType {
   productionEntries ProductionEntry[]
 
   @@unique([organizationId, name])
+    sampleEntries SampleEntry[]
+
   @@map("work_types")
 }
 
@@ -431,6 +435,8 @@ model Karigar {
   documents              KarigarDocument[]
 
   @@unique([organizationId, code])
+    sampleEntries          SampleEntry[]
+
   @@map("karigars")
 }
 
@@ -507,6 +513,8 @@ model Item {
   productionEntries ProductionEntry[]
   CuttingEntry      CuttingEntry[]
   accessories       ItemAccessory[]
+
+    sampleEntries SampleEntry[]
 
   @@map("items")
 }
@@ -1007,4 +1015,36 @@ model Backup {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("backups")
+}
+
+// Sample work: sample pieces a karigar made for a design (not tied to a lot). Earns money like any
+// other work, so it counts in the karigar's ledger (see payments/earnings.ts).
+model SampleEntry {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  karigarId      String    @db.Uuid
+  workTypeId     String    @db.Uuid
+  itemId         String    @db.Uuid
+  date           DateTime  @db.Date
+  // Optional time of day, "HH:mm".
+  entryTime      String?
+  quantity       Int
+  rate           Decimal   @db.Decimal(10, 2)
+  // Denormalized quantity × rate, computed server-side on every write.
+  total          Decimal   @db.Decimal(12, 2)
+  remarks        String?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    String?   @db.Uuid
+  updatedById    String?   @db.Uuid
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  karigar      Karigar      @relation(fields: [karigarId], references: [id])
+  workType     WorkType     @relation(fields: [workTypeId], references: [id])
+  item         Item         @relation(fields: [itemId], references: [id])
+
+  @@index([organizationId, date])
+  @@index([karigarId])
+  @@map("sample_entries")
 }

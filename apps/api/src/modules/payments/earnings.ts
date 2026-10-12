@@ -6,24 +6,27 @@ export interface KarigarEarning {
   overlock: number;
   flatlock: number;
   press: number;
+  sample: number;
   salary: number;
   total: number;
 }
 
-const empty = (): KarigarEarning => ({ pieces: 0, stitching: 0, overlock: 0, flatlock: 0, press: 0, salary: 0, total: 0 });
+const empty = (): KarigarEarning => ({ pieces: 0, stitching: 0, overlock: 0, flatlock: 0, press: 0, sample: 0, salary: 0, total: 0 });
 
 // The one place that decides what a karigar has earned: stitching + overlock + flatlock from
-// production entries, press entries, and fixed salaries (earned when the salary is worked out).
+// production entries, press entries, sample work, and fixed salaries (earned when the salary is worked out).
 // The ledger, dashboard and reports all read this, so they always agree. `range` limits by entry date.
 export const getEarningsByKarigar = async (organizationId: string, range: { dateFrom?: Date; dateTo?: Date } = {}) => {
   const date = range.dateFrom || range.dateTo ? { ...(range.dateFrom ? { gte: range.dateFrom } : {}), ...(range.dateTo ? { lte: range.dateTo } : {}) } : undefined;
   const base = { organizationId, deletedAt: null, ...(date ? { date } : {}) };
 
-  const [carrier, overlock, flatlock, press, salary] = await Promise.all([
+  const [carrier, overlock, flatlock, press, sample, salary] = await Promise.all([
+
     prisma.productionEntry.groupBy({ by: ['carrierId'], where: base, _sum: { carrierQuantity: true, carrierTotal: true } }),
     prisma.productionEntry.groupBy({ by: ['overlockCarrierId'], where: { ...base, overlockCarrierId: { not: null } }, _sum: { overlockTotal: true } }),
     prisma.productionEntry.groupBy({ by: ['flatlockKarigarId'], where: { ...base, flatlockKarigarId: { not: null } }, _sum: { flatlockTotal: true } }),
     prisma.pressEntry.groupBy({ by: ['karigarId'], where: base, _sum: { total: true } }),
+    prisma.sampleEntry.groupBy({ by: ['karigarId'], where: base, _sum: { total: true } }),
     prisma.payment.groupBy({ by: ['karigarId'], where: { ...base, salaryAmount: { not: null } }, _sum: { salaryAmount: true } }),
   ]);
 
@@ -41,8 +44,9 @@ export const getEarningsByKarigar = async (organizationId: string, range: { date
   overlock.forEach((s) => (row(s.overlockCarrierId!).overlock += Number(s._sum.overlockTotal ?? 0)));
   flatlock.forEach((s) => (row(s.flatlockKarigarId!).flatlock += Number(s._sum.flatlockTotal ?? 0)));
   press.forEach((s) => (row(s.karigarId).press += Number(s._sum.total ?? 0)));
+  sample.forEach((s) => (row(s.karigarId).sample += Number(s._sum.total ?? 0)));
   salary.forEach((s) => (row(s.karigarId).salary += Number(s._sum.salaryAmount ?? 0)));
-  out.forEach((r) => (r.total = r.stitching + r.overlock + r.flatlock + r.press + r.salary));
+  out.forEach((r) => (r.total = r.stitching + r.overlock + r.flatlock + r.press + r.sample + r.salary));
   return out;
 };
 

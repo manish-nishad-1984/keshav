@@ -50,13 +50,15 @@ export const countEntriesWithoutRate = (organizationId: string) =>
 export const getCounts = async (organizationId: string) => {
   const today = startOfToday();
 
-  const [totalKarigars, todayAgg, todayPress, ledger, pendingRates] = await Promise.all([
+  const [totalKarigars, todayAgg, todayPress, todaySample, ledger, pendingRates] = await Promise.all([
+
     prisma.karigar.count({ where: { organizationId, deletedAt: null, isActive: true } }),
     prisma.productionEntry.aggregate({
       where: { organizationId, deletedAt: null, date: today },
       _sum: { carrierQuantity: true, carrierTotal: true, overlockTotal: true, flatlockTotal: true },
     }),
     prisma.pressEntry.aggregate({ where: { organizationId, deletedAt: null, date: today }, _sum: { total: true } }),
+    prisma.sampleEntry.aggregate({ where: { organizationId, deletedAt: null, date: today }, _sum: { total: true } }),
     getLedger(organizationId),
     countEntriesWithoutRate(organizationId),
   ]);
@@ -64,12 +66,13 @@ export const getCounts = async (organizationId: string) => {
   return {
     totalKarigars,
     todayPieces: todayAgg._sum.carrierQuantity ?? 0,
-    // Everything earned today: stitching + overlock + flatlock + press.
+    // Everything earned today: stitching + overlock + flatlock + press + sample work.
     todayAmount:
       Number(todayAgg._sum.carrierTotal ?? 0) +
       Number(todayAgg._sum.overlockTotal ?? 0) +
       Number(todayAgg._sum.flatlockTotal ?? 0) +
-      Number(todayPress._sum.total ?? 0),
+      Number(todayPress._sum.total ?? 0) +
+      Number(todaySample._sum.total ?? 0),
     // Same figure as the Payments ledger: what is still owed to karigars (advances don't reduce it).
     pendingPayment: ledger.reduce((sum, row) => sum + Math.max(row.pending, 0), 0),
     entriesWithoutRate: pendingRates,

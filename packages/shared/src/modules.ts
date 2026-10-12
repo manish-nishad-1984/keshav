@@ -110,6 +110,17 @@ export const MODULES: ModuleDefinition[] = [
     description: 'Pieces ironed by press karigars, at the online / offline rate from Settings.',
   },
   {
+    key: 'sample_entries',
+    label: 'Sample Work',
+    singular: 'Sample Entry',
+    path: '/sample-entries',
+    icon: 'Shirt',
+    group: 'general',
+    order: 16.5,
+    permission: 'sample_entries:view',
+    description: 'Sample work done by karigars: design, quantity and rate, added to their ledger.',
+  },
+  {
     key: 'production_history',
     label: 'Production History',
     singular: 'Production Entry',

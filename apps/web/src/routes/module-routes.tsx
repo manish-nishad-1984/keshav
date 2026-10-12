@@ -23,6 +23,7 @@ import { ReportsPage } from '../pages/ReportsPage';
 import { PartiesPage } from '../pages/PartiesPage';
 import { BooksPage } from '../pages/BooksPage';
 import { PressEntryPage } from '../pages/PressEntryPage';
+import { SampleEntryPage } from '../pages/SampleEntryPage';
 import { DeliveriesPage } from '../pages/DeliveriesPage';
 
 // Every module gets a route automatically. Add a page here once it's built;
@@ -43,6 +44,7 @@ const MODULE_PAGES: Partial<Record<ModuleKey, ComponentType>> = {
   company_settings: SettingsPage,
   production_entries: ProductionEntryPage,
   press_entries: PressEntryPage,
+  sample_entries: SampleEntryPage,
   deliveries: DeliveriesPage,
   production_history: ProductionHistoryPage,
   photo_gallery: PhotoGalleryPage,

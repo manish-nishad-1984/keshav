@@ -27,6 +27,7 @@ const AUDITED_MODELS = new Set([
   'AccessoryTransaction',
   'Payment',
   'PressEntry',
+  'SampleEntry',
   'User',
   'Role',
 ]);

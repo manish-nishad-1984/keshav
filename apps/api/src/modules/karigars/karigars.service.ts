@@ -46,6 +46,7 @@ export const deleteKarigar = async (organizationId: string, id: string, actorId:
     prisma.payment.count({ where: { karigarId: id } }),
     prisma.accessoryTransaction.count({ where: { karigarId: id } }),
     prisma.pressEntry.count({ where: { karigarId: id } }),
+    prisma.sampleEntry.count({ where: { karigarId: id } }),
   ]);
   if (distributions + production + payments + accessories + press > 0) {
     await repo.updateKarigar(id, { isActive: false }, actorId);

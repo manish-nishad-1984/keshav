@@ -21,6 +21,7 @@ import { deliveriesRouter } from '../modules/deliveries/deliveries.routes';
 import { accessoriesRouter } from '../modules/accessories/accessories.routes';
 import { accessoryIssuesRouter } from '../modules/accessory-issues/accessory-issues.routes';
 import { pressEntriesRouter } from '../modules/press-entries/press-entries.routes';
+import { sampleEntriesRouter } from '../modules/sample-entries/sample-entries.routes';
 
 interface ProtectedRoute {
   path: string;
@@ -45,6 +46,7 @@ const protectedRoutes: ProtectedRoute[] = [
   { path: '/accessory-issues', router: accessoryIssuesRouter },
   { path: '/production-entries', router: productionEntriesRouter },
   { path: '/press-entries', router: pressEntriesRouter },
+  { path: '/sample-entries', router: sampleEntriesRouter },
   { path: '/payments', router: paymentsRouter },
   { path: '/reports', router: reportsRouter },
   { path: '/backups', router: backupRouter },
