@@ -171,15 +171,17 @@ export const deleteCuttingEntry = async (organizationId: string, id: string, act
 // What deleting the lot would also remove: everything entered against it.
 export const getLotDeletionSummary = async (organizationId: string, id: string) => {
   const lot = await getCuttingEntry(organizationId, id);
-  const [distributions, production, accessories, deliveries] = await Promise.all([
+  const [distributions, production, accessories, deliveries, alterationAgg] = await Promise.all([
     prisma.cuttingDistribution.aggregate({ where: { cuttingEntryId: id }, _count: true, _sum: { totalQuantity: true } }),
     prisma.productionEntry.aggregate({ where: { cuttingEntryId: id }, _count: true, _sum: { carrierQuantity: true } }),
     prisma.accessoryTransaction.count({ where: { cuttingEntryId: id } }),
     prisma.delivery.findMany({ where: { cuttingEntryId: id }, select: { challanNumber: true, totalQuantity: true }, orderBy: { challanNumber: 'asc' } }),
+    prisma.productionEntry.aggregate({ where: { cuttingEntryId: id, deletedAt: null }, _sum: { alterationQuantity: true } }),
   ]);
   return {
     lotNumber: lot.lotNumber,
     totalQuantity: lot.totalQuantity,
+    alteration: alterationAgg._sum.alterationQuantity ?? 0,
     distributions: { count: distributions._count, pieces: distributions._sum.totalQuantity ?? 0 },
     production: { count: production._count, pieces: production._sum.carrierQuantity ?? 0 },
     accessories: { count: accessories },
@@ -215,10 +217,18 @@ export const closeCuttingEntry = async (
 ) => {
   const lot = await getCuttingEntry(organizationId, id);
   if (lot.closedAt) throw conflict(`Lot ${lot.lotNumber} is already closed`);
-  const delivered = await prisma.delivery.aggregate({ where: { cuttingEntryId: id }, _sum: { totalQuantity: true } });
-  const shortage = Math.max(lot.totalQuantity - (delivered._sum.totalQuantity ?? 0), 0);
+  const [delivered, altAgg] = await Promise.all([
+    prisma.delivery.aggregate({ where: { cuttingEntryId: id }, _sum: { totalQuantity: true } }),
+    prisma.productionEntry.aggregate({ where: { cuttingEntryId: id, deletedAt: null }, _sum: { alterationQuantity: true } }),
+  ]);
+  // Pieces entered as alteration explain part of what was never delivered; only the rest needs a reason.
+  const undelivered = Math.max(lot.totalQuantity - (delivered._sum.totalQuantity ?? 0), 0);
+  const alteration = Math.min(altAgg._sum.alterationQuantity ?? 0, undelivered);
+  const shortage = undelivered - alteration;
   if (shortage > 0 && !input.reason) {
-    throw badRequest(`${shortage} pieces of lot ${lot.lotNumber} were never delivered — choose why (damaged, shortage or returned by party)`);
+    throw badRequest(
+      `${shortage} pieces of lot ${lot.lotNumber} were never delivered${alteration ? ` (besides ${alteration} in alteration)` : ''} — choose why (damaged, shortage or returned by party)`,
+    );
   }
   return prisma.cuttingEntry.update({
     where: { id },
@@ -227,6 +237,7 @@ export const closeCuttingEntry = async (
       closeReason: shortage > 0 ? input.reason : (input.reason ?? null),
       closeNote: input.note?.trim() || null,
       closedShortage: shortage,
+      closedAlteration: alteration,
       closedById: actorId,
       updatedById: actorId ?? undefined,
     },
@@ -238,6 +249,6 @@ export const reopenCuttingEntry = async (organizationId: string, id: string, act
   if (!lot.closedAt) throw conflict(`Lot ${lot.lotNumber} is not closed`);
   return prisma.cuttingEntry.update({
     where: { id },
-    data: { closedAt: null, closeReason: null, closeNote: null, closedShortage: null, closedById: null, updatedById: actorId ?? undefined },
+    data: { closedAt: null, closeReason: null, closeNote: null, closedShortage: null, closedAlteration: null, closedById: null, updatedById: actorId ?? undefined },
   });
 };

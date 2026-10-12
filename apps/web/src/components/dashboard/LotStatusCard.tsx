@@ -29,6 +29,8 @@ interface LotStatus {
   stage: Stage;
   closeReason: 'DAMAGED' | 'SHORTAGE' | 'RETURNED_BY_PARTY' | null;
   closedShortage: number | null;
+  closedAlteration: number | null;
+  alteration: number;
   karigars: { karigarId: string; name: string; workType: string; given: number; handedIn: number; pending: number }[];
 }
 
@@ -130,6 +132,7 @@ export const LotStatusCard = () => {
                         </td>
                         <td className="px-2 py-2">
                           <Badge variant={stage.variant}>{stage.label}</Badge>
+                          {lot.alteration ? <span className="mt-0.5 block text-2xs text-status-warning">{lot.alteration} in alteration</span> : null}
                           {lot.stage === 'closed' && lot.closedShortage ? (
                             <span className="mt-0.5 block text-2xs text-muted-foreground">
                               {lot.closedShortage} not delivered{lot.closeReason ? ` — ${lot.closeReason === 'DAMAGED' ? 'damaged' : lot.closeReason === 'SHORTAGE' ? 'shortage' : 'returned by party'}` : ''}

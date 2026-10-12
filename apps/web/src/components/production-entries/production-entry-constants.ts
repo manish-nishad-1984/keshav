@@ -13,6 +13,7 @@ export interface ProductionEntry {
 
   carrierId: string;
   carrierQuantity: number;
+  alterationQuantity: number;
   carrierRate: string | null;
   carrierTotal: string;
 

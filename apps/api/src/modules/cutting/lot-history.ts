@@ -70,9 +70,10 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
 
   const distributed = sum(lot.distributions.map((d) => d.totalQuantity));
   const produced = sum(lot.productionEntries.map((p) => p.carrierQuantity));
+  const alteration = sum(lot.productionEntries.map((p) => p.alterationQuantity));
   const delivered = sum(lot.deliveries.map((d) => d.totalQuantity));
 
-  const karigarMap = new Map<string, { karigarId: string; name: string; workType: string; given: number; handedIn: number }>();
+  const karigarMap = new Map<string, { karigarId: string; name: string; workType: string; given: number; handedIn: number; alteration: number }>();
   for (const d of lot.distributions) {
     const row = karigarMap.get(d.karigar.id) ?? {
       karigarId: d.karigar.id,
@@ -80,13 +81,15 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
       workType: d.karigar.workType.name,
       given: 0,
       handedIn: 0,
+      alteration: 0,
     };
     row.given += d.totalQuantity;
     karigarMap.set(d.karigar.id, row);
   }
   for (const p of lot.productionEntries) {
-    const row = karigarMap.get(p.carrier.id) ?? { karigarId: p.carrier.id, name: p.carrier.fullName, workType: '', given: 0, handedIn: 0 };
+    const row = karigarMap.get(p.carrier.id) ?? { karigarId: p.carrier.id, name: p.carrier.fullName, workType: '', given: 0, handedIn: 0, alteration: 0 };
     row.handedIn += p.carrierQuantity;
+    row.alteration += p.alterationQuantity;
     karigarMap.set(p.carrier.id, row);
   }
 
@@ -108,6 +111,7 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
     entryTime: p.entryTime,
     karigar: p.carrier.fullName,
     quantity: p.carrierQuantity,
+    alteration: p.alterationQuantity,
     rate: num(p.carrierRate),
     total: num(p.carrierTotal) ?? 0,
     overlock: p.overlockCarrier ? { karigar: p.overlockCarrier.fullName, rate: num(p.overlockRate), total: num(p.overlockTotal) ?? 0 } : null,
@@ -138,6 +142,7 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
       closeReason: lot.closeReason,
       closeNote: lot.closeNote,
       closedShortage: lot.closedShortage,
+      closedAlteration: lot.closedAlteration,
     },
     stage,
     summary: {
@@ -145,7 +150,8 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
       distributed,
       notGiven: Math.max(lot.totalQuantity - distributed, 0),
       produced,
-      withKarigars: Math.max(distributed - produced, 0),
+      alteration,
+      withKarigars: Math.max(distributed - produced - alteration, 0),
       delivered,
       readyToDeliver: Math.max(produced - delivered, 0),
       labourCost,
@@ -153,7 +159,7 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
     sizes,
     cutGrid,
     karigars: [...karigarMap.values()]
-      .map((k) => ({ ...k, pending: Math.max(k.given - k.handedIn, 0) }))
+      .map((k) => ({ ...k, pending: Math.max(k.given - k.handedIn - k.alteration, 0) }))
       .sort((a, b) => b.pending - a.pending),
     distributions: lot.distributions.map((d) => ({
       id: d.id,

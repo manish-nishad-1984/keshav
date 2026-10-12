@@ -604,6 +604,8 @@ model CuttingEntry {
   closeReason    String?
   closeNote      String?
   closedShortage Int?
+  // Pieces still in alteration when the lot was closed (cut - delivered - closedShortage).
+  closedAlteration Int?
   closedById     String?     @db.Uuid
   deletedAt      DateTime?
   createdAt      DateTime    @default(now())
@@ -902,6 +904,8 @@ model ProductionEntry {
 
   carrierId       String   @db.Uuid
   carrierQuantity Int
+  // Pieces of this hand-in that need alteration (not finished). Not paid; they count when the lot is closed.
+  alterationQuantity Int @default(0)
   carrierRate     Decimal? @db.Decimal(10, 2)
   // Denormalized (carrierQuantity * carrierRate), computed server-side on every write — never
   // trust a client-supplied total, and reports/ledger queries read this column directly instead

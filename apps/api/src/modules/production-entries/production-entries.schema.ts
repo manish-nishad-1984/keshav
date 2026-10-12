@@ -30,7 +30,6 @@ const quantitiesSchema = z
       quantity: z.coerce.number().int().min(0),
     }),
   )
-  .refine((cells) => cells.some((c) => c.quantity > 0), { message: 'Enter pieces in at least one size' })
   .refine((cells) => new Set(cells.map((c) => `${c.colorId}:${c.sizeId}`)).size === cells.length, {
     message: 'A colour and size can appear only once',
   });
@@ -51,6 +50,8 @@ export const createProductionEntrySchema = z.object({
   date: z.coerce.date(),
   entryTime: entryTimeSchema,
   quantities: quantitiesSchema,
+  // Pieces of this hand-in that need alteration (optional).
+  alterationQuantity: z.coerce.number().int().min(0).default(0),
   carrierRate: rateSchema,
 
   overlockCarrierId: z.string().uuid().nullable().optional(),
@@ -76,6 +77,7 @@ export const updateProductionEntrySchema = z.object({
   date: z.coerce.date().optional(),
   entryTime: entryTimeSchema,
   quantities: quantitiesSchema.optional(),
+  alterationQuantity: z.coerce.number().int().min(0).optional(),
   carrierRate: rateSchema,
 
   overlockCarrierId: z.string().uuid().nullable().optional(),

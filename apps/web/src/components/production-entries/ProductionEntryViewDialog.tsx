@@ -139,6 +139,8 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                 </div>
               ) : null}
 
+              {entry.alterationQuantity ? <Field label="Alteration pieces" value={String(entry.alterationQuantity)} /> : null}
+
               {entry.remarks ? <Field label="Remarks" value={entry.remarks} /> : null}
             </DialogBody>
           ) : null}

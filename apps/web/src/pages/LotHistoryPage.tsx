@@ -41,6 +41,7 @@ interface LotHistory {
     closeReason: string | null;
     closeNote: string | null;
     closedShortage: number | null;
+    closedAlteration: number | null;
   };
   stage: Stage;
   summary: {
@@ -48,6 +49,7 @@ interface LotHistory {
     distributed: number;
     notGiven: number;
     produced: number;
+    alteration: number;
     withKarigars: number;
     delivered: number;
     readyToDeliver: number;
@@ -55,7 +57,7 @@ interface LotHistory {
   };
   sizes: { id: string; name: string; detail: string | null }[];
   cutGrid: { color: string; photoUrl: string | null; cells: Record<string, number>; total: number }[];
-  karigars: { karigarId: string; name: string; workType: string; given: number; handedIn: number; pending: number }[];
+  karigars: { karigarId: string; name: string; workType: string; given: number; handedIn: number; alteration: number; pending: number }[];
   distributions: { id: string; date: string; entryTime: string | null; karigar: string; workType: string; total: number; remarks: string | null; cells: Cell[] }[];
   production: {
     id: string;
@@ -63,6 +65,7 @@ interface LotHistory {
     entryTime: string | null;
     karigar: string;
     quantity: number;
+    alteration: number;
     rate: number | null;
     total: number;
     overlock: { karigar: string; rate: number | null; total: number } | null;
@@ -195,16 +198,18 @@ export const LotHistoryPage = () => {
         <FormAlert tone="warning">
           Lot closed on {formatDate(lot.closedAt.slice(0, 10))}
           {lot.closeReason ? ` — ${CLOSE_REASONS[lot.closeReason] ?? lot.closeReason}` : ''}
+          {lot.closedAlteration ? ` — ${n(lot.closedAlteration)} pcs in alteration` : ''}
           {lot.closedShortage ? ` (${n(lot.closedShortage)} pcs short)` : ''}
           {lot.closeNote ? `. ${lot.closeNote}` : ''}
         </FormAlert>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
         <SummaryTile icon={Scissors} label="Cut" value={summary.cut} tone="total" />
         <SummaryTile icon={Hourglass} label="Not given yet" value={summary.notGiven} tone="pending" />
         <SummaryTile icon={Users} label="With karigars" value={summary.withKarigars} tone="earlier" />
         <SummaryTile icon={Package} label="Produced (handed in)" value={summary.produced} tone="now" />
+        <SummaryTile icon={Scissors} label="In alteration" value={summary.alteration} tone="earlier" />
         <SummaryTile icon={ArrowLeftRight} label="Ready to deliver" value={summary.readyToDeliver} tone="now" />
         <SummaryTile icon={Truck} label="Delivered" value={summary.delivered} tone="done" />
       </div>
@@ -288,6 +293,7 @@ export const LotHistoryPage = () => {
                 <th className={th}>Work type</th>
                 <th className="px-3 py-2 text-right font-medium">Given</th>
                 <th className="px-3 py-2 text-right font-medium">Handed in</th>
+                <th className="px-3 py-2 text-right font-medium">Alteration</th>
                 <th className="px-3 py-2 text-right font-medium">Pending</th>
               </tr>
             </thead>
@@ -301,6 +307,9 @@ export const LotHistoryPage = () => {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <QtyChip tone="now" value={k.handedIn} />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <QtyChip tone="earlier" value={k.alteration} />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <QtyChip tone="pending" value={k.pending} />
@@ -358,6 +367,7 @@ export const LotHistoryPage = () => {
                 <th className={th}>Karigar</th>
                 <th className={th}>Colour / size</th>
                 <th className="px-3 py-2 text-right font-medium">Pcs</th>
+                <th className="px-3 py-2 text-right font-medium">Alteration</th>
                 <th className="px-3 py-2 text-right font-medium">Rate</th>
                 <th className="px-3 py-2 text-right font-medium">Amount ₹</th>
                 <th className={th}>Flatlock / Overlock</th>
@@ -374,6 +384,7 @@ export const LotHistoryPage = () => {
                   <td className="px-3 py-2 text-right">
                     <QtyChip tone="now" value={p.quantity} />
                   </td>
+                  <td className="numeric px-3 py-2 text-right">{p.alteration ? n(p.alteration) : '—'}</td>
                   <td className="numeric px-3 py-2 text-right">{p.rate != null ? formatMoney(p.rate) : '—'}</td>
                   <td className="numeric px-3 py-2 text-right">{formatMoney(p.total)}</td>
                   <td className={`${td} text-xs text-muted-foreground`}>

@@ -42,6 +42,7 @@ const emptyForm = () => ({
   overlockCarrierId: NONE,
   overlockRate: '',
   photoUrl: null as string | null,
+  alteration: '' as number | '',
   remarks: '',
 });
 type FormState = ReturnType<typeof emptyForm>;
@@ -151,6 +152,7 @@ export const ProductionEntryPage = () => {
       overlockCarrierId: editing.overlockCarrierId ?? NONE,
       overlockRate: editing.overlockRate ? String(Number(editing.overlockRate)) : '',
       photoUrl: editing.photoUrl,
+      alteration: editing.alterationQuantity || '',
       remarks: editing.remarks ?? '',
     });
     setQtys(Object.fromEntries(editing.quantities.map((q) => [cellKey(q.colorId, q.sizeId), q.quantity])));
@@ -220,6 +222,7 @@ export const ProductionEntryPage = () => {
         overlockCarrierId: overlockOn ? form.overlockCarrierId : null,
         overlockRate: overlockOn ? rateOrNull(form.overlockRate) : null,
         photoUrl: form.photoUrl ?? undefined,
+        alterationQuantity: Number(form.alteration) || 0,
         confirmed: confirmed || undefined,
         remarks: form.remarks || (isEdit ? null : undefined),
         ...(hasGrid && availability
@@ -249,7 +252,7 @@ export const ProductionEntryPage = () => {
   }, [saved]);
 
   // Older entries may predate lots; they can still be edited (e.g. to fill in rates).
-  const isValid = Boolean(form.carrierId && (isEdit || form.cuttingEntryId) && form.date && form.photoUrl && quantity > 0 && !grid.over);
+  const isValid = Boolean(form.carrierId && (isEdit || form.cuttingEntryId) && form.date && form.photoUrl && quantity + (Number(form.alteration) || 0) > 0 && !grid.over);
 
   const save = (andNew: boolean, confirmed = false) => {
     setError(null);
@@ -468,6 +471,26 @@ export const ProductionEntryPage = () => {
               <span className="font-semibold">
                 Grand Total <output aria-live="polite" className="numeric text-base text-primary">₹ {money(grandTotal)}</output>
               </span>
+            </div>
+
+            {/* Pieces that need alteration: not paid, counted when the lot is closed */}
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2 rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-2.5">
+              <FormField label="Alteration pcs" htmlFor="pe-alteration" className="w-40" hint="Optional">
+                <Input
+                  id="pe-alteration"
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  className="numeric text-right text-base font-semibold"
+                  value={form.alteration}
+                  onChange={(e) => set({ alteration: e.target.value === '' ? '' : Number(e.target.value) })}
+                />
+              </FormField>
+              <p className="min-w-[14rem] flex-1 text-xs text-muted-foreground">
+                Pieces of this lot that are not fine and need alteration. They are not paid, and they count (with the delivered pieces)
+                when the lot is closed.
+              </p>
             </div>
 
             {/* Photo compare + remarks */}

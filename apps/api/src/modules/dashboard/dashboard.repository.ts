@@ -175,6 +175,7 @@ export const getLotStatus = async (organizationId: string, bookId?: string) => {
       closedAt: true,
       closeReason: true,
       closedShortage: true,
+      closedAlteration: true,
       item: { select: { itemName: true } },
       party: { select: { name: true } },
     },
@@ -185,13 +186,14 @@ export const getLotStatus = async (organizationId: string, bookId?: string) => {
 
   const [given, handedIn, delivered] = await Promise.all([
     prisma.cuttingDistribution.groupBy({ by: ['cuttingEntryId', 'karigarId'], where: { cuttingEntryId: { in: lotIds } }, _sum: { totalQuantity: true } }),
-    prisma.productionEntry.groupBy({ by: ['cuttingEntryId', 'carrierId'], where: { cuttingEntryId: { in: lotIds }, deletedAt: null }, _sum: { carrierQuantity: true } }),
+    prisma.productionEntry.groupBy({ by: ['cuttingEntryId', 'carrierId'], where: { cuttingEntryId: { in: lotIds }, deletedAt: null }, _sum: { carrierQuantity: true, alterationQuantity: true } }),
     prisma.delivery.groupBy({ by: ['cuttingEntryId'], where: { cuttingEntryId: { in: lotIds } }, _sum: { totalQuantity: true } }),
   ]);
   const karigarIds = [...new Set([...given.map((g) => g.karigarId), ...handedIn.map((h) => h.carrierId)])];
   const karigars = await prisma.karigar.findMany({ where: { id: { in: karigarIds } }, select: { id: true, fullName: true, workType: { select: { name: true } } } });
   const karigarById = new Map(karigars.map((k) => [k.id, k]));
   const handedBy = new Map(handedIn.map((h) => [`${h.cuttingEntryId}:${h.carrierId}`, h._sum.carrierQuantity ?? 0]));
+  const alterationBy = new Map(handedIn.map((h) => [`${h.cuttingEntryId}:${h.carrierId}`, h._sum.alterationQuantity ?? 0]));
   const deliveredBy = new Map(delivered.map((d) => [d.cuttingEntryId, d._sum.totalQuantity ?? 0]));
 
   return lots.map((lot) => {
@@ -199,10 +201,12 @@ export const getLotStatus = async (organizationId: string, bookId?: string) => {
       const took = g._sum.totalQuantity ?? 0;
       const done = handedBy.get(`${lot.id}:${g.karigarId}`) ?? 0;
       const k = karigarById.get(g.karigarId);
-      return { karigarId: g.karigarId, name: k?.fullName ?? 'Unknown', workType: k?.workType.name ?? '', given: took, handedIn: done, pending: Math.max(took - done, 0) };
+      const alt = alterationBy.get(`${lot.id}:${g.karigarId}`) ?? 0;
+      return { karigarId: g.karigarId, name: k?.fullName ?? 'Unknown', workType: k?.workType.name ?? '', given: took, handedIn: done, alteration: alt, pending: Math.max(took - done - alt, 0) };
     });
     const distributed = rows.reduce((s, r) => s + r.given, 0);
     const produced = rows.reduce((s, r) => s + r.handedIn, 0);
+    const alteration = rows.reduce((s, r) => s + r.alteration, 0);
     const deliveredQty = deliveredBy.get(lot.id) ?? 0;
     const stage: LotStage = lot.closedAt
       ? 'closed'
@@ -231,6 +235,8 @@ export const getLotStatus = async (organizationId: string, bookId?: string) => {
       stage,
       closeReason: lot.closeReason,
       closedShortage: lot.closedShortage,
+      closedAlteration: lot.closedAlteration,
+      alteration,
       karigars: rows.sort((a, b) => b.pending - a.pending),
     };
   });

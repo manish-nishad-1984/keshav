@@ -68,6 +68,7 @@ interface ProductionEntryData {
   itemId: string;
   carrierId: string;
   carrierQuantity: number;
+  alterationQuantity?: number;
   carrierRate: number | null;
   carrierTotal: number;
   overlockCarrierId?: string | null;
@@ -123,15 +124,24 @@ export const softDeleteProductionEntry = (id: string, updatedById: string | null
   });
 
 // Pieces of a lot given to a karigar (Cutting Distribution) and already entered as produced by them.
-export const piecesTakenAndProduced = async (db: Prisma.TransactionClient, karigarId: string, cuttingEntryId: string) => {
+export const piecesTakenAndProduced = async (
+  db: Prisma.TransactionClient,
+  karigarId: string,
+  cuttingEntryId: string,
+  excludeId?: string,
+) => {
   const [taken, produced] = await Promise.all([
     db.cuttingDistribution.aggregate({ where: { karigarId, cuttingEntryId }, _sum: { totalQuantity: true } }),
     db.productionEntry.aggregate({
-      where: { carrierId: karigarId, cuttingEntryId, deletedAt: null },
-      _sum: { carrierQuantity: true },
+      where: { carrierId: karigarId, cuttingEntryId, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}) },
+      _sum: { carrierQuantity: true, alterationQuantity: true },
     }),
   ]);
-  return { taken: taken._sum.totalQuantity ?? 0, produced: produced._sum.carrierQuantity ?? 0 };
+  return {
+    taken: taken._sum.totalQuantity ?? 0,
+    produced: produced._sum.carrierQuantity ?? 0,
+    alteration: produced._sum.alterationQuantity ?? 0,
+  };
 };
 
 const cellKey = (colorId: string, sizeId: string) => `${colorId}:${sizeId}`;

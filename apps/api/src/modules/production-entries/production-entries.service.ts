@@ -125,6 +125,22 @@ const assertPaidChangeConfirmed = async (
   }
 };
 
+// Pieces handed in plus pieces sent for alteration can't be more than the karigar took, and an entry
+// needs at least one of them.
+const assertPiecesAccounted = (
+  lotNumber: string,
+  karigarName: string,
+  p: { taken: number; produced: number; alterationOthers: number; quantity: number; alteration: number },
+) => {
+  if (p.quantity + p.alteration === 0) throw badRequest('Enter pieces in at least one size, or the alteration pieces');
+  const left = Math.max(p.taken - p.produced - p.alterationOthers, 0);
+  if (p.quantity + p.alteration > left) {
+    throw badRequest(
+      `${karigarName} has only ${left} pieces of lot ${lotNumber} left (handed in + alteration can't be more than they took)`,
+    );
+  }
+};
+
 // Each stage's total is its rate × the entry's quantity; an empty rate (to be filled in later)
 // leaves the stitching total at 0 and the overlock/flatlock totals empty.
 const stageTotals = (
@@ -163,12 +179,14 @@ export const createProductionEntry = async (
   return prisma.$transaction(async (tx) => {
     await lockCuttingEntry(tx, lot.id);
     await repo.lockKarigarLot(tx, input.carrierId, lot.id);
-    const { taken } = await repo.piecesTakenAndProduced(tx, input.carrierId, lot.id);
+    const { taken, produced, alteration: alterationOthers } = await repo.piecesTakenAndProduced(tx, input.carrierId, lot.id);
     if (taken === 0) {
       throw badRequest(`${karigar.fullName} has not taken any pieces of lot ${lot.lotNumber} (Cutting Distribution)`);
     }
     const cells = await checkCells(tx, lot, input.carrierId, input.quantities);
     const quantity = sumCells(cells);
+    const alteration = input.alterationQuantity ?? 0;
+    assertPiecesAccounted(lot.lotNumber, karigar.fullName, { taken, produced, alterationOthers, quantity, alteration });
 
     return repo.createProductionEntry(
       tx,
@@ -182,6 +200,7 @@ export const createProductionEntry = async (
         itemId: lot.itemId,
         carrierId: input.carrierId,
         carrierQuantity: quantity,
+        alterationQuantity: alteration,
         ...rates,
         ...stageTotals(quantity, rates),
         photoUrl: input.photoUrl,
@@ -239,6 +258,7 @@ export const updateProductionEntry = async (
     ...(input.entryTime !== undefined ? { entryTime: input.entryTime } : {}),
     ...rates,
     carrierQuantity: quantity,
+    ...(input.alterationQuantity !== undefined ? { alterationQuantity: input.alterationQuantity } : {}),
     ...stageTotals(quantity, rates),
     photoUrl: input.photoUrl,
     ...(input.remarks !== undefined ? { remarks: input.remarks } : {}),
@@ -246,7 +266,8 @@ export const updateProductionEntry = async (
 
   const { cuttingEntryId } = existing;
   const quantities = input.quantities;
-  if (!quantities || !cuttingEntryId) {
+  const alterationChanged = input.alterationQuantity !== undefined && input.alterationQuantity !== existing.alterationQuantity;
+  if ((!quantities && !alterationChanged) || !cuttingEntryId) {
     return prisma.$transaction((tx) =>
       repo.updateProductionEntry(tx, id, data(existing.carrierQuantity), undefined, actorId),
     );
@@ -256,8 +277,12 @@ export const updateProductionEntry = async (
     await lockCuttingEntry(tx, cuttingEntryId);
     await repo.lockKarigarLot(tx, existing.carrierId, cuttingEntryId);
     const lot = await getCuttingEntry(organizationId, cuttingEntryId);
-    const cells = await checkCells(tx, lot, existing.carrierId, quantities, id);
-    const updated = await repo.updateProductionEntry(tx, id, data(sumCells(cells)), cells, actorId);
+    const cells = quantities ? await checkCells(tx, lot, existing.carrierId, quantities, id) : undefined;
+    const quantity = cells ? sumCells(cells) : existing.carrierQuantity;
+    const alteration = input.alterationQuantity ?? existing.alterationQuantity;
+    const { taken, produced, alteration: alterationOthers } = await repo.piecesTakenAndProduced(tx, existing.carrierId, cuttingEntryId, id);
+    assertPiecesAccounted(lot.lotNumber, existing.carrier.fullName, { taken, produced, alterationOthers, quantity, alteration });
+    const updated = await repo.updateProductionEntry(tx, id, data(quantity), cells, actorId);
     // Fewer pieces than were already delivered to the party isn't allowed.
     await assertDeliveriesCovered(tx, cuttingEntryId);
     return updated;
