@@ -17,13 +17,14 @@ const entryTimeSchema = z
   .nullable()
   .optional();
 
-// No rate: it comes from Settings (online / offline) when the entry is saved.
+// The rate is one of the rates the admin set up in Settings for the chosen mode (online / offline).
 export const createPressEntrySchema = z.object({
   karigarId: z.string().uuid(),
   date: z.coerce.date(),
   entryTime: entryTimeSchema,
   isOnline: z.boolean(),
   pieces: z.coerce.number().int().positive(),
+  rate: z.coerce.number().positive().max(100000),
   remarks: z.string().trim().max(500).nullable().optional(),
 });
 export type CreatePressEntryInput = z.infer<typeof createPressEntrySchema>;
@@ -31,8 +32,15 @@ export type CreatePressEntryInput = z.infer<typeof createPressEntrySchema>;
 export const updatePressEntrySchema = createPressEntrySchema.partial();
 export type UpdatePressEntryInput = z.infer<typeof updatePressEntrySchema>;
 
+// Each mode has a list of rates (per piece) the admin keeps in Settings; the user picks one.
+const rateListSchema = z
+  .array(z.coerce.number().positive().max(100000))
+  .min(1, 'Add at least one rate')
+  .max(30)
+  .refine((rates) => new Set(rates.map((r) => r.toFixed(2))).size === rates.length, { message: 'A rate appears twice' });
+
 export const pressRatesSchema = z.object({
-  onlineRate: z.coerce.number().positive().max(100000),
-  offlineRate: z.coerce.number().positive().max(100000),
+  onlineRates: rateListSchema,
+  offlineRates: rateListSchema,
 });
 export type PressRates = z.infer<typeof pressRatesSchema>;

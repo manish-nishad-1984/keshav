@@ -83,7 +83,7 @@ const RATES_KEY = { scope: 'press', key: 'rates' } as const;
 export const findPressRates = (organizationId: string) =>
   prisma.companySetting.findUnique({ where: { organizationId_scope_key: { organizationId, ...RATES_KEY } } });
 
-export const savePressRates = (organizationId: string, value: { onlineRate: number; offlineRate: number }) =>
+export const savePressRates = (organizationId: string, value: { onlineRates: number[]; offlineRates: number[] }) =>
   prisma.companySetting.upsert({
     where: { organizationId_scope_key: { organizationId, ...RATES_KEY } },
     create: { organizationId, ...RATES_KEY, value },

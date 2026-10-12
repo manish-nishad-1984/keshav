@@ -1,26 +1,35 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, X } from 'lucide-react';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { FormField } from '../ui/form-field';
 import { FormAlert } from '../ui/form-alert';
 import { usePermissions } from '../../hooks/use-permissions';
 
 export const PRESS_RATES_QUERY_KEY = ['press-rates'] as const;
 
 export interface PressRates {
-  onlineRate: number;
-  offlineRate: number;
+  onlineRates: number[];
+  offlineRates: number[];
 }
 
-// Per-piece press (ironing) rates used by Press Entry. A saved entry keeps the rate it was made with.
+type Mode = 'onlineRates' | 'offlineRates';
+
+const MODES: { key: Mode; title: string }[] = [
+  { key: 'onlineRates', title: 'Online rates (₹ / pc)' },
+  { key: 'offlineRates', title: 'Offline rates (₹ / pc)' },
+];
+
+// Per-piece press (ironing) rates. The admin keeps a list for online and for offline; the user picks
+// one in Press Entry. A saved entry keeps the rate it was made with.
 export const PressRatesCard = () => {
   const queryClient = useQueryClient();
   const { hasPermission, isSuperAdmin } = usePermissions();
   const canUpdate = isSuperAdmin || hasPermission('company_settings:update');
-  const [form, setForm] = useState({ onlineRate: '', offlineRate: '' });
+  const [rates, setRates] = useState<PressRates>({ onlineRates: [], offlineRates: [] });
+  const [draft, setDraft] = useState<Record<Mode, string>>({ onlineRates: '', offlineRates: '' });
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -30,12 +39,11 @@ export const PressRatesCard = () => {
   });
 
   useEffect(() => {
-    if (data) setForm({ onlineRate: String(data.onlineRate), offlineRate: String(data.offlineRate) });
+    if (data) setRates({ onlineRates: [...data.onlineRates], offlineRates: [...data.offlineRates] });
   }, [data]);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      apiClient.put('/press-entries/rates', { onlineRate: Number(form.onlineRate), offlineRate: Number(form.offlineRate) }),
+    mutationFn: () => apiClient.put('/press-entries/rates', rates),
     onSuccess: () => {
       setError(null);
       setSaved(true);
@@ -45,7 +53,20 @@ export const PressRatesCard = () => {
     onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Could not save rates.'),
   });
 
-  const valid = Number(form.onlineRate) > 0 && Number(form.offlineRate) > 0;
+  const add = (mode: Mode) => {
+    const value = Math.round(Number(draft[mode]) * 100) / 100;
+    if (!(value > 0)) return;
+    if (rates[mode].some((r) => Math.abs(r - value) < 0.005)) {
+      setError(`₹${value} is already in the list`);
+      return;
+    }
+    setError(null);
+    setRates((r) => ({ ...r, [mode]: [...r[mode], value].sort((a, b) => a - b) }));
+    setDraft((d) => ({ ...d, [mode]: '' }));
+  };
+  const remove = (mode: Mode, value: number) => setRates((r) => ({ ...r, [mode]: r[mode].filter((x) => x !== value) }));
+
+  const valid = rates.onlineRates.length > 0 && rates.offlineRates.length > 0;
 
   return (
     <Card>
@@ -59,37 +80,61 @@ export const PressRatesCard = () => {
         >
           <div>
             <h2 className="text-sm font-semibold">Press Rates</h2>
-            <p className="text-xs text-muted-foreground">Per piece, used by Press Entry. Saved entries keep the rate they were made with.</p>
+            <p className="text-xs text-muted-foreground">
+              Add as many rates as you need for online and offline; the user picks one in Press Entry. Saved entries keep the rate they were made with.
+            </p>
           </div>
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
           {saved ? <FormAlert tone="success">Press rates saved.</FormAlert> : null}
-          <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            <FormField label="Online rate (₹ / pc)" htmlFor="press-online-rate">
-              <Input
-                id="press-online-rate"
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                className="numeric text-right"
-                disabled={!canUpdate}
-                value={form.onlineRate}
-                onChange={(e) => setForm((f) => ({ ...f, onlineRate: e.target.value }))}
-              />
-            </FormField>
-            <FormField label="Offline rate (₹ / pc)" htmlFor="press-offline-rate">
-              <Input
-                id="press-offline-rate"
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                className="numeric text-right"
-                disabled={!canUpdate}
-                value={form.offlineRate}
-                onChange={(e) => setForm((f) => ({ ...f, offlineRate: e.target.value }))}
-              />
-            </FormField>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {MODES.map(({ key, title }) => (
+              <div key={key} className="space-y-2">
+                <p className="text-sm font-medium">{title}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {rates[key].map((value) => (
+                    <span key={value} className="numeric inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-sm font-semibold">
+                      ₹{value}
+                      {canUpdate ? (
+                        <button
+                          type="button"
+                          aria-label={`Remove rate ${value}`}
+                          className="rounded-full text-muted-foreground hover:text-destructive"
+                          onClick={() => remove(key, value)}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      ) : null}
+                    </span>
+                  ))}
+                  {!rates[key].length ? <span className="text-xs text-destructive">Add at least one rate</span> : null}
+                </div>
+                {canUpdate ? (
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      aria-label={`New ${title}`}
+                      placeholder="New rate"
+                      className="numeric w-32 text-right"
+                      value={draft[key]}
+                      onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          add(key);
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="outline" onClick={() => add(key)} disabled={!(Number(draft[key]) > 0)}>
+                      <Plus />
+                      Add
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
           </div>
           {canUpdate ? (
             <div className="pt-1">

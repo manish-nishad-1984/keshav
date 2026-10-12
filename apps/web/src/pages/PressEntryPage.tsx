@@ -54,6 +54,7 @@ const emptyForm = () => ({
   entryTime: nowTime(),
   isOnline: true,
   pieces: '' as number | '',
+  rate: '',
   remarks: '',
 });
 
@@ -97,10 +98,20 @@ export const PressEntryPage = () => {
     return () => clearTimeout(timer);
   }, [saved]);
 
-  // An edited entry keeps its own rate unless its mode changes; a new one uses Settings.
-  const settingsRate = rates ? (form.isOnline ? rates.onlineRate : rates.offlineRate) : 0;
-  const rate = editing && editing.isOnline === form.isOnline ? Number(editing.rate) : settingsRate;
+  // The rates the admin set up for the chosen mode; an edited entry's own saved rate stays selectable.
+  const modeRates = rates ? (form.isOnline ? rates.onlineRates : rates.offlineRates) : [];
+  const rateOptions =
+    editing && editing.isOnline === form.isOnline && !modeRates.some((r) => Math.abs(r - Number(editing.rate)) < 0.005)
+      ? [...modeRates, Number(editing.rate)].sort((a, b) => a - b)
+      : modeRates;
+  const rate = Number(form.rate) || 0;
   const total = (Number(form.pieces) || 0) * rate;
+
+  // A new entry (or a new mode) starts on the first rate of the list.
+  useEffect(() => {
+    if (!rateOptions.length) return;
+    if (!rateOptions.some((r) => String(r) === form.rate)) setForm((f) => ({ ...f, rate: String(rateOptions[0]) }));
+  }, [rates, form.isOnline, form.rate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startEdit = (entry: PressEntry) => {
     setError(null);
@@ -111,6 +122,7 @@ export const PressEntryPage = () => {
       entryTime: entry.entryTime ?? '',
       isOnline: entry.isOnline,
       pieces: entry.pieces,
+      rate: String(Number(entry.rate)),
       remarks: entry.remarks ?? '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -128,6 +140,7 @@ export const PressEntryPage = () => {
         entryTime: form.entryTime || null,
         isOnline: form.isOnline,
         pieces: Number(form.pieces),
+        rate: Number(form.rate),
         remarks: form.remarks.trim() || null,
       };
       return editing ? apiClient.patch(`/press-entries/${editing.id}`, payload) : apiClient.post('/press-entries', payload);
@@ -161,7 +174,7 @@ export const PressEntryPage = () => {
   const canSave = editing ? canUpdate : canCreate;
 
   return (
-    <PageLayout title="Press Entry" description="Pieces ironed by press karigars, at the online / offline rate from Settings.">
+    <PageLayout title="Press Entry" description="Pieces ironed by press karigars — pick the online / offline rate.">
       {canSave || editing ? (
         <Card>
           <CardContent className="p-3 sm:p-4">
@@ -230,18 +243,13 @@ export const PressEntryPage = () => {
                         type="button"
                         role="radio"
                         aria-checked={form.isOnline === option.value}
-                        onClick={() => set({ isOnline: option.value })}
+                        onClick={() => set({ isOnline: option.value, rate: '' })}
                         className={cn(
                           'flex-1 rounded px-4 text-sm transition-colors',
                           form.isOnline === option.value ? 'bg-card font-semibold text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground',
                         )}
                       >
                         {option.label}
-                        {rates ? (
-                          <span className="ml-1 text-2xs font-normal text-muted-foreground">
-                            ₹{option.value ? rates.onlineRate : rates.offlineRate}
-                          </span>
-                        ) : null}
                       </button>
                     ))}
                   </div>
@@ -261,8 +269,19 @@ export const PressEntryPage = () => {
                     onChange={(e) => set({ pieces: e.target.value === '' ? '' : Number(e.target.value) })}
                   />
                 </FormField>
-                <FormField label="Rate ₹ / pc" htmlFor="press-rate" hint={editing && editing.isOnline === form.isOnline ? 'Saved rate' : 'From Settings'}>
-                  <Input id="press-rate" readOnly tabIndex={-1} className="numeric text-right" value={rate ? money(rate) : '—'} />
+                <FormField label="Rate ₹ / pc" required htmlFor="press-rate" hint={rateOptions.length ? undefined : 'Add rates in Settings'}>
+                  <Select value={form.rate} onValueChange={(v) => set({ rate: v })}>
+                    <SelectTrigger id="press-rate" className="numeric">
+                      <SelectValue placeholder="Select rate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rateOptions.map((r) => (
+                        <SelectItem key={r} value={String(r)}>
+                          ₹ {money(r)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormField>
                 <FormField label="Total ₹" htmlFor="press-total">
                   <output

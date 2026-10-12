@@ -3,17 +3,25 @@ import { prisma } from '../../lib/prisma';
 import * as repo from './press-entries.repository';
 import type { CreatePressEntryInput, ListPressEntriesQuery, PressRates, UpdatePressEntryInput } from './press-entries.schema';
 
-// Used until the rates are saved in Settings (the migration stores these too).
-const DEFAULT_RATES: PressRates = { onlineRate: 2, offlineRate: 3 };
+// Used until rates are saved in Settings (the first migration stored a single online / offline rate).
+const DEFAULT_RATES: PressRates = { onlineRates: [2], offlineRates: [3] };
 
 const computeTotal = (pieces: number, rate: number) => Math.round(pieces * rate * 100) / 100;
+const sameRate = (a: number, b: number) => Math.abs(a - b) < 0.005;
 
+const toRateList = (many: unknown, single: unknown, fallback: number[]) => {
+  const list = Array.isArray(many) ? many.map(Number).filter((n) => n > 0) : [];
+  if (list.length) return list;
+  return Number(single) > 0 ? [Number(single)] : fallback;
+};
+
+// Also reads the older single-rate shape ({ onlineRate, offlineRate }).
 export const getPressRates = async (organizationId: string): Promise<PressRates> => {
   const row = await repo.findPressRates(organizationId);
-  const value = (row?.value ?? {}) as Partial<PressRates>;
+  const value = (row?.value ?? {}) as Record<string, unknown>;
   return {
-    onlineRate: Number(value.onlineRate ?? DEFAULT_RATES.onlineRate),
-    offlineRate: Number(value.offlineRate ?? DEFAULT_RATES.offlineRate),
+    onlineRates: toRateList(value.onlineRates, value.onlineRate, DEFAULT_RATES.onlineRates),
+    offlineRates: toRateList(value.offlineRates, value.offlineRate, DEFAULT_RATES.offlineRates),
   };
 };
 
@@ -22,7 +30,15 @@ export const savePressRates = async (organizationId: string, rates: PressRates) 
   return getPressRates(organizationId);
 };
 
-const rateFor = (rates: PressRates, isOnline: boolean) => (isOnline ? rates.onlineRate : rates.offlineRate);
+// The chosen rate must be one of the Settings rates for that mode (an unchanged saved rate also stays valid).
+const assertAllowedRate = async (organizationId: string, isOnline: boolean, rate: number, keep?: number) => {
+  const rates = await getPressRates(organizationId);
+  const allowed = isOnline ? rates.onlineRates : rates.offlineRates;
+  if (keep !== undefined && sameRate(keep, rate)) return;
+  if (!allowed.some((r) => sameRate(r, rate))) {
+    throw badRequest(`₹${rate} is not one of the ${isOnline ? 'online' : 'offline'} press rates — pick a rate from the list`);
+  }
+};
 
 // Only karigars whose work type is "Press" can hand in press entries.
 const getPressKarigar = async (organizationId: string, karigarId: string) => {
@@ -53,7 +69,8 @@ export const getPressEntry = async (organizationId: string, id: string) => {
 
 export const createPressEntry = async (organizationId: string, input: CreatePressEntryInput, actorId: string | null) => {
   await getPressKarigar(organizationId, input.karigarId);
-  const rate = rateFor(await getPressRates(organizationId), input.isOnline);
+  const rate = input.rate;
+  await assertAllowedRate(organizationId, input.isOnline, rate);
   return repo.createPressEntry(
     organizationId,
     {
@@ -70,8 +87,8 @@ export const createPressEntry = async (organizationId: string, input: CreatePres
   );
 };
 
-// An entry keeps the rate it was saved with; switching online/offline takes the current Settings
-// rate for the new mode.
+// An entry keeps the rate it was saved with. Changing the rate, or switching online / offline,
+// needs a rate picked from the Settings list of that mode.
 export const updatePressEntry = async (
   organizationId: string,
   id: string,
@@ -82,7 +99,12 @@ export const updatePressEntry = async (
   if (input.karigarId && input.karigarId !== existing.karigarId) await getPressKarigar(organizationId, input.karigarId);
 
   const isOnline = input.isOnline ?? existing.isOnline;
-  const rate = isOnline === existing.isOnline ? Number(existing.rate) : rateFor(await getPressRates(organizationId), isOnline);
+  const modeChanged = isOnline !== existing.isOnline;
+  if (modeChanged && input.rate === undefined) throw badRequest('Pick a rate for the new online / offline mode');
+  const rate = input.rate ?? Number(existing.rate);
+  if (input.rate !== undefined || modeChanged) {
+    await assertAllowedRate(organizationId, isOnline, rate, modeChanged ? undefined : Number(existing.rate));
+  }
   const pieces = input.pieces ?? existing.pieces;
 
   return repo.updatePressEntry(
