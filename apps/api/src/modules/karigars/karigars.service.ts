@@ -1,4 +1,4 @@
-import { notFound } from '../../lib/httpError';
+import { conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { nextSequenceCode } from '../../lib/numberSequence';
 import * as repo from './karigars.repository';
@@ -13,7 +13,10 @@ export const getKarigar = async (organizationId: string, id: string) => {
   return karigar;
 };
 
+const DUPLICATE_KARIGAR = 'A karigar with this name already exists';
+
 export const createKarigar = async (organizationId: string, input: CreateKarigarInput, actorId: string | null) => {
+  if (await repo.findKarigarByName(organizationId, input.fullName)) throw conflict(DUPLICATE_KARIGAR);
   const code = await nextSequenceCode(organizationId, 'KRG');
   const { documents, ...data } = input;
   const karigar = await repo.createKarigar(organizationId, code, data, actorId);
@@ -28,6 +31,10 @@ export const updateKarigar = async (
   actorId: string | null,
 ) => {
   await getKarigar(organizationId, id);
+  if (input.fullName) {
+    const existing = await repo.findKarigarByName(organizationId, input.fullName);
+    if (existing && existing.id !== id) throw conflict(DUPLICATE_KARIGAR);
+  }
   const { documents, ...data } = input;
   await repo.updateKarigar(id, data, actorId);
   if (documents) await repo.replaceKarigarDocuments(id, documents);

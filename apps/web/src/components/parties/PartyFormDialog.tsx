@@ -76,6 +76,7 @@ export const PartyFormDialog = ({ open, onOpenChange, party, onSaved }: PartyFor
                 id="party-name"
                 required
                 autoFocus
+                className="uppercase"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />

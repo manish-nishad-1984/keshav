@@ -38,6 +38,10 @@ export const listKarigars = async (
   return { items, total };
 };
 
+// Names are unique among karigars that are not deleted (inactive ones count too).
+export const findKarigarByName = (organizationId: string, fullName: string) =>
+  prisma.karigar.findFirst({ where: { organizationId, deletedAt: null, fullName: { equals: fullName, mode: 'insensitive' } } });
+
 export const findKarigarById = (organizationId: string, id: string) =>
   prisma.karigar.findFirst({
     where: { id, organizationId, deletedAt: null },

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { nameSchema } from '../../lib/names';
 
 export const listKarigarsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -28,7 +29,7 @@ const documentsSchema = z
 export type KarigarDocumentInput = z.infer<typeof documentsSchema>[number];
 
 export const createKarigarSchema = z.object({
-  fullName: z.string().min(1),
+  fullName: nameSchema,
   mobile: z.string().min(1),
   workTypeId: z.string().uuid(),
   photoUrl: z.string().optional(),
@@ -43,7 +44,7 @@ export const createKarigarSchema = z.object({
 export type CreateKarigarInput = z.infer<typeof createKarigarSchema>;
 
 export const updateKarigarSchema = z.object({
-  fullName: z.string().min(1).optional(),
+  fullName: nameSchema.optional(),
   mobile: z.string().min(1).optional(),
   workTypeId: z.string().uuid().optional(),
   photoUrl: z.string().nullable().optional(),

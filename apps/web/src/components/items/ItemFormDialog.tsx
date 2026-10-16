@@ -85,6 +85,7 @@ export const ItemFormDialog = ({ open, onOpenChange, item }: ItemFormDialogProps
                 <Input
                   required
                   autoFocus
+                  className="uppercase"
                   value={form.itemName}
                   onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))}
                 />

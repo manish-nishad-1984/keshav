@@ -79,7 +79,7 @@ export const WorkTypeTab = () => {
               }}
             >
               <FormField label="Work type name" className="flex-1 max-w-xs">
-                <Input required value={newName} onChange={(e) => setNewName(e.target.value)} />
+                <Input required className="uppercase" value={newName} onChange={(e) => setNewName(e.target.value)} />
               </FormField>
               <Button type="submit" loading={createMutation.isPending}>
                 <Plus />
@@ -96,7 +96,7 @@ export const WorkTypeTab = () => {
                     <>
                       <Input
                         autoFocus
-                        className="h-8 flex-1"
+                        className="h-8 flex-1 uppercase"
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                       />

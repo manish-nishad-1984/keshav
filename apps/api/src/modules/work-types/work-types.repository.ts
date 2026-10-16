@@ -7,7 +7,7 @@ export const findWorkTypeById = (organizationId: string, id: string) =>
   prisma.workType.findFirst({ where: { id, organizationId } });
 
 export const findWorkTypeByName = (organizationId: string, name: string) =>
-  prisma.workType.findFirst({ where: { organizationId, name } });
+  prisma.workType.findFirst({ where: { organizationId, name: { equals: name, mode: 'insensitive' } } });
 
 export const createWorkType = (organizationId: string, data: { name: string }, createdById: string | null) =>
   prisma.workType.create({ data: { organizationId, ...data, createdById: createdById ?? undefined } });

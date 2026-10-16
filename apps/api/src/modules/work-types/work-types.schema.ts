@@ -1,12 +1,13 @@
 import { z } from 'zod';
+import { nameSchema } from '../../lib/names';
 
 export const createWorkTypeSchema = z.object({
-  name: z.string().min(1),
+  name: nameSchema,
 });
 export type CreateWorkTypeInput = z.infer<typeof createWorkTypeSchema>;
 
 export const updateWorkTypeSchema = z.object({
-  name: z.string().min(1).optional(),
+  name: nameSchema.optional(),
   isActive: z.boolean().optional(),
 });
 export type UpdateWorkTypeInput = z.infer<typeof updateWorkTypeSchema>;

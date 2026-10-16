@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { nameSchema } from '../../lib/names';
 
 export const listItemsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -10,14 +11,14 @@ export type ListItemsQuery = z.infer<typeof listItemsQuerySchema>;
 
 export const createItemSchema = z.object({
   categoryId: z.string().uuid(),
-  itemName: z.string().trim().min(1),
+  itemName: nameSchema,
   photoUrl: z.string().optional(),
 });
 export type CreateItemInput = z.infer<typeof createItemSchema>;
 
 export const updateItemSchema = z.object({
   categoryId: z.string().uuid().optional(),
-  itemName: z.string().trim().min(1).optional(),
+  itemName: nameSchema.optional(),
   photoUrl: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 });

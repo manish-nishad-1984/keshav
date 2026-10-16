@@ -160,6 +160,7 @@ export const KarigarFormView = ({ karigar, onDone, onCancel }: KarigarFormViewPr
                 <Input
                   required
                   autoFocus
+                  className="uppercase"
                   value={form.fullName}
                   onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
                 />
