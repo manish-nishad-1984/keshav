@@ -27,6 +27,10 @@ export const getByLotNumber = async (req: Request, res: Response) => {
   ok(res, entry);
 };
 
+export const colorPhotos = async (req: Request, res: Response) => {
+  ok(res, await service.getLotColorPhotos(req.auth!.organizationId, req.params.cuttingEntryId));
+};
+
 export const lotHistory = async (req: Request, res: Response) => {
   const { bookId } = lotLookupQuerySchema.parse(req.query);
   ok(res, await getLotHistory(req.auth!.organizationId, bookId, req.params.lotNumber));

@@ -207,6 +207,18 @@ export const deleteCuttingEntryWithEverything = async (organizationId: string, i
   return summary;
 };
 
+// colour id → cloth photo of the lot's colour rows (first photo per colour, in row order).
+export const getLotColorPhotos = async (organizationId: string, cuttingEntryId: string) => {
+  const rows = await prisma.cuttingEntryRow.findMany({
+    where: { cuttingEntryId, photoUrl: { not: null }, cuttingEntry: { organizationId } },
+    select: { colorId: true, photoUrl: true },
+    orderBy: { sortOrder: 'asc' },
+  });
+  const photos: Record<string, string> = {};
+  for (const r of rows) if (r.photoUrl && !photos[r.colorId]) photos[r.colorId] = r.photoUrl;
+  return photos;
+};
+
 export const CLOSE_REASONS = ['DAMAGED', 'SHORTAGE', 'RETURNED_BY_PARTY'] as const;
 
 // Closing a lot (admin): freezes it and records why the cut pieces and the delivered pieces differ.

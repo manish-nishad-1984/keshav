@@ -8,6 +8,8 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { usePermissions } from '../../hooks/use-permissions';
+import { useLotColorPhotos } from '../../hooks/use-lot-color-photos';
+import { ColourThumb } from '../common/ColourThumb';
 import type { ProductionEntry } from './production-entry-constants';
 import { ratePending } from './production-entry-constants';
 import { formatDate } from '../../lib/date';
@@ -32,6 +34,7 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
   const canDelete = isSuperAdmin || hasPermission('production_entries:delete');
   const canUpdate = isSuperAdmin || hasPermission('production_entries:update');
   const navigate = useNavigate();
+  const colorPhotos = useLotColorPhotos(entry?.cuttingEntryId);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Set when the server warns that the karigar was paid after this entry (or the lot is closed).
@@ -130,9 +133,12 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
                   <p className="text-xs font-medium text-muted-foreground">Pieces handed in, by size</p>
                   <ul className="flex flex-wrap gap-1.5">
                     {entry.quantities.map((q) => (
-                      <li key={q.id} className="rounded-md border border-border bg-muted/50 px-2 py-1 text-sm">
-                        {q.color.name} · <span className="font-medium">{q.size.name}</span>:{' '}
-                        <span className="numeric font-semibold">{q.quantity}</span>
+                      <li key={q.id} className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-2 py-1 text-sm">
+                        <ColourThumb photoUrl={colorPhotos[q.colorId]} name={q.color.name} size={32} />
+                        <span>
+                          {q.color.name} · <span className="font-medium">{q.size.name}</span>:{' '}
+                          <span className="numeric font-semibold">{q.quantity}</span>
+                        </span>
                       </li>
                     ))}
                   </ul>

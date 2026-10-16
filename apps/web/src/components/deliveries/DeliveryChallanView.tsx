@@ -6,6 +6,8 @@ import { Button } from '../ui/button';
 import { LoadingState } from '../ui/loading-state';
 import { formatDate } from '../../lib/date';
 import type { Challan } from './delivery-constants';
+import { useLotColorPhotos } from '../../hooks/use-lot-color-photos';
+import { ColourThumb } from '../common/ColourThumb';
 import { cellKey, DELIVERIES_QUERY_KEY } from './delivery-constants';
 
 interface DeliveryChallanViewProps {
@@ -29,6 +31,7 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
     (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
   );
   const colors = [...new Map(delivery.quantities.map((q) => [q.colorId, q.color])).values()];
+  const colorPhotos = useLotColorPhotos(delivery.cuttingEntryId);
   const qty = new Map(delivery.quantities.map((q) => [cellKey(q.colorId, q.sizeId), q.quantity]));
   const cell = (colorId: string, sizeId: string) => qty.get(cellKey(colorId, sizeId)) ?? 0;
   const sizeTotal = (sizeId: string) => colors.reduce((t, c) => t + cell(c.id, sizeId), 0);
@@ -109,7 +112,12 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
               <tbody>
                 {colors.map((c) => (
                   <tr key={c.id} className="border-b border-border">
-                    <td className="px-2 py-1.5 font-medium">{c.name}</td>
+                    <td className="px-2 py-1.5 font-medium">
+                      <span className="flex items-center gap-2">
+                        <ColourThumb photoUrl={colorPhotos[c.id]} name={c.name} size={28} zoom={false} />
+                        {c.name}
+                      </span>
+                    </td>
                     {sizes.map((s) => (
                       <td key={s.id} className="numeric px-2 py-1.5 text-center">
                         {cell(c.id, s.id) ? formatQty(cell(c.id, s.id)) : '—'}

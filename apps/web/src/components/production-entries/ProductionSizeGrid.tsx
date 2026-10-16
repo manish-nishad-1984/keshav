@@ -1,12 +1,12 @@
-import { Boxes, Hourglass, History, ImageOff, PackageCheck, PencilLine, type LucideIcon } from 'lucide-react';
+import { Boxes, Hourglass, History, PackageCheck, PencilLine, type LucideIcon } from 'lucide-react';
 import { QtyChip, QtyLegend, QtyRowLabel, type QtyTone } from '../ui/qty-tone';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { LoadingState } from '../ui/loading-state';
-import { resolvePhotoUrl } from '../../lib/api-client';
 import { cn } from '../../lib/utils';
 import type { ProductionAvailability } from './production-entry-constants';
 import { cellKey } from './production-entry-constants';
+import { ColourThumb } from '../common/ColourThumb';
 
 // The grid's summary rows, in order; their colours also tint the cells (see qty-tone).
 const LEGEND = [
@@ -91,17 +91,10 @@ export const ProductionSizeGrid = ({ availability, loading, emptyText, values, o
             </thead>
             <tbody>
               {colors.map((color) => {
-                const photo = resolvePhotoUrl(color.photoUrl);
                 return (
                   <tr key={color.colorId} className="border-b border-border last:border-0">
                     <td className="px-2 py-1.5">
-                      {photo ? (
-                        <img src={photo} alt={`${color.name} cloth`} className="size-10 rounded-md border border-border object-cover" />
-                      ) : (
-                        <span className="flex size-10 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
-                          <ImageOff className="size-4" />
-                        </span>
-                      )}
+                      <ColourThumb photoUrl={color.photoUrl} name={color.name} size={48} />
                     </td>
                     <td className="px-2 py-1.5 font-medium">{color.name}</td>
                     {color.cells.map((cell) => {

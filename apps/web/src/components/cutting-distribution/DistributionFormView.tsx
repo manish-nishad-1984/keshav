@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eraser, HandCoins, History, Hourglass, ImageOff, PackageCheck, Save, Scissors, type LucideIcon } from 'lucide-react';
+import { Eraser, HandCoins, History, Hourglass, PackageCheck, Save, Scissors, type LucideIcon } from 'lucide-react';
 import { QtyChip, QtyLegend, QtyRowLabel, type QtyTone } from '../ui/qty-tone';
-import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
+import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
@@ -19,6 +19,7 @@ import { cn } from '../../lib/utils';
 import type { Karigar, WorkType } from '../karigars/karigar-constants';
 import type { Availability, Distribution, DistributionLot } from './distribution-constants';
 import { cellKey, DISTRIBUTIONS_QUERY_KEY } from './distribution-constants';
+import { ColourThumb } from '../common/ColourThumb';
 
 interface DistributionFormViewProps {
   distribution: Distribution | null;
@@ -346,17 +347,10 @@ export const DistributionFormView = ({ distribution, onDone, onCancel }: Distrib
                     </thead>
                     <tbody>
                       {colors.map((color) => {
-                        const photo = resolvePhotoUrl(color.photoUrl);
                         return (
                           <tr key={color.colorId} className="border-b border-border last:border-0">
                             <td className="px-2 py-1.5">
-                              {photo ? (
-                                <img src={photo} alt={`${color.name} cloth`} className="size-10 rounded-md border border-border object-cover" />
-                              ) : (
-                                <span className="flex size-10 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
-                                  <ImageOff className="size-4" />
-                                </span>
-                              )}
+                              <ColourThumb photoUrl={color.photoUrl} name={color.name} size={48} />
                             </td>
                             <td className="px-2 py-1.5 font-medium">{color.name}</td>
                             {color.cells.map((cell) => {

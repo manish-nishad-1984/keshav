@@ -18,6 +18,7 @@ import { localIsoDate } from '../../lib/date';
 import { cn } from '../../lib/utils';
 import type { Delivery, DeliveryAvailability, DeliveryLot } from './delivery-constants';
 import { cellKey, DELIVERIES_QUERY_KEY } from './delivery-constants';
+import { ColourThumb } from '../common/ColourThumb';
 
 interface DeliveryFormViewProps {
   delivery: Delivery | null;
@@ -292,17 +293,10 @@ export const DeliveryFormView = ({ delivery, onDone, onCancel }: DeliveryFormVie
                     </thead>
                     <tbody>
                       {colors.map((color) => {
-                        const photo = resolvePhotoUrl(color.photoUrl);
                         return (
                           <tr key={color.colorId} className="border-b border-border last:border-0">
                             <td className="px-2 py-1.5">
-                              {photo ? (
-                                <img src={photo} alt={`${color.name} cloth`} className="size-10 rounded-md border border-border object-cover" />
-                              ) : (
-                                <span className="flex size-10 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
-                                  <ImageOff className="size-4" />
-                                </span>
-                              )}
+                              <ColourThumb photoUrl={color.photoUrl} name={color.name} size={48} />
                             </td>
                             <td className="px-2 py-1.5 font-medium">{color.name}</td>
                             {color.cells.map((cell) => {

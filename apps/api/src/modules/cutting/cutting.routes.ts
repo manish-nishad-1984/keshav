@@ -16,6 +16,9 @@ cuttingRouter.use('/sizes', sizesRouter);
 // Daily Production Entry to resolve a typed-in lot number to its cutting entry.
 cuttingRouter.get('/lot/:lotNumber', requirePermission('production_entries:view'), asyncHandler(controller.getByLotNumber));
 
+// Cloth photo of each colour of a lot, for screens that list quantities per colour.
+cuttingRouter.get('/color-photos/:cuttingEntryId', asyncHandler(controller.colorPhotos));
+
 // Header lot lookup: the full story of one lot (before /:id).
 cuttingRouter.get('/history/:lotNumber', requirePermission('cutting:view'), asyncHandler(controller.lotHistory));
 

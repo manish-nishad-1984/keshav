@@ -161,6 +161,7 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
       labourCost,
     },
     sizes,
+    colorPhotos: Object.fromEntries(lot.rows.filter((r) => r.photoUrl).map((r) => [r.color.name, r.photoUrl as string])),
     cutGrid,
     accessoryReturns: returnsDue.map((p) => ({
       karigar: p.karigar.fullName,

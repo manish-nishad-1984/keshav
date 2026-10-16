@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftRight, Hourglass, ImageOff, Package, Scissors, Truck, Users } from 'lucide-react';
 import { QTY_TONE_CLASSES, QtyChip, type QtyTone } from '../components/ui/qty-tone';
 import { cn } from '../lib/utils';
+import { ColourThumb } from '../components/common/ColourThumb';
 import { apiClient, ApiRequestError, resolvePhotoUrl } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -56,6 +57,7 @@ interface LotHistory {
     labourCost: number;
   };
   sizes: { id: string; name: string; detail: string | null }[];
+  colorPhotos: Record<string, string>;
   accessoryReturns: { karigar: string; alterationPieces: number; lines: { name: string; unit: string; due: number }[] }[];
   cutGrid: { color: string; photoUrl: string | null; cells: Record<string, number>; total: number }[];
   karigars: { karigarId: string; name: string; workType: string; given: number; handedIn: number; alteration: number; pending: number }[];
@@ -101,14 +103,15 @@ const n = (value: number) => value.toLocaleString('en-IN');
 const when = (date: string, time: string | null) => `${formatDate(date.slice(0, 10))}${time ? ` ${time}` : ''}`;
 
 // "Red: M 20, L 15 · Blue: M 5" — a compact colour/size breakdown of one entry.
-const CellList = ({ cells }: { cells: Cell[] }) => {
+const CellList = ({ cells, photos }: { cells: Cell[]; photos: Record<string, string> }) => {
   const byColor = new Map<string, Cell[]>();
   for (const c of cells) byColor.set(c.color, [...(byColor.get(c.color) ?? []), c]);
   if (!byColor.size) return <span className="text-muted-foreground">—</span>;
   return (
     <div className="space-y-0.5">
       {[...byColor.entries()].map(([color, list]) => (
-        <p key={color} className="text-xs">
+        <p key={color} className="flex items-center gap-1.5 text-xs">
+          <ColourThumb photoUrl={photos[color]} name={color} size={28} />
           <span className="font-medium">{color}:</span>{' '}
           <span className="numeric text-muted-foreground">{list.map((c) => `${c.size} ${n(c.quantity)}`).join(', ')}</span>
         </p>
@@ -344,7 +347,7 @@ export const LotHistoryPage = () => {
                     <span className="font-medium">{d.karigar}</span> <span className="text-xs text-muted-foreground">{d.workType}</span>
                   </td>
                   <td className={td}>
-                    <CellList cells={d.cells} />
+                    <CellList cells={d.cells} photos={data.colorPhotos} />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <QtyChip tone="earlier" value={d.total} />
@@ -380,7 +383,7 @@ export const LotHistoryPage = () => {
                   <td className={`${td} whitespace-nowrap`}>{when(p.date, p.entryTime)}</td>
                   <td className={`${td} font-medium`}>{p.karigar}</td>
                   <td className={td}>
-                    <CellList cells={p.cells} />
+                    <CellList cells={p.cells} photos={data.colorPhotos} />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <QtyChip tone="now" value={p.quantity} />
@@ -459,7 +462,7 @@ export const LotHistoryPage = () => {
                   </td>
                   <td className={`${td} whitespace-nowrap`}>{when(d.date, d.entryTime)}</td>
                   <td className={td}>
-                    <CellList cells={d.cells} />
+                    <CellList cells={d.cells} photos={data.colorPhotos} />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <QtyChip tone="done" value={d.total} />
