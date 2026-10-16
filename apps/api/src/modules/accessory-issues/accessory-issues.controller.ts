@@ -5,6 +5,7 @@ import {
   createTransactionSchema,
   karigarLotsQuerySchema,
   listTransactionsQuerySchema,
+  pendingReturnsQuerySchema,
   positionQuerySchema,
   updateTransactionSchema,
 } from './accessory-issues.schema';
@@ -29,6 +30,11 @@ export const position = async (req: Request, res: Response) => {
 export const balance = async (req: Request, res: Response) => {
   const { bookId, karigarId } = balanceQuerySchema.parse(req.query);
   ok(res, await service.getBalance(req.auth!.organizationId, bookId, karigarId));
+};
+
+export const pendingReturns = async (req: Request, res: Response) => {
+  const scope = pendingReturnsQuerySchema.parse(req.query);
+  ok(res, await service.getPendingReturns(req.auth!.organizationId, scope));
 };
 
 export const get = async (req: Request, res: Response) => {

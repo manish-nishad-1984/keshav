@@ -87,6 +87,10 @@ export const AccessoryIssueFormView = ({ transaction, initialType, onDone, onCan
   const fillAll = () =>
     setQuantities(Object.fromEntries(lines.filter((l) => maxFor(l) > 0).map((l) => [l.accessoryId, maxFor(l)])));
 
+  // Accessories of pieces that went to alteration: they have to come back.
+  const dueLines = lines.filter((l) => l.returnDue > EPS);
+  const fillDue = () => setQuantities(Object.fromEntries(dueLines.map((l) => [l.accessoryId, l.returnDue])));
+
   const mutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -248,6 +252,12 @@ export const AccessoryIssueFormView = ({ transaction, initialType, onDone, onCan
                     </span>
                   ) : null}
                 </h3>
+                {!isIssue && dueLines.length ? (
+                  <Button type="button" variant="outline" size="sm" className="border-status-danger/50 text-status-danger" onClick={fillDue}>
+                    <PackageMinus />
+                    Take back alteration share
+                  </Button>
+                ) : null}
                 {lines.length ? (
                   <Button type="button" variant="ghost" size="sm" onClick={fillAll} disabled={!lines.some((l) => maxFor(l) > 0)}>
                     {isIssue ? <PackagePlus /> : <PackageMinus />}
@@ -278,6 +288,7 @@ export const AccessoryIssueFormView = ({ transaction, initialType, onDone, onCan
                         <th className="px-3 py-2 text-right">Returned</th>
                         <th className="px-3 py-2 text-right">Used</th>
                         <th className="px-3 py-2 text-right">With karigar</th>
+                        <th className="px-3 py-2 text-right text-status-danger">Return due (alteration)</th>
                         <th className="px-3 py-2 text-center">{isIssue ? 'Give now' : 'Take back now'}</th>
                       </tr>
                     </thead>
@@ -298,6 +309,9 @@ export const AccessoryIssueFormView = ({ transaction, initialType, onDone, onCan
                             <td className="numeric px-3 py-1.5 text-right text-muted-foreground">{formatAmount(line.used)}</td>
                             <td className={cn('numeric px-3 py-1.5 text-right font-semibold', line.holding > EPS && 'text-status-warning')}>
                               {formatAmount(line.holding)}
+                            </td>
+                            <td className={cn('numeric px-3 py-1.5 text-right font-semibold', line.returnDue > EPS ? 'text-status-danger' : 'text-muted-foreground')}>
+                              {line.returnDue > EPS ? formatAmount(line.returnDue) : '—'}
                             </td>
                             <td className="px-3 py-1.5 text-center align-top">
                               <Input

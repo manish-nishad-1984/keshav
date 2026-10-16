@@ -125,6 +125,7 @@ export const ProductionEntryPage = () => {
   // Pieces handed in now per colour + size, keyed "colorId:sizeId".
   const [qtys, setQtys] = useState<Record<string, number | ''>>({});
   const [saved, setSaved] = useState(false);
+  const [returnNotice, setReturnNotice] = useState<string | null>(null);
   // The karigar was paid after this entry: the user must confirm changing it.
   const [paidWarning, setPaidWarning] = useState<string | null>(null);
   const [pendingNew, setPendingNew] = useState(false);
@@ -256,6 +257,10 @@ export const ProductionEntryPage = () => {
 
   const save = (andNew: boolean, confirmed = false) => {
     setError(null);
+    setReturnNotice(null);
+    const savedAlteration = Number(form.alteration) || 0;
+    const savedKarigar = form.carrierId;
+    const savedLot = form.cuttingEntryId;
     setPendingNew(andNew);
     mutation.mutate(confirmed, {
       onSuccess: () => {
@@ -266,6 +271,16 @@ export const ProductionEntryPage = () => {
           return;
         }
         setSaved(true);
+        // Alteration pieces: tell what to take back from the karigar.
+        if (savedAlteration > 0 && savedKarigar && savedLot) {
+          apiClient
+            .get<{ lines: { name: string; unit: string; returnDue: number }[] }[]>('/accessory-issues/pending-returns', { cuttingEntryId: savedLot, karigarId: savedKarigar })
+            .then((due) => {
+              const lines = due.flatMap((p) => p.lines);
+              if (lines.length) setReturnNotice(`Take back from the karigar: ${lines.map((l) => `${l.name} ${l.returnDue} ${l.unit}`.trim()).join(', ')} (for the alteration pieces). It stays pending on their name until returned.`);
+            })
+            .catch(() => undefined);
+        }
         // Save & New keeps the date and the karigar — the next lot is often theirs too.
         setQtys({});
         setForm(andNew ? { ...emptyForm(), date: form.date, carrierId: form.carrierId } : emptyForm());
@@ -318,6 +333,7 @@ export const ProductionEntryPage = () => {
           >
             {error ? <FormAlert tone="error">{error}</FormAlert> : null}
             {saved ? <FormAlert tone="success">Production entry saved.</FormAlert> : null}
+            {returnNotice ? <FormAlert tone="warning">{returnNotice}</FormAlert> : null}
             {!bookId && !isEdit ? (
               <FormAlert tone="error">No active book is selected. Add a book in Book Master, then select it in the header.</FormAlert>
             ) : null}

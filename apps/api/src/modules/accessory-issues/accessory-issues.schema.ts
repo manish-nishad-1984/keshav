@@ -22,6 +22,12 @@ export const positionQuerySchema = z.object({
   excludeId: z.string().uuid().optional(),
 });
 
+export const pendingReturnsQuerySchema = z.object({
+  bookId: z.string().uuid().optional(),
+  cuttingEntryId: z.string().uuid().optional(),
+  karigarId: z.string().uuid().optional(),
+});
+
 export const balanceQuerySchema = z.object({
   bookId: z.string().uuid(),
   karigarId: z.string().uuid().optional(),

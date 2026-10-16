@@ -8,6 +8,7 @@ export const accessoryIssuesRouter = Router();
 // Registered before /:id so these paths aren't read as an entry id.
 accessoryIssuesRouter.get('/karigar-lots', requirePermission('accessory_issues:view'), asyncHandler(controller.karigarLots));
 accessoryIssuesRouter.get('/position', requirePermission('accessory_issues:view'), asyncHandler(controller.position));
+accessoryIssuesRouter.get('/pending-returns', requirePermission('accessory_issues:view'), asyncHandler(controller.pendingReturns));
 accessoryIssuesRouter.get('/balance', requirePermission('accessory_issues:view'), asyncHandler(controller.balance));
 
 accessoryIssuesRouter.get('/', requirePermission('accessory_issues:view'), asyncHandler(controller.list));

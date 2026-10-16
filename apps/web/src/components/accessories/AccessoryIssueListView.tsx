@@ -18,7 +18,7 @@ import { cn } from '../../lib/utils';
 import type { AccessoryTransaction, AccessoryTransactionType, KarigarLotPosition } from './accessory-constants';
 import { ACCESSORY_ISSUES_QUERY_KEY, TRANSACTION_TYPE_LABELS, formatAmount } from './accessory-constants';
 
-type Tab = 'entries' | 'balance';
+type Tab = 'entries' | 'balance' | 'due';
 
 interface AccessoryIssueListViewProps {
   onAdd: (type: AccessoryTransactionType) => void;
@@ -103,6 +103,24 @@ export const AccessoryIssueListView = ({ onAdd, onEdit }: AccessoryIssueListView
     enabled: Boolean(bookId) && tab === 'balance',
   });
 
+  const { data: dueList, isLoading: dueLoading } = useQuery({
+    queryKey: [...ACCESSORY_ISSUES_QUERY_KEY, 'pending-returns', bookId],
+    queryFn: () => apiClient.get<KarigarLotPosition[]>('/accessory-issues/pending-returns', { bookId }),
+    enabled: Boolean(bookId) && tab === 'due',
+  });
+  const dueRows = (dueList ?? []).flatMap((p) =>
+    p.lines.map((l) => ({
+      key: `${p.karigar.id}:${p.lot.id}:${l.accessoryId}`,
+      karigar: p.karigar.fullName,
+      lot: p.lot.lotNumber,
+      design: p.lot.item.itemName,
+      alteration: p.piecesAlteration,
+      accessory: l.name,
+      unit: l.unit,
+      due: l.returnDue,
+    })),
+  );
+
   const balanceRows = useMemo(() => {
     const rows = toBalanceRows(balance ?? []);
     const term = search.trim().toLowerCase();
@@ -156,6 +174,7 @@ export const AccessoryIssueListView = ({ onAdd, onEdit }: AccessoryIssueListView
               [
                 { value: 'entries', label: 'Entries' },
                 { value: 'balance', label: 'Karigar Balance' },
+                { value: 'due', label: 'Return Due' },
               ] as const
             ).map((option) => (
               <button
@@ -254,6 +273,48 @@ export const AccessoryIssueListView = ({ onAdd, onEdit }: AccessoryIssueListView
                     <tr>
                       <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                         {selectedBook ? 'No accessory entries in this book yet.' : 'Add a book in Book Master and select it in the header.'}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : tab === 'due' ? (
+          dueLoading || booksLoading ? (
+            <LoadingState variant="page" />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table w-full text-left text-sm">
+                <thead className="border-b border-border text-2xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2 font-medium">Karigar</th>
+                    <th className="px-4 py-2 font-medium">Lot</th>
+                    <th className="px-4 py-2 font-medium">Design</th>
+                    <th className="px-4 py-2 text-right font-medium">Alteration pcs</th>
+                    <th className="px-4 py-2 font-medium">Accessory</th>
+                    <th className="px-4 py-2 text-right font-medium">To take back</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dueRows
+                    .filter((r) => !search || `${r.karigar} ${r.accessory} ${r.lot}`.toLowerCase().includes(search.toLowerCase()))
+                    .map((r) => (
+                      <tr key={r.key} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2.5 font-medium">{r.karigar}</td>
+                        <td className="numeric px-4 py-2.5">{r.lot}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{r.design}</td>
+                        <td className="numeric px-4 py-2.5 text-right">{r.alteration}</td>
+                        <td className="px-4 py-2.5">
+                          {r.accessory} <span className="text-2xs text-muted-foreground">{r.unit}</span>
+                        </td>
+                        <td className="numeric px-4 py-2.5 text-right font-semibold text-status-danger">{formatAmount(r.due)}</td>
+                      </tr>
+                    ))}
+                  {!dueRows.length ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                        No karigar has accessories to return for alteration pieces.
                       </td>
                     </tr>
                   ) : null}

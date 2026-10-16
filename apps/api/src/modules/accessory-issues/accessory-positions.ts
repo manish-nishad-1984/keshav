@@ -5,6 +5,9 @@ import type { Prisma } from '@prisma/client';
 //   net      = issued − returned
 //   used     = pieces made (Daily Production Entry, capped at pieces taken) × per-piece, capped at net
 //   holding  = net − used         (still with the karigar: to be used or returned)
+//   returnDue = what the karigar holds beyond the pieces still to be made (taken − made − alteration, × per-piece):
+//               the accessories of pieces sent for alteration (Production Entry) — they have to come back.
+//               Taking back accessories lowers it; it is 0 once the karigar holds only what the rest needs.
 //   canIssue = limit − net        (more that may still be given — never above the limit)
 export interface AccessoryLinePosition {
   accessoryId: string;
@@ -16,6 +19,7 @@ export interface AccessoryLinePosition {
   returned: number;
   used: number;
   holding: number;
+  returnDue: number;
   canIssue: number;
 }
 
@@ -24,6 +28,7 @@ export interface KarigarLotPosition {
   lot: { id: string; lotNumber: string; bookId: string; item: { id: string; itemName: string } };
   piecesTaken: number;
   piecesMade: number;
+  piecesAlteration: number;
   lines: AccessoryLinePosition[];
 }
 
@@ -39,6 +44,8 @@ interface PositionFilter {
   excludeTransactionId?: string;
   // A karigar + lot to include even if nothing was issued yet (the issue form).
   pair?: { karigarId: string; cuttingEntryId: string };
+  // Only these karigar + lot pairs (pending-return checks), whatever else exists.
+  pairs?: { karigarId: string; cuttingEntryId: string }[];
 }
 
 export const computePositions = async (
@@ -48,6 +55,9 @@ export const computePositions = async (
 ): Promise<KarigarLotPosition[]> => {
   const lines = await db.accessoryTransactionLine.findMany({
     where: {
+      ...(filter.pairs
+        ? { OR: filter.pairs.map((p) => ({ transaction: { karigarId: p.karigarId, cuttingEntryId: p.cuttingEntryId } })) }
+        : {}),
       transaction: {
         organizationId,
         ...(filter.karigarId ? { karigarId: filter.karigarId } : {}),
@@ -71,6 +81,7 @@ export const computePositions = async (
     });
   }
   if (filter.pair) pairs.set(pairKey(filter.pair.karigarId, filter.pair.cuttingEntryId), filter.pair);
+  for (const p of filter.pairs ?? []) pairs.set(pairKey(p.karigarId, p.cuttingEntryId), p);
   if (pairs.size === 0) return [];
 
   const lotIds = [...new Set([...pairs.values()].map((p) => p.cuttingEntryId))];
@@ -95,7 +106,7 @@ export const computePositions = async (
     db.productionEntry.groupBy({
       by: ['carrierId', 'cuttingEntryId'],
       where: { cuttingEntryId: { in: lotIds }, carrierId: { in: karigarIds }, deletedAt: null },
-      _sum: { carrierQuantity: true },
+      _sum: { carrierQuantity: true, alterationQuantity: true },
     }),
   ]);
 
@@ -110,6 +121,7 @@ export const computePositions = async (
 
   const takenBy = new Map(taken.map((t) => [pairKey(t.karigarId, t.cuttingEntryId), t._sum.totalQuantity ?? 0]));
   const madeBy = new Map(made.map((m) => [pairKey(m.carrierId, m.cuttingEntryId!), m._sum.carrierQuantity ?? 0]));
+  const alterationBy = new Map(made.map((m) => [pairKey(m.carrierId, m.cuttingEntryId!), m._sum.alterationQuantity ?? 0]));
   const lotById = new Map(lots.map((l) => [l.id, l]));
   const karigarById = new Map(karigars.map((k) => [k.id, k]));
 
@@ -131,6 +143,7 @@ export const computePositions = async (
     const piecesTaken = takenBy.get(key) ?? 0;
     const piecesMade = madeBy.get(key) ?? 0;
     const effectiveMade = Math.min(piecesMade, piecesTaken);
+    const piecesAlteration = alterationBy.get(key) ?? 0;
     const perPiece = new Map(lot.item.accessories.map((a) => [a.accessoryId, Number(a.quantityPerPiece)]));
     const accessoryIds = new Set([
       ...perPiece.keys(),
@@ -145,6 +158,7 @@ export const computePositions = async (
       const limit = round3(piecesTaken * need);
       const net = round3(issued - returned);
       const used = round3(Math.max(Math.min(effectiveMade * need, net), 0));
+      const holding = round3(net - used);
       const info = accessoryInfo.get(accessoryId) ?? { name: 'Accessory', unit: '' };
       return {
         accessoryId,
@@ -155,7 +169,9 @@ export const computePositions = async (
         issued: round3(issued),
         returned: round3(returned),
         used,
-        holding: round3(net - used),
+        holding,
+        // Accessories the design no longer uses have no per-piece need to compare with: no alteration due.
+        returnDue: need > 0 ? round3(Math.max(holding - Math.max(piecesTaken - effectiveMade - piecesAlteration, 0) * need, 0)) : 0,
         canIssue: round3(Math.max(limit - net, 0)),
       };
     });
@@ -166,8 +182,40 @@ export const computePositions = async (
       lot: { id: lot.id, lotNumber: lot.lotNumber, bookId: lot.bookId, item: { id: lot.item.id, itemName: lot.item.itemName } },
       piecesTaken,
       piecesMade,
+      piecesAlteration,
       lines: positionLines,
     });
   }
   return positions;
+};
+
+const RETURN_EPS = 0.0005;
+
+// Karigar + lot pairs that still have accessories to bring back because pieces went to alteration.
+// Cheap by design: it starts from the production entries that actually have alteration pieces (a
+// handful), and only then works out the accessory positions of those pairs.
+export const computePendingReturns = async (
+  db: Prisma.TransactionClient,
+  organizationId: string,
+  scope: { cuttingEntryId?: string; bookId?: string; karigarId?: string } = {},
+): Promise<KarigarLotPosition[]> => {
+  const groups = await db.productionEntry.groupBy({
+    by: ['carrierId', 'cuttingEntryId'],
+    where: {
+      organizationId,
+      deletedAt: null,
+      alterationQuantity: { gt: 0 },
+      cuttingEntryId: scope.cuttingEntryId ?? { not: null },
+      ...(scope.karigarId ? { carrierId: scope.karigarId } : {}),
+      ...(scope.bookId ? { cuttingEntry: { bookId: scope.bookId } } : {}),
+    },
+    _sum: { alterationQuantity: true },
+  });
+  const pairs = groups.filter((g) => g.cuttingEntryId).map((g) => ({ karigarId: g.carrierId, cuttingEntryId: g.cuttingEntryId! }));
+  if (!pairs.length) return [];
+
+  const positions = await computePositions(db, organizationId, { pairs });
+  return positions
+    .map((p) => ({ ...p, lines: p.lines.filter((l) => l.returnDue > RETURN_EPS) }))
+    .filter((p) => p.lines.length > 0);
 };

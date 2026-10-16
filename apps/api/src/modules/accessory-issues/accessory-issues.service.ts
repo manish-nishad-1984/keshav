@@ -6,7 +6,7 @@ import { getKarigar } from '../karigars/karigars.service';
 import { assertAccessoriesExist } from '../accessories/accessories.service';
 import * as repo from './accessory-issues.repository';
 import type { TransactionLine } from './accessory-issues.repository';
-import { computePositions, round3 } from './accessory-positions';
+import { computePendingReturns, computePositions, round3 } from './accessory-positions';
 import type { KarigarLotPosition } from './accessory-positions';
 import type { CreateTransactionInput, ListTransactionsQuery, UpdateTransactionInput } from './accessory-issues.schema';
 
@@ -73,6 +73,10 @@ export const getPosition = async (organizationId: string, karigarId: string, cut
   }
   return { ...position, pendingElsewhere: [...pending.values()] };
 };
+
+// Accessories to take back from karigars for pieces that went to alteration.
+export const getPendingReturns = (organizationId: string, scope: { cuttingEntryId?: string; bookId?: string; karigarId?: string }) =>
+  computePendingReturns(prisma, organizationId, scope);
 
 export const getBalance = (organizationId: string, bookId: string, karigarId?: string) =>
   computePositions(prisma, organizationId, { bookId, karigarId });

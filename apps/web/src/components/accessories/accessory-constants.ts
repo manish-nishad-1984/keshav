@@ -61,6 +61,7 @@ export interface AccessoryLinePosition {
   returned: number;
   used: number;
   holding: number;
+  returnDue: number;
   canIssue: number;
 }
 
@@ -69,6 +70,7 @@ export interface KarigarLotPosition {
   lot: { id: string; lotNumber: string; bookId: string; item: { id: string; itemName: string } };
   piecesTaken: number;
   piecesMade: number;
+  piecesAlteration: number;
   lines: AccessoryLinePosition[];
 }
 

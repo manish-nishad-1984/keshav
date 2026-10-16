@@ -45,6 +45,16 @@ export const CloseLotDialog = ({ lot, onClose }: CloseLotDialogProps) => {
     enabled: Boolean(lot),
     gcTime: 0,
   });
+  const { data: due } = useQuery({
+    queryKey: ['accessory-issues', 'pending-returns', lot?.id],
+    queryFn: () =>
+      apiClient.get<{ karigar: { fullName: string }; lines: { name: string; unit: string; returnDue: number }[] }[]>(
+        '/accessory-issues/pending-returns',
+        { cuttingEntryId: lot?.id },
+      ),
+    enabled: Boolean(lot),
+    gcTime: 0,
+  });
   const undelivered = summary ? Math.max(summary.totalQuantity - summary.deliveries.pieces, 0) : 0;
   const alteration = summary ? Math.min(summary.alteration, undelivered) : 0;
   const shortage = undelivered - alteration;
@@ -66,6 +76,12 @@ export const CloseLotDialog = ({ lot, onClose }: CloseLotDialogProps) => {
         </DialogHeader>
         <DialogBody className="space-y-3 text-sm">
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
+          {due?.length ? (
+            <FormAlert tone="error">
+              Take back the accessories of the alteration pieces before closing:{' '}
+              {due.map((p) => `${p.karigar.fullName} — ${p.lines.map((l) => `${l.name} ${l.returnDue} ${l.unit}`.trim()).join(', ')}`).join('; ')}
+            </FormAlert>
+          ) : null}
           {isLoading || !summary ? (
             <LoadingState />
           ) : (

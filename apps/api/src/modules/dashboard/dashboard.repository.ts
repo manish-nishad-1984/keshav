@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma';
+import { computePendingReturns } from '../accessory-issues/accessory-positions';
 import { getLedger } from '../payments/payments.repository';
 import { getEarningsByKarigar } from '../payments/earnings';
 
@@ -50,7 +51,8 @@ export const countEntriesWithoutRate = (organizationId: string) =>
 export const getCounts = async (organizationId: string) => {
   const today = startOfToday();
 
-  const [totalKarigars, todayAgg, todayPress, todaySample, ledger, pendingRates] = await Promise.all([
+  const [totalKarigars, todayAgg, todayPress, todaySample, ledger, pendingRates, returnsDue] = await Promise.all([
+
 
     prisma.karigar.count({ where: { organizationId, deletedAt: null, isActive: true } }),
     prisma.productionEntry.aggregate({
@@ -61,6 +63,7 @@ export const getCounts = async (organizationId: string) => {
     prisma.sampleEntry.aggregate({ where: { organizationId, deletedAt: null, date: today }, _sum: { total: true } }),
     getLedger(organizationId),
     countEntriesWithoutRate(organizationId),
+    computePendingReturns(prisma, organizationId),
   ]);
 
   return {
@@ -76,6 +79,9 @@ export const getCounts = async (organizationId: string) => {
     // Same figure as the Payments ledger: what is still owed to karigars (advances don't reduce it).
     pendingPayment: ledger.reduce((sum, row) => sum + Math.max(row.pending, 0), 0),
     entriesWithoutRate: pendingRates,
+    // Karigars who still have to bring back accessories of pieces sent for alteration.
+    accessoryReturnKarigars: new Set(returnsDue.map((p) => p.karigar.id)).size,
+    accessoryReturnLots: new Set(returnsDue.map((p) => p.lot.id)).size,
   };
 };
 

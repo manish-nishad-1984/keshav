@@ -1,5 +1,6 @@
 import { notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
+import { computePendingReturns } from '../accessory-issues/accessory-positions';
 
 const num = (v: { toString(): string } | null | undefined) => (v == null ? null : Number(v.toString()));
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
@@ -119,6 +120,9 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
     remarks: p.remarks,
     cells: cells(p.quantities),
   }));
+  const returnsDue = lot.productionEntries.some((p) => p.alterationQuantity > 0)
+    ? await computePendingReturns(prisma, organizationId, { cuttingEntryId: lot.id })
+    : [];
   const labourCost = sum(production.map((p) => p.total + (p.overlock?.total ?? 0) + (p.flatlock?.total ?? 0)));
 
   return {
@@ -158,6 +162,11 @@ export const getLotHistory = async (organizationId: string, bookId: string, lotN
     },
     sizes,
     cutGrid,
+    accessoryReturns: returnsDue.map((p) => ({
+      karigar: p.karigar.fullName,
+      alterationPieces: p.piecesAlteration,
+      lines: p.lines.map((l) => ({ name: l.name, unit: l.unit, due: l.returnDue })),
+    })),
     karigars: [...karigarMap.values()]
       .map((k) => ({ ...k, pending: Math.max(k.given - k.handedIn - k.alteration, 0) }))
       .sort((a, b) => b.pending - a.pending),

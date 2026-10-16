@@ -49,6 +49,8 @@ interface DashboardSummary {
   todayAmount: number;
   pendingPayment: number;
   entriesWithoutRate: number;
+  accessoryReturnKarigars: number;
+  accessoryReturnLots: number;
   productionTrend: TrendPoint[];
   topKarigars: TopKarigar[];
   workTypeBreakdown: WorkTypeSlice[];
@@ -125,6 +127,19 @@ export const DashboardPage = () => {
               <AlertTriangle className="size-5 shrink-0" />
               <span>
                 <span className="numeric font-semibold">{data.entriesWithoutRate}</span> production entries have no rate yet, so the karigar&apos;s wage for them is ₹0. Tap to open and fill the rates.
+              </span>
+            </Link>
+          ) : null}
+
+          {data && data.accessoryReturnKarigars > 0 ? (
+            <Link
+              to="/accessory-issues"
+              className="flex items-center gap-3 rounded-lg border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-sm font-medium text-status-danger hover:bg-status-danger/15"
+            >
+              <AlertTriangle className="size-5 shrink-0" />
+              <span>
+                <span className="numeric font-semibold">{data.accessoryReturnKarigars}</span> karigar(s) still have to return accessories of alteration pieces
+                (<span className="numeric">{data.accessoryReturnLots}</span> lot(s)). Tap to see who and what — open the &quot;Return Due&quot; tab.
               </span>
             </Link>
           ) : null}

@@ -56,6 +56,7 @@ interface LotHistory {
     labourCost: number;
   };
   sizes: { id: string; name: string; detail: string | null }[];
+  accessoryReturns: { karigar: string; alterationPieces: number; lines: { name: string; unit: string; due: number }[] }[];
   cutGrid: { color: string; photoUrl: string | null; cells: Record<string, number>; total: number }[];
   karigars: { karigarId: string; name: string; workType: string; given: number; handedIn: number; alteration: number; pending: number }[];
   distributions: { id: string; date: string; entryTime: string | null; karigar: string; workType: string; total: number; remarks: string | null; cells: Cell[] }[];
@@ -399,6 +400,15 @@ export const LotHistoryPage = () => {
           <Empty text="Nothing handed in yet." />
         )}
       </Section>
+
+      {data.accessoryReturns.length ? (
+        <FormAlert tone="error">
+          Accessories to take back for alteration pieces:{' '}
+          {data.accessoryReturns
+            .map((r) => `${r.karigar} (${r.alterationPieces} pcs) — ${r.lines.map((l) => `${l.name} ${l.due} ${l.unit}`.trim()).join(', ')}`)
+            .join('; ')}
+        </FormAlert>
+      ) : null}
 
       <Section title="Accessories" count={data.accessories.length} tone="pending">
         {data.accessories.length ? (

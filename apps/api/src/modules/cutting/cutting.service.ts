@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { computePendingReturns } from '../accessory-issues/accessory-positions';
 import { badRequest, conflict, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { reserveNextLotNumber } from '../books/books.service';
@@ -217,6 +218,14 @@ export const closeCuttingEntry = async (
 ) => {
   const lot = await getCuttingEntry(organizationId, id);
   if (lot.closedAt) throw conflict(`Lot ${lot.lotNumber} is already closed`);
+  // Accessories for alteration pieces have to be taken back from the karigar first.
+  const due = await computePendingReturns(prisma, organizationId, { cuttingEntryId: id });
+  if (due.length) {
+    const text = due
+      .map((p) => `${p.karigar.fullName}: ${p.lines.map((l) => `${l.name} ${l.returnDue} ${l.unit}`.trim()).join(', ')}`)
+      .join('; ');
+    throw conflict(`Lot ${lot.lotNumber} can't be closed yet — take back the accessories of the alteration pieces first (${text})`, 'ACCESSORIES_PENDING');
+  }
   const [delivered, altAgg] = await Promise.all([
     prisma.delivery.aggregate({ where: { cuttingEntryId: id }, _sum: { totalQuantity: true } }),
     prisma.productionEntry.aggregate({ where: { cuttingEntryId: id, deletedAt: null }, _sum: { alterationQuantity: true } }),
