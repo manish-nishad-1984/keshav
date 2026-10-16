@@ -75,7 +75,7 @@ export const PhotoUpload = ({ value, onChange, size = 'default', id, className }
         <input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept="image/*,.heic,.heif"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
