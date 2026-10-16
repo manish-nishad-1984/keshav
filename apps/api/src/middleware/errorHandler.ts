@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import multer from 'multer';
 import { ZodError } from 'zod';
 import { HttpError } from '../lib/httpError';
 
@@ -19,6 +20,14 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
     return res.status(400).json({
       success: false,
       error: { message: 'Validation failed', code: 'VALIDATION_ERROR', details: err.flatten() },
+    });
+  }
+
+  if (err instanceof multer.MulterError) {
+    const tooBig = err.code === 'LIMIT_FILE_SIZE';
+    return res.status(tooBig ? 413 : 400).json({
+      success: false,
+      error: { message: tooBig ? 'The photo is too large (maximum 10 MB).' : 'The file could not be uploaded.' },
     });
   }
 

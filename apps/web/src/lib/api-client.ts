@@ -1,4 +1,5 @@
 import type { ApiError, ApiSuccess, Paginated } from '@ckfast/types';
+import { prepareImageForUpload } from './image';
 
 // In dev, Vite (5173/5174) and the API (4000) run on different ports, so the
 // default must be an absolute cross-origin URL. In a production build the
@@ -98,12 +99,21 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(buildUrl(path, params), {
-    method,
-    headers,
-    credentials: 'include',
-    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path, params), {
+      method,
+      headers,
+      credentials: 'include',
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
+    });
+  } catch {
+    // Offline, a dropped connection, or the server hanging up while a big file was still being sent.
+    throw new ApiRequestError(
+      isFormData ? 'Upload failed — the connection was lost or the file is too big. Please try again.' : 'Could not reach the server. Check the internet and try again.',
+      0,
+    );
+  }
 
   if (res.status === 401 && retry) {
     const refreshed = await refreshAccessToken();
@@ -115,7 +125,16 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     throw new ApiRequestError('Session expired', 401);
   }
 
-  const json = (await res.json()) as ApiSuccess<T> | ApiError;
+  let json: ApiSuccess<T> | ApiError;
+  try {
+    json = (await res.json()) as ApiSuccess<T> | ApiError;
+  } catch {
+    // The server (or IIS in front of it) answered with something that is not JSON.
+    throw new ApiRequestError(
+      res.status === 413 ? 'The file is too large.' : `The server could not handle this request (error ${res.status}). Please try again.`,
+      res.status,
+    );
+  }
 
   if (!json.success) {
     throw new ApiRequestError(json.error.message, res.status, json.error.code, json.error.details);
@@ -127,9 +146,9 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
 export const apiClient = {
   get: <T>(path: string, params?: Record<string, unknown>) => request<T>(path, { method: 'GET', params }),
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
-  upload: <T>(path: string, file: File) => {
+  upload: async <T>(path: string, file: File) => {
     const form = new FormData();
-    form.append('file', file);
+    form.append('file', await prepareImageForUpload(file));
     return request<T>(path, { method: 'POST', body: form });
   },
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),

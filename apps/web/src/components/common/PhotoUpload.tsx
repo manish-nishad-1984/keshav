@@ -70,7 +70,7 @@ export const PhotoUpload = ({ value, onChange, size = 'default', id, className }
           </p>
         ) : compact ? (
           // Mirrors the server's /uploads limits (uploads.routes.ts).
-          <p className="text-2xs text-muted-foreground">JPG, PNG or WEBP · max 5 MB</p>
+          <p className="text-2xs text-muted-foreground">JPG, PNG or WEBP · big photos are reduced automatically</p>
         ) : null}
         <input
           ref={inputRef}
