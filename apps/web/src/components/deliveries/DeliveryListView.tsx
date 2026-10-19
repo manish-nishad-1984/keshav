@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Pencil, Printer, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Eye, Trash2 } from 'lucide-react';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card } from '../ui/card';
@@ -123,8 +123,14 @@ export const DeliveryListView = ({ onAdd, onEdit, onChallan }: DeliveryListViewP
                     </td>
                     <td className="numeric px-4 py-2.5 text-right font-medium">{d.totalQuantity.toLocaleString('en-IN')}</td>
                     <td className="whitespace-nowrap px-2 py-2.5">
-                      <Button variant="ghost" size="icon" aria-label={`Print challan ${d.challanNumber}`} onClick={() => onChallan(d)}>
-                        <Printer />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Preview challan ${d.challanNumber}`}
+                        title="Preview · print · PDF · WhatsApp"
+                        onClick={() => onChallan(d)}
+                      >
+                        <Eye />
                       </Button>
                       <Button variant="ghost" size="icon" aria-label={`Edit challan ${d.challanNumber}`} disabled={!canUpdate} onClick={() => onEdit(d)}>
                         <Pencil />

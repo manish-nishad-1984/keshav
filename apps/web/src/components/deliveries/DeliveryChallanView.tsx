@@ -1,8 +1,11 @@
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Download, MessageCircle, Printer } from 'lucide-react';
 import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
+import { downloadBlob, elementToPdf, whatsappNumber } from '../../lib/pdf';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
+import { FormAlert } from '../ui/form-alert';
 import { LoadingState } from '../ui/loading-state';
 import { formatDate } from '../../lib/date';
 import type { Challan } from './delivery-constants';
@@ -24,14 +27,63 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
     queryFn: () => apiClient.get<Challan>(`/deliveries/${deliveryId}/challan`),
   });
 
+  // Hooks first: called before the loading return, or the screen breaks when the data arrives.
+  const colorPhotos = useLotColorPhotos(data?.delivery.cuttingEntryId);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState<'pdf' | 'share' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   if (isLoading || !data) return <LoadingState variant="page" />;
   const { delivery, company } = data;
+  const fileName = `Challan-${delivery.challanNumber}-Lot-${delivery.cuttingEntry.lotNumber}.pdf`;
+  const shareText = `Delivery Challan No. ${delivery.challanNumber} — Lot ${delivery.cuttingEntry.lotNumber} (${delivery.cuttingEntry.item.itemName}), ${delivery.totalQuantity} pcs, ${formatDate(delivery.date)}. ${company?.name ?? ''}`.trim();
+
+  const makePdf = async () => {
+    if (!sheetRef.current) throw new Error('Challan not ready');
+    return elementToPdf(sheetRef.current);
+  };
+
+  const download = async () => {
+    setBusy('pdf');
+    setError(null);
+    try {
+      downloadBlob(await makePdf(), fileName);
+    } catch {
+      setError('Could not make the PDF. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Phone / tablet: the share sheet opens with the PDF, pick WhatsApp. Computer: the PDF downloads and
+  // WhatsApp opens with the party's chat, to attach it there.
+  const shareWhatsapp = async () => {
+    setBusy('share');
+    setError(null);
+    try {
+      const file = new File([await makePdf()], fileName, { type: 'application/pdf' });
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: fileName, text: shareText });
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') throw err;
+        }
+        return;
+      }
+      downloadBlob(file, fileName);
+      const to = whatsappNumber(delivery.party.mobile);
+      window.open(`https://wa.me/${to}?text=${encodeURIComponent(`${shareText}\n(PDF attached)`)}`, '_blank', 'noopener');
+    } catch {
+      setError('Could not share the challan. Use Download PDF and send it from WhatsApp.');
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const sizes = [...new Map(delivery.quantities.map((q) => [q.sizeId, q.size])).values()].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
   );
   const colors = [...new Map(delivery.quantities.map((q) => [q.colorId, q.color])).values()];
-  const colorPhotos = useLotColorPhotos(delivery.cuttingEntryId);
   const qty = new Map(delivery.quantities.map((q) => [cellKey(q.colorId, q.sizeId), q.quantity]));
   const cell = (colorId: string, sizeId: string) => qty.get(cellKey(colorId, sizeId)) ?? 0;
   const sizeTotal = (sizeId: string) => colors.reduce((t, c) => t + cell(c.id, sizeId), 0);
@@ -45,13 +97,28 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
           <ArrowLeft />
           Back to Deliveries
         </Button>
-        <Button onClick={() => window.print()}>
-          <Printer />
-          Print Challan
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer />
+            Print
+          </Button>
+          <Button variant="outline" onClick={() => void download()} loading={busy === 'pdf'} disabled={busy !== null}>
+            <Download />
+            Download PDF
+          </Button>
+          <Button onClick={() => void shareWhatsapp()} loading={busy === 'share'} disabled={busy !== null} className="bg-emerald-600 text-white hover:bg-emerald-700">
+            <MessageCircle />
+            WhatsApp
+          </Button>
+        </div>
       </div>
+      {error ? (
+        <div className="no-print">
+          <FormAlert tone="error">{error}</FormAlert>
+        </div>
+      ) : null}
 
-      <Card className="print-area mx-auto max-w-3xl space-y-4 p-4 text-sm sm:p-6">
+      <Card ref={sheetRef} className="print-area mx-auto max-w-3xl space-y-4 bg-card p-4 text-sm sm:p-6">
         <header className="space-y-0.5 border-b border-border pb-3 text-center">
           <h2 className="text-xl font-bold">{company?.name ?? 'Company'}</h2>
           {company?.addressLine1 ? <p className="text-xs">{company.addressLine1}</p> : null}

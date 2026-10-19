@@ -284,6 +284,11 @@ body {
     position: absolute;
     inset: 0;
     width: 100%;
+    max-width: none;
+    border: none;
+    box-shadow: none;
+    background: #fff !important;
+    color: #000 !important;
   }
   .no-print {
     display: none !important;
