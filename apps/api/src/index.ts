@@ -1,6 +1,7 @@
 import { createApp } from './app';
 import { env } from './lib/env';
 import { rescheduleAutoBackup } from './lib/backupScheduler';
+import { startWhatsappWorker } from './lib/whatsappWorker';
 
 const app = createApp();
 
@@ -12,3 +13,6 @@ app.listen(env.PORT, () => {
 // this, a previously-enabled schedule would silently stop firing after any restart until the
 // setting was re-saved.
 void rescheduleAutoBackup();
+
+// Sends queued WhatsApp messages in the background.
+startWhatsappWorker();

@@ -7,6 +7,8 @@ import { WorkTypeTab } from '../components/settings/WorkTypeTab';
 import { UserManagementTab } from '../components/settings/UserManagementTab';
 import { BackupRestoreTab } from '../components/settings/BackupRestoreTab';
 import { GeneralSettingsTab } from '../components/settings/GeneralSettingsTab';
+import { WhatsAppTab } from '../components/settings/WhatsAppTab';
+import { usePermissions } from '../hooks/use-permissions';
 
 const TABS = [
   { key: 'company', label: 'Company Info' },
@@ -14,19 +16,23 @@ const TABS = [
   { key: 'users', label: 'User Management' },
   { key: 'backup', label: 'Backup & Restore' },
   { key: 'general', label: 'General Settings' },
+  { key: 'whatsapp', label: 'WhatsApp' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
 
 export const SettingsPage = () => {
   const [tab, setTab] = useState<TabKey>('company');
+  const { hasPermission, isSuperAdmin } = usePermissions();
+  // The WhatsApp tab holds the sending token, so only people who can manage settings see it.
+  const tabs = TABS.filter((t) => t.key !== 'whatsapp' || isSuperAdmin || hasPermission('company_settings:manage'));
 
   return (
     <PageLayout title="Settings" description="Company info, work types, and general configuration.">
       <div className="grid gap-4 md:grid-cols-[13rem_minmax(0,1fr)]">
         <Card className="h-fit p-1.5">
           <nav aria-label="Settings sections" className="flex gap-1 overflow-x-auto md:flex-col">
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <button
                 key={t.key}
                 type="button"
@@ -51,6 +57,7 @@ export const SettingsPage = () => {
           {tab === 'users' ? <UserManagementTab /> : null}
           {tab === 'backup' ? <BackupRestoreTab /> : null}
           {tab === 'general' ? <GeneralSettingsTab /> : null}
+          {tab === 'whatsapp' ? <WhatsAppTab /> : null}
         </div>
       </div>
     </PageLayout>

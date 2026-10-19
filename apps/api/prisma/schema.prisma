@@ -71,6 +71,7 @@ model Organization {
 
     sampleEntries SampleEntry[]
 
+  whatsappMessages WhatsappMessage[]
   @@map("organizations")
 }
 
@@ -1051,4 +1052,44 @@ model SampleEntry {
   @@index([organizationId, date])
   @@index([karigarId])
   @@map("sample_entries")
+}
+
+// WhatsApp outbox: every message the app wants to send. Entries are saved first; a background worker
+// sends them (and retries), so a slow or unreachable WhatsApp service never slows down the app.
+enum WhatsappStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model WhatsappMessage {
+  id                String         @id @default(uuid()) @db.Uuid
+  organizationId    String         @db.Uuid
+  // What caused it: DISTRIBUTION, PRODUCTION, ACCESSORY, DELIVERY, TEST ...
+  eventType         String
+  refType           String?
+  refId             String?
+  karigarId         String?        @db.Uuid
+  toNumber          String
+  message           String
+  mediaUrl          String?
+  // Stops the same event from being queued twice.
+  dedupeKey         String?
+  status            WhatsappStatus @default(PENDING)
+  attempts          Int            @default(0)
+  nextAttemptAt     DateTime       @default(now())
+  providerMessageId String?
+  error             String?
+  sentAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, dedupeKey])
+  @@index([status, nextAttemptAt])
+  @@index([organizationId, createdAt])
+  @@map("whatsapp_messages")
 }
