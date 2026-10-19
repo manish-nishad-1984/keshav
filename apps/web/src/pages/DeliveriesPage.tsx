@@ -4,7 +4,7 @@ import { DeliveryFormView } from '../components/deliveries/DeliveryFormView';
 import { DeliveryChallanView } from '../components/deliveries/DeliveryChallanView';
 import type { Delivery } from '../components/deliveries/delivery-constants';
 
-type ViewState = { mode: 'list' } | { mode: 'form'; delivery: Delivery | null } | { mode: 'challan'; deliveryId: string };
+type ViewState = { mode: 'list' } | { mode: 'form'; delivery: Delivery | null } | { mode: 'challan'; deliveryId: string; openWhatsapp?: boolean };
 
 export const DeliveriesPage = () => {
   const [view, setView] = useState<ViewState>({ mode: 'list' });
@@ -20,13 +20,14 @@ export const DeliveriesPage = () => {
     );
   }
 
-  if (view.mode === 'challan') return <DeliveryChallanView deliveryId={view.deliveryId} onBack={toList} />;
+  if (view.mode === 'challan') return <DeliveryChallanView deliveryId={view.deliveryId} openWhatsapp={view.openWhatsapp} onBack={toList} />;
 
   return (
     <DeliveryListView
       onAdd={() => setView({ mode: 'form', delivery: null })}
       onEdit={(delivery) => setView({ mode: 'form', delivery })}
       onChallan={(delivery) => setView({ mode: 'challan', deliveryId: delivery.id })}
+      onWhatsapp={(delivery) => setView({ mode: 'challan', deliveryId: delivery.id, openWhatsapp: true })}
     />
   );
 };

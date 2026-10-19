@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Download, MessageCircle, Printer } from 'lucide-react';
+import { ArrowLeft, Download, MessageCircle, Printer, Share2 } from 'lucide-react';
+import { WhatsAppSendDialog } from '../common/WhatsAppSendDialog';
 import { apiClient, resolvePhotoUrl } from '../../lib/api-client';
 import { downloadBlob, elementToPdf, whatsappNumber } from '../../lib/pdf';
 import { Card } from '../ui/card';
@@ -16,12 +17,14 @@ import { cellKey, DELIVERIES_QUERY_KEY } from './delivery-constants';
 interface DeliveryChallanViewProps {
   deliveryId: string;
   onBack: () => void;
+  /** Open the "Send on WhatsApp" dialog straight away (the WhatsApp button in the list). */
+  openWhatsapp?: boolean;
 }
 
 const formatQty = (value: number) => value.toLocaleString('en-IN');
 
 // Printable delivery challan: company header, party, lot and the colour × size table.
-export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewProps) => {
+export const DeliveryChallanView = ({ deliveryId, onBack, openWhatsapp = false }: DeliveryChallanViewProps) => {
   const { data, isLoading } = useQuery({
     queryKey: [...DELIVERIES_QUERY_KEY, 'challan', deliveryId],
     queryFn: () => apiClient.get<Challan>(`/deliveries/${deliveryId}/challan`),
@@ -31,6 +34,7 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
   const colorPhotos = useLotColorPhotos(data?.delivery.cuttingEntryId);
   const sheetRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<'pdf' | 'share' | null>(null);
+  const [sendOpen, setSendOpen] = useState(openWhatsapp);
   const [error, setError] = useState<string | null>(null);
 
   if (isLoading || !data) return <LoadingState variant="page" />;
@@ -106,9 +110,13 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
             <Download />
             Download PDF
           </Button>
-          <Button onClick={() => void shareWhatsapp()} loading={busy === 'share'} disabled={busy !== null} className="bg-emerald-600 text-white hover:bg-emerald-700">
+          <Button variant="outline" onClick={() => void shareWhatsapp()} loading={busy === 'share'} disabled={busy !== null} title="Share from this phone / computer">
+            <Share2 />
+            Share
+          </Button>
+          <Button onClick={() => setSendOpen(true)} disabled={busy !== null} className="bg-emerald-600 text-white hover:bg-emerald-700">
             <MessageCircle />
-            WhatsApp
+            Send on WhatsApp
           </Button>
         </div>
       </div>
@@ -220,6 +228,14 @@ export const DeliveryChallanView = ({ deliveryId, onBack }: DeliveryChallanViewP
           <div className="border-t border-foreground/60 pt-1.5">For {company?.name ?? 'Company'}</div>
         </div>
       </Card>
+
+      <WhatsAppSendDialog
+        event="DELIVERY"
+        refId={sendOpen ? delivery.id : null}
+        onOpenChange={setSendOpen}
+        title={`Send challan #${delivery.challanNumber} on WhatsApp`}
+        makeAttachment={async () => new File([await makePdf()], fileName, { type: 'application/pdf' })}
+      />
     </div>
   );
 };

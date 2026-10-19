@@ -7,7 +7,8 @@ import { badRequest } from '../../lib/httpError';
 import { ok } from '../../lib/response';
 import { UPLOADS_DIR } from '../../lib/uploadsDir';
 
-const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+// PDF: the delivery challan, uploaded so the WhatsApp service can attach it.
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
@@ -20,7 +21,7 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_EXTENSIONS.has(ext)) {
-      cb(badRequest('Only JPG, PNG and WEBP images are allowed'));
+      cb(badRequest('Only JPG, PNG, WEBP images or a PDF are allowed'));
       return;
     }
     cb(null, true);

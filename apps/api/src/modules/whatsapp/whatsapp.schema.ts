@@ -37,3 +37,15 @@ export const listMessagesQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   status: z.enum(['PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED']).optional(),
 });
+
+export const shareEventSchema = z.enum(['DISTRIBUTION', 'PRODUCTION', 'ACCESSORY_ISSUE', 'ACCESSORY_RETURN', 'DELIVERY']);
+
+export const shareSchema = z.object({
+  // Receivers ticked in the dialog (PlannedMessage.key); missing = everyone.
+  keys: z.array(z.string().max(100)).max(50).optional(),
+  // A file uploaded just before (the challan PDF): /uploads/<name>.
+  fileUrl: z
+    .string()
+    .regex(/^\/uploads\/[\w-]+\.(pdf|jpe?g|png|webp)$/i)
+    .optional(),
+});

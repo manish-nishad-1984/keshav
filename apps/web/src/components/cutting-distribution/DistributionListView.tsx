@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, MessageCircle } from 'lucide-react';
+import { WhatsAppSendDialog } from '../common/WhatsAppSendDialog';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card } from '../ui/card';
@@ -29,6 +30,7 @@ export const DistributionListView = ({ onAdd, onEdit }: DistributionListViewProp
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [toDelete, setToDelete] = useState<Distribution | null>(null);
+  const [whatsappId, setWhatsappId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { selectedBook, isLoading: booksLoading } = useSelectedBook();
   const bookId = selectedBook?.id;
@@ -128,6 +130,9 @@ export const DistributionListView = ({ onAdd, onEdit }: DistributionListViewProp
                       {d.remarks || '—'}
                     </td>
                     <td className="whitespace-nowrap px-2 py-2.5">
+                      <Button variant="ghost" size="icon" aria-label={`WhatsApp distribution of lot ${d.cuttingEntry.lotNumber}`} title="Send on WhatsApp" className="hover:text-emerald-600" onClick={() => setWhatsappId(d.id)}>
+                        <MessageCircle />
+                      </Button>
                       <Button variant="ghost" size="icon" aria-label={`Edit distribution of lot ${d.cuttingEntry.lotNumber}`} disabled={!canUpdate} onClick={() => onEdit(d)}>
                         <Pencil />
                       </Button>
@@ -176,6 +181,7 @@ export const DistributionListView = ({ onAdd, onEdit }: DistributionListViewProp
         isSubmitting={deleteMutation.isPending}
         onConfirm={() => toDelete && deleteMutation.mutate(toDelete.id)}
       />
+      <WhatsAppSendDialog event="DISTRIBUTION" refId={whatsappId} onOpenChange={(o) => !o && setWhatsappId(null)} />
     </PageLayout>
   );
 };

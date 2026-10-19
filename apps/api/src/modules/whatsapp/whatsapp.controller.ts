@@ -1,6 +1,14 @@
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import { buildPagination, ok } from '../../lib/response';
-import { listMessagesQuerySchema, saveEventSettingsSchema, saveWhatsappConfigSchema, testMessageSchema } from './whatsapp.schema';
+import {
+  listMessagesQuerySchema,
+  saveEventSettingsSchema,
+  saveWhatsappConfigSchema,
+  shareEventSchema,
+  shareSchema,
+  testMessageSchema,
+} from './whatsapp.schema';
 import * as service from './whatsapp.service';
 import * as events from './whatsapp.events';
 
@@ -34,8 +42,21 @@ export const saveTemplates = async (req: Request, res: Response) => {
   ok(res, await events.describeEvents(req.auth!.organizationId));
 };
 
-export const processNow =async (req: Request, res: Response) => {
+export const processNow = async (req: Request, res: Response) => {
   await service.processQueue(req.auth!.organizationId);
   await service.refreshStatuses(req.auth!.organizationId);
   ok(res, { done: true });
+};
+
+export const sharePreview = async (req: Request, res: Response) => {
+  const event = shareEventSchema.parse(req.params.event);
+  ok(res, await events.previewShare(req.auth!.organizationId, event, z.string().uuid().parse(req.params.refId)));
+};
+
+export const share = async (req: Request, res: Response) => {
+  const event = shareEventSchema.parse(req.params.event);
+  const { keys, fileUrl } = shareSchema.parse(req.body);
+  // The WhatsApp service downloads the file itself, so it needs the full public link.
+  const mediaUrl = fileUrl ? `${req.protocol}://${req.get('host')}${fileUrl}` : null;
+  ok(res, await events.shareEntry(req.auth!.organizationId, event, z.string().uuid().parse(req.params.refId), { keys, mediaUrl }));
 };

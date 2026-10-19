@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Pencil, Eye, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Eye, Trash2, MessageCircle } from 'lucide-react';
 import { apiClient, ApiRequestError } from '../../lib/api-client';
 import { PageLayout } from '../../components/layout/PageLayout';
 import { Card } from '../ui/card';
@@ -22,9 +22,10 @@ interface DeliveryListViewProps {
   onAdd: () => void;
   onEdit: (delivery: Delivery) => void;
   onChallan: (delivery: Delivery) => void;
+  onWhatsapp: (delivery: Delivery) => void;
 }
 
-export const DeliveryListView = ({ onAdd, onEdit, onChallan }: DeliveryListViewProps) => {
+export const DeliveryListView = ({ onAdd, onEdit, onChallan, onWhatsapp }: DeliveryListViewProps) => {
   const queryClient = useQueryClient();
   const { hasPermission, isSuperAdmin } = usePermissions();
   const [search, setSearch] = useState('');
@@ -131,6 +132,16 @@ export const DeliveryListView = ({ onAdd, onEdit, onChallan }: DeliveryListViewP
                         onClick={() => onChallan(d)}
                       >
                         <Eye />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`WhatsApp challan ${d.challanNumber}`}
+                        title="Send challan PDF on WhatsApp"
+                        className="hover:text-emerald-600"
+                        onClick={() => onWhatsapp(d)}
+                      >
+                        <MessageCircle />
                       </Button>
                       <Button variant="ghost" size="icon" aria-label={`Edit challan ${d.challanNumber}`} disabled={!canUpdate} onClick={() => onEdit(d)}>
                         <Pencil />

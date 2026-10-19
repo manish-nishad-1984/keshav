@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { badRequest, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import * as repo from './whatsapp.repository';
 import { enqueue, normalizeNumber } from './whatsapp.service';
@@ -207,9 +208,18 @@ const build = async (organizationId: string, event: EventKey, refId: string): Pr
   if (event === 'PRODUCTION') {
     const p = await prisma.productionEntry.findFirst({
       where: { id: refId, organizationId, deletedAt: null },
-      include: { cuttingEntry: LOT, carrier: PERSON, overlockCarrier: PERSON, flatlockKarigar: PERSON, quantities: QTY },
+      include: {
+        cuttingEntry: LOT,
+        item: { select: { itemName: true } },
+        carrier: PERSON,
+        overlockCarrier: PERSON,
+        flatlockKarigar: PERSON,
+        quantities: QTY,
+      },
     });
-    if (!p || !p.cuttingEntry) return null;
+    if (!p) return null;
+    // Old entries were saved without a lot link: lot number and design come from the entry itself.
+    const lot = p.cuttingEntry ? lotValues(p.cuttingEntry) : { lot: p.lotNumber ?? '', design: p.item.itemName, party: '', book: '' };
     const qty = String(p.carrierQuantity);
     const people: Recipient[] = [
       {
@@ -232,7 +242,7 @@ const build = async (organizationId: string, event: EventKey, refId: string): Pr
     return {
       refType: 'production_entry',
       values: {
-        ...lotValues(p.cuttingEntry),
+        ...lot,
         date: fmtDate(p.date),
         qty,
         alteration: String(p.alterationQuantity),
@@ -298,14 +308,31 @@ const build = async (organizationId: string, event: EventKey, refId: string): Pr
   };
 };
 
-const sendForEvent = async (organizationId: string, event: EventKey, refId: string) => {
+export interface PlannedMessage {
+  /** Stable per receiver: `${kind}:${number}` — the Settings dialog sends back the ones ticked. */
+  key: string;
+  kind: string;
+  kindLabel: string;
+  name: string;
+  /** As saved in the master; null when there is none. */
+  mobile: string | null;
+  /** 91… number, or null when the mobile is missing / not usable. */
+  number: string | null;
+  message: string;
+  karigarId: string | null;
+}
+
+// The messages one entry produces with the current Settings. `manual` (the WhatsApp button on an
+// entry) works even when that kind of message is switched off for new entries.
+const planMessages = async (organizationId: string, event: EventKey, refId: string, manual: boolean) => {
+  const def = EVENT_DEFS.find((d) => d.key === event)!;
   const setting = (await getEventSettings(organizationId))[event];
-  if (!setting.enabled || !setting.recipients.length) return;
+  if (!manual && (!setting.enabled || !setting.recipients.length)) return null;
   const built = await build(organizationId, event, refId);
-  if (!built) return;
+  if (!built) return null;
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true, ownerName: true } });
   const base = { ...built.values, company: org?.name ?? '' };
-  const wanted = new Set(setting.recipients);
+  const wanted = new Set(setting.recipients.length ? setting.recipients : def.defaultRecipients);
 
   const people = built.people.filter((p) => wanted.has(p.kind));
   if (wanted.has('extra')) {
@@ -314,24 +341,81 @@ const sendForEvent = async (organizationId: string, event: EventKey, refId: stri
     }
   }
 
+  const messages: PlannedMessage[] = [];
   const done = new Set<string>();
   for (const person of people) {
-    if (!person.mobile?.trim()) continue;
-    const number = normalizeNumber(person.mobile) ?? person.mobile;
+    const mobile = person.mobile?.trim() || null;
+    const number = mobile ? normalizeNumber(mobile) : null;
     // One person doing two jobs (stitching + flatlock) gets each message; the same message twice, never.
-    const key = `${event}:${refId}:${person.kind}:${number}`;
+    const key = `${person.kind}:${number ?? mobile ?? person.id}`;
     if (done.has(key)) continue;
     done.add(key);
-    await enqueue(organizationId, {
-      eventType: event,
-      to: person.mobile,
+    messages.push({
+      key,
+      kind: person.kind,
+      kindLabel: def.recipients.find((r) => r.key === person.kind)?.label ?? person.kind,
+      name: person.name,
+      mobile,
+      number,
       message: render(setting.template, { ...base, ...person.values, name: person.name }),
-      refType: built.refType,
-      refId,
       karigarId: person.karigarId ?? null,
-      dedupeKey: key,
     });
   }
+  return { refType: built.refType, messages };
+};
+
+const sendForEvent = async (organizationId: string, event: EventKey, refId: string) => {
+  const plan = await planMessages(organizationId, event, refId, false);
+  if (!plan) return;
+  for (const m of plan.messages) {
+    if (!m.mobile) continue;
+    await enqueue(organizationId, {
+      eventType: event,
+      to: m.mobile,
+      message: m.message,
+      refType: plan.refType,
+      refId,
+      karigarId: m.karigarId,
+      dedupeKey: `${event}:${refId}:${m.key}`,
+    });
+  }
+};
+
+// ---------------------------------------------------------------- WhatsApp button on an entry
+export const previewShare = async (organizationId: string, event: EventKey, refId: string) => {
+  const plan = await planMessages(organizationId, event, refId, true);
+  if (!plan) throw notFound('Entry not found');
+  return { enabled: await repo.isEnabled(organizationId), messages: plan.messages };
+};
+
+// Sends (again) the messages of an existing entry, to the receivers ticked in the dialog, with an
+// optional file (the challan PDF). Never blocked as a duplicate: the user asked for it.
+export const shareEntry = async (
+  organizationId: string,
+  event: EventKey,
+  refId: string,
+  input: { keys?: string[]; mediaUrl?: string | null },
+) => {
+  if (!(await repo.isEnabled(organizationId))) throw badRequest('WhatsApp is off. Turn it on in Settings → WhatsApp first.');
+  const plan = await planMessages(organizationId, event, refId, true);
+  if (!plan) throw notFound('Entry not found');
+  const chosen = plan.messages.filter((m) => !input.keys || input.keys.includes(m.key));
+  const sendable = chosen.filter((m) => m.number);
+  if (!sendable.length) throw badRequest('Nobody selected has a valid mobile number');
+  const stamp = Date.now();
+  for (const m of sendable) {
+    await enqueue(organizationId, {
+      eventType: event,
+      to: m.number!,
+      message: m.message,
+      mediaUrl: input.mediaUrl ?? null,
+      refType: plan.refType,
+      refId,
+      karigarId: m.karigarId,
+      dedupeKey: `${event}:${refId}:${m.key}:manual:${stamp}`,
+    });
+  }
+  return { queued: sendable.length, skipped: chosen.filter((m) => !m.number).map((m) => m.name) };
 };
 
 // Called by a controller after an entry is saved. Returns at once; the work happens after the reply

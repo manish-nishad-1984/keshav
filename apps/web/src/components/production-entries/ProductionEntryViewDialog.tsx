@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, ImageOff } from 'lucide-react';
+import { Pencil, Trash2, ImageOff, MessageCircle } from 'lucide-react';
+import { WhatsAppSendDialog } from '../common/WhatsAppSendDialog';
 import { apiClient, ApiRequestError, resolvePhotoUrl } from '../../lib/api-client';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -36,6 +37,7 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
   const navigate = useNavigate();
   const colorPhotos = useLotColorPhotos(entry?.cuttingEntryId);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [whatsappId, setWhatsappId] = useState<string | null>(null);
 
   // Set when the server warns that the karigar was paid after this entry (or the lot is closed).
   const [deleteWarning, setDeleteWarning] = useState<{ message: string; canForce: boolean } | null>(null);
@@ -151,6 +153,12 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
             </DialogBody>
           ) : null}
           <DialogFooter>
+            {entry ? (
+              <Button variant="outline" className="text-emerald-700" onClick={() => setWhatsappId(entry.id)}>
+                <MessageCircle />
+                WhatsApp
+              </Button>
+            ) : null}
             {canUpdate && entry ? (
               <Button variant="outline" onClick={() => navigate(`/production-entries?edit=${entry.id}`)}>
                 <Pencil />
@@ -169,6 +177,8 @@ export const ProductionEntryViewDialog = ({ entry, onOpenChange, onDeleted }: Pr
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <WhatsAppSendDialog event="PRODUCTION" refId={whatsappId} onOpenChange={(o) => !o && setWhatsappId(null)} />
 
       <ConfirmDialog
         open={confirmOpen}
