@@ -12,6 +12,7 @@ import { FormAlert } from '../ui/form-alert';
 import { LoadingState } from '../ui/loading-state';
 import { Pagination } from '../ui/pagination';
 import { formatDateTime } from '../../lib/date';
+import { WhatsAppTemplatesCard } from './WhatsAppTemplatesCard';
 
 interface PublicConfig {
   enabled: boolean;
@@ -61,7 +62,8 @@ const EVENT_LABELS: Record<string, string> = {
   TEST: 'Test',
   DISTRIBUTION: 'Lot given',
   PRODUCTION: 'Production',
-  ACCESSORY: 'Accessory',
+  ACCESSORY_ISSUE: 'Accessory given',
+  ACCESSORY_RETURN: 'Accessory returned',
   DELIVERY: 'Delivery',
 };
 
@@ -278,9 +280,11 @@ export const WhatsAppTab = () => {
         </Card>
       ) : null}
 
+      <WhatsAppTemplatesCard />
+
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">Messages</h2>
+          <h2 className="text-sm font-semibold">Sent messages</h2>
           <Button type="button" variant="ghost" size="sm" loading={processMutation.isPending} onClick={() => processMutation.mutate()}>
             <RefreshCw />
             Send waiting now

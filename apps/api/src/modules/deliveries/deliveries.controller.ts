@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { ok, okList } from '../../lib/response';
+import { notifyWhatsapp } from '../whatsapp/whatsapp.events';
 import {
   availabilityQuerySchema,
   createDeliverySchema,
@@ -35,7 +36,9 @@ export const challan = async (req: Request, res: Response) => {
 
 export const create = async (req: Request, res: Response) => {
   const input = createDeliverySchema.parse(req.body);
-  ok(res, await service.createDelivery(req.auth!.organizationId, input, req.auth!.userId), 201);
+  const delivery = await service.createDelivery(req.auth!.organizationId, input, req.auth!.userId);
+  ok(res, delivery, 201);
+  notifyWhatsapp(req.auth!.organizationId, 'DELIVERY', delivery.id);
 };
 
 export const update = async (req: Request, res: Response) => {

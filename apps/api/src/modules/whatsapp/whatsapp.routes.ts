@@ -10,6 +10,8 @@ const manage = requirePermission('company_settings:manage');
 
 whatsappRouter.get('/config', manage, asyncHandler(controller.getConfig));
 whatsappRouter.put('/config', manage, asyncHandler(controller.saveConfig));
+whatsappRouter.get('/templates', manage, asyncHandler(controller.getTemplates));
+whatsappRouter.put('/templates', manage, asyncHandler(controller.saveTemplates));
 whatsappRouter.get('/status', manage, asyncHandler(controller.status));
 whatsappRouter.post('/test', manage, asyncHandler(controller.test));
 whatsappRouter.get('/messages', manage, asyncHandler(controller.messages));

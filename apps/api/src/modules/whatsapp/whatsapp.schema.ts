@@ -9,6 +9,24 @@ export const saveWhatsappConfigSchema = z.object({
 });
 export type SaveWhatsappConfigInput = z.infer<typeof saveWhatsappConfigSchema>;
 
+const eventSettingSchema = z.object({
+  enabled: z.boolean(),
+  recipients: z.array(z.string().max(30)).max(10),
+  // Extra numbers, comma or line separated (owner, manager).
+  extraNumbers: z.string().trim().max(500).default(''),
+  template: z.string().trim().min(1, 'Message text is required').max(1500),
+});
+
+export const saveEventSettingsSchema = z
+  .object({
+    DISTRIBUTION: eventSettingSchema,
+    PRODUCTION: eventSettingSchema,
+    ACCESSORY_ISSUE: eventSettingSchema,
+    ACCESSORY_RETURN: eventSettingSchema,
+    DELIVERY: eventSettingSchema,
+  })
+  .partial();
+
 export const testMessageSchema = z.object({
   to: z.string().trim().min(8).max(20),
   message: z.string().trim().min(1).max(1000).optional(),

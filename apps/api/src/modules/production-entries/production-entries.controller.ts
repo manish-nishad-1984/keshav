@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { ok, okList } from '../../lib/response';
+import { notifyWhatsapp } from '../whatsapp/whatsapp.events';
 import {
   createProductionEntrySchema,
   availabilityQuerySchema,
@@ -24,6 +25,7 @@ export const create = async (req: Request, res: Response) => {
   const input = createProductionEntrySchema.parse(req.body);
   const entry = await service.createProductionEntry(req.auth!.organizationId, input, req.auth!.userId);
   ok(res, entry, 201);
+  notifyWhatsapp(req.auth!.organizationId, 'PRODUCTION', entry.id);
 };
 
 export const update = async (req: Request, res: Response) => {

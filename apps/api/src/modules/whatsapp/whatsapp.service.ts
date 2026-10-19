@@ -141,35 +141,51 @@ let processing = false;
 
 // Sends what is due, one by one (the service itself spaces messages out). Retries a failed one after
 // 1, 5 and 15 minutes, then gives up and leaves it as FAILED with the reason.
+let again = false;
+
 export const processQueue = async (organizationId: string) => {
-  if (processing) return;
+  // Asked while already sending: go round once more at the end, so a new message doesn't wait for the worker.
+  if (processing) {
+    again = true;
+    return;
+  }
   processing = true;
   try {
     const cfg = await activeConfig(organizationId);
     if (!cfg) return;
-    for (const msg of await repo.dueMessages(organizationId, 20)) {
-      const reply = await client.sendMessage(cfg, msg.toNumber, msg.message, msg.mediaUrl);
-      const attempts = msg.attempts + 1;
-      if (reply.ok) {
-        await repo.updateMessage(msg.id, {
-          status: 'SENT',
-          attempts,
-          sentAt: new Date(),
-          error: null,
-          providerMessageId: reply.message_id !== undefined ? String(reply.message_id) : null,
-        });
-      } else if (attempts >= MAX_ATTEMPTS) {
-        await repo.updateMessage(msg.id, { status: 'FAILED', attempts, error: String(reply.error ?? 'Could not send') });
-      } else {
-        await repo.updateMessage(msg.id, {
-          attempts,
-          error: String(reply.error ?? 'Could not send'),
-          nextAttemptAt: new Date(Date.now() + RETRY_MINUTES[attempts - 1] * 60 * 1000),
-        });
-      }
+    for (let round = 0; round < 5; round++) {
+      again = false;
+      const due = await repo.dueMessages(organizationId, 20);
+      if (!due.length) break;
+      await sendBatch(cfg, due);
+      if (!again && due.length < 20) break;
     }
   } finally {
     processing = false;
+  }
+};
+
+const sendBatch = async (cfg: client.WhatsappConfig, due: Awaited<ReturnType<typeof repo.dueMessages>>) => {
+  for (const msg of due) {
+    const reply = await client.sendMessage(cfg, msg.toNumber, msg.message, msg.mediaUrl);
+    const attempts = msg.attempts + 1;
+    if (reply.ok) {
+      await repo.updateMessage(msg.id, {
+        status: 'SENT',
+        attempts,
+        sentAt: new Date(),
+        error: null,
+        providerMessageId: reply.message_id !== undefined ? String(reply.message_id) : null,
+      });
+    } else if (attempts >= MAX_ATTEMPTS) {
+      await repo.updateMessage(msg.id, { status: 'FAILED', attempts, error: String(reply.error ?? 'Could not send') });
+    } else {
+      await repo.updateMessage(msg.id, {
+        attempts,
+        error: String(reply.error ?? 'Could not send'),
+        nextAttemptAt: new Date(Date.now() + RETRY_MINUTES[attempts - 1] * 60 * 1000),
+      });
+    }
   }
 };
 

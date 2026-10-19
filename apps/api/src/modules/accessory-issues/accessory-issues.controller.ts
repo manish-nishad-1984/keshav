@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { ok, okList } from '../../lib/response';
+import { notifyWhatsapp } from '../whatsapp/whatsapp.events';
 import {
   balanceQuerySchema,
   createTransactionSchema,
@@ -43,7 +44,9 @@ export const get = async (req: Request, res: Response) => {
 
 export const create = async (req: Request, res: Response) => {
   const input = createTransactionSchema.parse(req.body);
-  ok(res, await service.createTransaction(req.auth!.organizationId, input, req.auth!.userId), 201);
+  const transaction = await service.createTransaction(req.auth!.organizationId, input, req.auth!.userId);
+  ok(res, transaction, 201);
+  notifyWhatsapp(req.auth!.organizationId, input.type === 'ISSUE' ? 'ACCESSORY_ISSUE' : 'ACCESSORY_RETURN', transaction.id);
 };
 
 export const update = async (req: Request, res: Response) => {

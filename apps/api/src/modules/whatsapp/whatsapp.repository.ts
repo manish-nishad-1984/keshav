@@ -21,6 +21,23 @@ export const saveConfig = (organizationId: string, value: StoredConfig) =>
     update: { value: value as unknown as Prisma.InputJsonValue },
   });
 
+// Other WhatsApp settings (the message templates) live next to the config.
+export const findSetting = (organizationId: string, key: string) =>
+  prisma.companySetting.findUnique({ where: { organizationId_scope_key: { organizationId, scope: KEY.scope, key } } });
+
+export const saveSetting = (organizationId: string, key: string, value: Prisma.InputJsonValue) =>
+  prisma.companySetting.upsert({
+    where: { organizationId_scope_key: { organizationId, scope: KEY.scope, key } },
+    create: { organizationId, scope: KEY.scope, key, value },
+    update: { value },
+  });
+
+// Cheap check before an entry builds any message: WhatsApp switched on and a token saved.
+export const isEnabled = async (organizationId: string) => {
+  const v = (await findConfig(organizationId))?.value as Partial<StoredConfig> | undefined;
+  return Boolean(v?.enabled && v.tokenEnc);
+};
+
 export const organizationsWithWhatsapp = () =>
   prisma.companySetting.findMany({ where: { ...KEY }, select: { organizationId: true, value: true } });
 

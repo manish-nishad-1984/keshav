@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { buildPagination, ok } from '../../lib/response';
-import { listMessagesQuerySchema, saveWhatsappConfigSchema, testMessageSchema } from './whatsapp.schema';
+import { listMessagesQuerySchema, saveEventSettingsSchema, saveWhatsappConfigSchema, testMessageSchema } from './whatsapp.schema';
 import * as service from './whatsapp.service';
+import * as events from './whatsapp.events';
 
 export const getConfig = async (req: Request, res: Response) => ok(res, await service.getPublicConfig(req.auth!.organizationId));
 
@@ -25,7 +26,15 @@ export const messages = async (req: Request, res: Response) => {
 
 export const resend = async (req: Request, res: Response) => ok(res, await service.resend(req.auth!.organizationId, req.params.id));
 
-export const processNow = async (req: Request, res: Response) => {
+export const getTemplates = async (req: Request, res: Response) => ok(res, await events.describeEvents(req.auth!.organizationId));
+
+export const saveTemplates = async (req: Request, res: Response) => {
+  const input = saveEventSettingsSchema.parse(req.body);
+  await events.saveEventSettings(req.auth!.organizationId, input);
+  ok(res, await events.describeEvents(req.auth!.organizationId));
+};
+
+export const processNow =async (req: Request, res: Response) => {
   await service.processQueue(req.auth!.organizationId);
   await service.refreshStatuses(req.auth!.organizationId);
   ok(res, { done: true });
