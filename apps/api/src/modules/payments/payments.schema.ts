@@ -8,6 +8,11 @@ export const listPaymentsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   karigarId: z.string().uuid().optional(),
+  // "true": deleted payments too (shown greyed in the karigar's payment history).
+  includeDeleted: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 export type ListPaymentsQuery = z.infer<typeof listPaymentsQuerySchema>;
 

@@ -26,6 +26,7 @@ const SHARE_PERMISSION: Record<string, PermissionKey> = {
   ACCESSORY_ISSUE: 'accessory_issues:view',
   ACCESSORY_RETURN: 'accessory_issues:view',
   DELIVERY: 'deliveries:view',
+  PAYMENT: 'payments:view',
 };
 const canShare = (req: Request, res: Response, next: NextFunction) =>
   requirePermission(SHARE_PERMISSION[req.params.event] ?? 'company_settings:manage')(req, res, next);

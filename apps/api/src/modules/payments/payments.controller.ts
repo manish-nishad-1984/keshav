@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import { ok, okList } from '../../lib/response';
+import { notifyWhatsapp } from '../whatsapp/whatsapp.events';
 import { createPaymentSchema, listPaymentsQuerySchema, updatePaymentSchema } from './payments.schema';
 import * as service from './payments.service';
 
@@ -23,6 +25,7 @@ export const create = async (req: Request, res: Response) => {
   const input = createPaymentSchema.parse(req.body);
   const payment = await service.createPayment(req.auth!.organizationId, input, req.auth!.userId);
   ok(res, payment, 201);
+  notifyWhatsapp(req.auth!.organizationId, 'PAYMENT', payment.id);
 };
 
 export const update = async (req: Request, res: Response) => {
@@ -34,4 +37,8 @@ export const update = async (req: Request, res: Response) => {
 export const remove = async (req: Request, res: Response) => {
   await service.deletePayment(req.auth!.organizationId, req.params.id, req.auth!.userId);
   ok(res, { deleted: true });
+};
+
+export const history = async (req: Request, res: Response) => {
+  ok(res, await service.getPaymentHistory(req.auth!.organizationId, z.string().uuid().parse(req.params.id)));
 };

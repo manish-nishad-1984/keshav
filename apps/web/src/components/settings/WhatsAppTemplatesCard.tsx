@@ -49,6 +49,9 @@ const VARIABLE_LABELS: Record<string, string> = {
   amount: 'Amount',
   challan: 'Challan no.',
   bill: 'Bill no.',
+  mode: 'Payment mode',
+  salary: 'Salary detail (days / OT)',
+  pending: 'Pending balance',
 };
 
 const VAR = /\{\{\s*(\w+)\s*\}\}/g;

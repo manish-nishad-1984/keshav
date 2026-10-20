@@ -6,7 +6,7 @@ import { getKarigarPending } from './earnings';
 import type { CreatePaymentInput, ListPaymentsQuery, UpdatePaymentInput } from './payments.schema';
 
 export const listPayments = (organizationId: string, query: ListPaymentsQuery) =>
-  repo.listPayments(organizationId, query.page, query.pageSize, query.karigarId);
+  repo.listPayments(organizationId, query.page, query.pageSize, query.karigarId, query.includeDeleted);
 
 export const getPayment = async (organizationId: string, id: string) => {
   const payment = await repo.findPaymentById(organizationId, id);
@@ -140,3 +140,14 @@ export const deletePayment = async (organizationId: string, id: string, actorId:
 };
 
 export const getLedger = (organizationId: string) => repo.getLedger(organizationId);
+
+// Every change to one payment (created, edited, deleted) with who did it, from the audit log.
+export const getPaymentHistory = async (organizationId: string, id: string) => {
+  const exists = await prisma.payment.findFirst({ where: { id, organizationId }, select: { id: true } });
+  if (!exists) throw notFound('Payment not found');
+  return prisma.auditLog.findMany({
+    where: { organizationId, entityType: 'Payment', entityId: id },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, action: true, changedFields: true, oldValues: true, newValues: true, actorEmail: true, createdAt: true },
+  });
+};

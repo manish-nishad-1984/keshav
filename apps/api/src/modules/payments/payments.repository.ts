@@ -7,10 +7,11 @@ export const listPayments = async (
   page: number,
   pageSize: number,
   karigarId?: string,
+  includeDeleted = false,
 ) => {
   const where: Prisma.PaymentWhereInput = {
     organizationId,
-    deletedAt: null,
+    ...(includeDeleted ? {} : { deletedAt: null }),
     ...(karigarId ? { karigarId } : {}),
   };
 
@@ -18,7 +19,7 @@ export const listPayments = async (
     prisma.payment.findMany({
       where,
       include: { karigar: true },
-      orderBy: { date: 'desc' },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

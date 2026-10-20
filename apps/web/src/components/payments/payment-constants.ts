@@ -35,5 +35,8 @@ export interface Payment {
   overtimeHours: string | null;
   perDayRate: string | null;
   salaryAmount: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
   karigar: Karigar;
 }

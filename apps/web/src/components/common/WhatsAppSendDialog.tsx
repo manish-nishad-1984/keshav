@@ -7,7 +7,7 @@ import { FormAlert } from '../ui/form-alert';
 import { LoadingState } from '../ui/loading-state';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 
-export type WhatsAppEvent = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY';
+export type WhatsAppEvent = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT';
 
 interface PlannedMessage {
   key: string;

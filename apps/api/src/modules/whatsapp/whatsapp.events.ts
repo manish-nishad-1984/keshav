@@ -1,13 +1,16 @@
 import type { Prisma } from '@prisma/client';
 import { badRequest, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
+import { getKarigarPending } from '../payments/earnings';
 import * as repo from './whatsapp.repository';
+
+const PAYMENT_MODE_LABELS: Record<string, string> = { CASH: 'Cash', BANK_TRANSFER: 'Bank', UPI: 'UPI', CHEQUE: 'Cheque' };
 import { enqueue, normalizeNumber } from './whatsapp.service';
 
 // Which entries send a WhatsApp message, to whom, and with what text — all set by the admin in
 // Settings → WhatsApp → Messages. The text is a template: {{lot}}, {{qty}} ... are filled in per message.
 
-export type EventKey = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY';
+export type EventKey = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT';
 
 interface EventDef {
   key: EventKey;
@@ -16,6 +19,8 @@ interface EventDef {
   variables: string[];
   defaultRecipients: string[];
   defaultTemplate: string;
+  /** Off for new entries until the admin switches it on (the button on the entry still works). */
+  defaultOff?: boolean;
 }
 
 const COMMON = ['name', 'company', 'lot', 'design', 'party', 'book', 'date', 'qty', 'details'];
@@ -74,6 +79,16 @@ export const EVENT_DEFS: EventDef[] = [
     defaultTemplate:
       'Namaste {{name}},\nLot {{lot}} ({{design}}) ke {{qty}} pcs deliver kiye gaye.\nChallan No: {{challan}}\nDate: {{date}}\n{{details}}\n\n- {{company}}',
   },
+  {
+    key: 'PAYMENT',
+    label: 'Payment to karigar',
+    recipients: [{ key: 'karigar', label: 'Karigar' }, EXTRA],
+    variables: ['name', 'company', 'date', 'amount', 'mode', 'salary', 'pending', 'remarks'],
+    defaultRecipients: ['karigar'],
+    defaultOff: true,
+    defaultTemplate:
+      'Namaste {{name}},\nAapko Rs. {{amount}} ({{mode}}) ka payment kiya gaya.\nDate: {{date}}\n{{salary}}\nBaki (pending): Rs. {{pending}}\n\n- {{company}}',
+  },
 ];
 
 // Example values for the preview in Settings.
@@ -94,6 +109,9 @@ export const SAMPLE_VALUES: Record<string, string> = {
   amount: '1200',
   challan: '45',
   bill: 'B-101',
+  mode: 'Cash',
+  salary: 'Present 26 days, Absent 4, OT 6 h',
+  pending: '3,500',
 };
 
 export interface EventSetting {
@@ -116,7 +134,7 @@ export const getEventSettings = async (organizationId: string): Promise<EventSet
       return [
         def.key,
         {
-          enabled: s.enabled ?? true,
+          enabled: s.enabled ?? !def.defaultOff,
           recipients: (s.recipients ?? def.defaultRecipients).filter((r) => allowed.has(r)),
           extraNumbers: s.extraNumbers ?? '',
           template: s.template?.trim() ? s.template : def.defaultTemplate,
@@ -273,6 +291,27 @@ const build = async (organizationId: string, event: EventKey, refId: string): Pr
         remarks: t.remarks ?? '',
       },
       people: [{ kind: 'karigar', id: t.karigar.id, name: t.karigar.fullName, mobile: t.karigar.mobile, karigarId: t.karigar.id }],
+    };
+  }
+
+  if (event === 'PAYMENT') {
+    const p = await prisma.payment.findFirst({ where: { id: refId, organizationId, deletedAt: null }, include: { karigar: PERSON } });
+    if (!p) return null;
+    const pending = await getKarigarPending(organizationId, p.karigarId);
+    const salary = p.salaryAmount
+      ? `Present ${p.presentDays ?? 0} days, Absent ${p.absentDays ?? 0}${Number(p.overtimeHours ?? 0) ? `, OT ${Number(p.overtimeHours)} h` : ''}`
+      : '';
+    return {
+      refType: 'payment',
+      values: {
+        date: fmtDate(p.date),
+        amount: money(p.amount),
+        mode: PAYMENT_MODE_LABELS[p.paymentMode] ?? p.paymentMode,
+        salary,
+        pending: Math.max(pending, 0).toLocaleString('en-IN', { maximumFractionDigits: 2 }),
+        remarks: p.remarks ?? '',
+      },
+      people: [{ kind: 'karigar', id: p.karigar.id, name: p.karigar.fullName, mobile: p.karigar.mobile, karigarId: p.karigar.id }],
     };
   }
 
