@@ -981,7 +981,7 @@ model Payment {
   referenceNo    String?
   remarks        String?
   // Salary of a Fixed karigar, worked out from attendance when the payment is made:
-  // salaryAmount = presentDays × perDayRate + overtimeHours × perDayRate ÷ 8. It also counts as
+  // salaryAmount = presentDays × perDayRate + overtimeHours × perDayRate ÷ 12 (12-hour shift). It also counts as
   // what the karigar earned, so the ledger stays balanced. Empty for piece-rate karigars.
   presentDays    Int?
   absentDays     Int?

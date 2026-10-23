@@ -45,9 +45,10 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const isFixedKarigar = (karigar: { salaryType: string }) => karigar.salaryType === 'FIXED';
 
-// Fixed karigar salary: per day = monthly ÷ 30; overtime hours are paid at per day ÷ 8.
+// Fixed karigar salary: per day = monthly ÷ 30; a shift is 12 hours, so an overtime hour is paid at per day ÷ 12.
+export const SHIFT_HOURS = 12;
 export const computeSalary = (perDayRate: number, presentDays: number, overtimeHours: number) =>
-  round2(presentDays * perDayRate + (overtimeHours * perDayRate) / 8);
+  round2(presentDays * perDayRate + (overtimeHours * perDayRate) / SHIFT_HOURS);
 
 // "Now" in the organization's timezone, as a date (YYYY-MM-DD) and a time (HH:mm).
 const nowInTimezone = async (organizationId: string) => {
@@ -134,7 +135,9 @@ export const updatePayment = async (
     if (rest.amount !== undefined) throw badRequest('This is a salary payment — change the attendance or the amount paid now');
     const present = presentDays ?? existing.presentDays ?? 0;
     const overtime = overtimeHours ?? Number(existing.overtimeHours ?? 0);
-    const salaryAmount = computeSalary(Number(existing.perDayRate), present, overtime);
+    // Attendance unchanged: the saved salary stays as it was (a payment saved under an older rule is not recalculated).
+    const sameAttendance = present === (existing.presentDays ?? 0) && Math.abs(overtime - Number(existing.overtimeHours ?? 0)) < 0.001;
+    const salaryAmount = sameAttendance ? Number(existing.salaryAmount ?? 0) : computeSalary(Number(existing.perDayRate), present, overtime);
     if (salaryAmount <= 0) throw badRequest('The salary works out to ₹0 — enter present days or overtime');
     const oldSalary = Number(existing.salaryAmount ?? 0);
     const oldPaid = Number(existing.amount);

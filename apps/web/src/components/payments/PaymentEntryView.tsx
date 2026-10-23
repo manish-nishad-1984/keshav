@@ -40,6 +40,8 @@ interface KarigarAccount {
 
 const money = (value: number) => value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const round2 = (n: number) => Math.round(n * 100) / 100;
+// Working hours in one day's shift; an overtime hour is paid at per day ÷ this.
+const SHIFT_HOURS = 12;
 const isFixed = (k: Karigar | undefined) => k?.salaryType === 'FIXED';
 
 // Ticks every 30 s so the shown date & time stay current; the server stamps the real time on save.
@@ -72,13 +74,13 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
   const karigar = activeKarigars.find((k) => k.id === form.karigarId);
   const fixed = isFixed(karigar);
 
-  // Fixed karigar: per day = monthly ÷ 30; overtime hours at per day ÷ 8 (same as the server).
+  // Fixed karigar: per day = monthly ÷ 30; a shift is 12 hours, so overtime is per day ÷ 12 an hour (same as the server).
   const monthly = karigar?.monthlySalary ? Number(karigar.monthlySalary) : 0;
   const perDay = round2(monthly / 30);
   const present = Number(form.presentDays) || 0;
   const overtime = Number(form.overtimeHours) || 0;
   const presentPay = present * perDay;
-  const overtimePay = (overtime * perDay) / 8;
+  const overtimePay = (overtime * perDay) / SHIFT_HOURS;
   const salary = round2(presentPay + overtimePay);
 
   // What the karigar is owed right now and the upad taken since the last salary (Fixed karigar).
@@ -296,7 +298,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
                   {present} days × ₹{money(perDay)} = <span className="numeric text-foreground">₹ {money(presentPay)}</span>
                 </span>
                 <span className="text-muted-foreground">
-                  OT {overtime} h × ₹{money(perDay / 8)} = <span className="numeric text-foreground">₹ {money(overtimePay)}</span>
+                  OT {overtime} h × ₹{money(perDay / SHIFT_HOURS)} = <span className="numeric text-foreground">₹ {money(overtimePay)}</span>
                 </span>
                 <span className="font-semibold">
                   Salary <output aria-live="polite" className="numeric text-base text-primary">₹ {money(salary)}</output>
