@@ -25,6 +25,7 @@ export const saveEventSettingsSchema = z
     ACCESSORY_RETURN: eventSettingSchema,
     DELIVERY: eventSettingSchema,
     PAYMENT: eventSettingSchema,
+    KARIGAR_STATEMENT: eventSettingSchema,
   })
   .partial();
 
@@ -39,7 +40,7 @@ export const listMessagesQuerySchema = z.object({
   status: z.enum(['PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED']).optional(),
 });
 
-export const shareEventSchema = z.enum(['DISTRIBUTION', 'PRODUCTION', 'ACCESSORY_ISSUE', 'ACCESSORY_RETURN', 'DELIVERY', 'PAYMENT']);
+export const shareEventSchema = z.enum(['DISTRIBUTION', 'PRODUCTION', 'ACCESSORY_ISSUE', 'ACCESSORY_RETURN', 'DELIVERY', 'PAYMENT', 'KARIGAR_STATEMENT']);
 
 export const shareSchema = z.object({
   // Receivers ticked in the dialog (PlannedMessage.key); missing = everyone.
@@ -49,4 +50,10 @@ export const shareSchema = z.object({
     .string()
     .regex(/^\/uploads\/[\w-]+\.(pdf|jpe?g|png|webp)$/i)
     .optional(),
+});
+
+// The period of a karigar report card (query on the preview, body on the send).
+export const shareParamsSchema = z.object({
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
 });

@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { badRequest, notFound } from '../../lib/httpError';
 import { prisma } from '../../lib/prisma';
 import { getKarigarPending } from '../payments/earnings';
+import { getKarigarStatement } from '../payments/karigar-statement';
 import * as repo from './whatsapp.repository';
 
 const PAYMENT_MODE_LABELS: Record<string, string> = { CASH: 'Cash', BANK_TRANSFER: 'Bank', UPI: 'UPI', CHEQUE: 'Cheque' };
@@ -10,7 +11,13 @@ import { enqueue, normalizeNumber } from './whatsapp.service';
 // Which entries send a WhatsApp message, to whom, and with what text — all set by the admin in
 // Settings → WhatsApp → Messages. The text is a template: {{lot}}, {{qty}} ... are filled in per message.
 
-export type EventKey = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT';
+export type EventKey = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT' | 'KARIGAR_STATEMENT';
+
+// Extra input for a message that is not one entry: the period of a karigar report card.
+export interface ShareParams {
+  dateFrom?: Date;
+  dateTo?: Date;
+}
 
 interface EventDef {
   key: EventKey;
@@ -89,6 +96,15 @@ export const EVENT_DEFS: EventDef[] = [
     defaultTemplate:
       'Namaste {{name}},\nAapko Rs. {{amount}} ({{mode}}) ka payment kiya gaya.\nDate: {{date}}\n{{salary}}\nBaki (pending): Rs. {{pending}}\n\n- {{company}}',
   },
+  {
+    key: 'KARIGAR_STATEMENT',
+    label: 'Karigar report card (sent from Payments)',
+    recipients: [{ key: 'karigar', label: 'Karigar' }, EXTRA],
+    variables: ['name', 'company', 'period', 'opening', 'earned', 'pieces', 'paid', 'times', 'pending'],
+    defaultRecipients: ['karigar'],
+    defaultTemplate:
+      'Namaste {{name}},\nAapka hisaab ({{period}}):\nPichhla baki: Rs. {{opening}}\nKaam: Rs. {{earned}} ({{pieces}} pcs)\nLiya: Rs. {{paid}} ({{times}} baar)\nAb baki: Rs. {{pending}}\n\nPoori detail PDF mein hai.\n- {{company}}',
+  },
 ];
 
 // Example values for the preview in Settings.
@@ -112,6 +128,12 @@ export const SAMPLE_VALUES: Record<string, string> = {
   mode: 'Cash',
   salary: 'Present 26 days, Absent 4, OT 6 h',
   pending: '3,500',
+  period: '01-10-2026 se 23-10-2026 tak',
+  opening: '1,200',
+  earned: '9,800',
+  pieces: '640',
+  paid: '7,500',
+  times: '4',
 };
 
 export interface EventSetting {
@@ -209,7 +231,7 @@ const lotValues = (lot: { lotNumber: string; item: { itemName: string }; party: 
   book: lot.book.name,
 });
 
-const build = async (organizationId: string, event: EventKey, refId: string): Promise<Built> => {
+const build = async (organizationId: string, event: EventKey, refId: string, params: ShareParams = {}): Promise<Built> => {
   if (event === 'DISTRIBUTION') {
     const d = await prisma.cuttingDistribution.findFirst({
       where: { id: refId, organizationId },
@@ -294,6 +316,29 @@ const build = async (organizationId: string, event: EventKey, refId: string): Pr
     };
   }
 
+  if (event === 'KARIGAR_STATEMENT') {
+    const s = await getKarigarStatement(organizationId, refId, params).catch(() => null);
+    if (!s) return null;
+    const rs = (n: number) => (n < 0 ? `${money(-n)} (advance liya)` : money(n));
+    const period =
+      s.range.dateFrom || s.range.dateTo
+        ? `${s.range.dateFrom ? fmtDate(s.range.dateFrom) : 'start'} se ${s.range.dateTo ? fmtDate(s.range.dateTo) : 'aaj'} tak`
+        : 'shuru se aaj tak';
+    return {
+      refType: 'karigar_statement',
+      values: {
+        period,
+        opening: rs(s.totals.opening),
+        earned: money(s.totals.earned),
+        pieces: String(s.totals.pieces),
+        paid: money(s.totals.paid),
+        times: String(s.totals.paidTimes),
+        pending: rs(s.totals.closing),
+      },
+      people: [{ kind: 'karigar', id: s.karigar.id, name: s.karigar.name, mobile: s.karigar.mobile, karigarId: s.karigar.id }],
+    };
+  }
+
   if (event === 'PAYMENT') {
     const p = await prisma.payment.findFirst({ where: { id: refId, organizationId, deletedAt: null }, include: { karigar: PERSON } });
     if (!p) return null;
@@ -363,11 +408,11 @@ export interface PlannedMessage {
 
 // The messages one entry produces with the current Settings. `manual` (the WhatsApp button on an
 // entry) works even when that kind of message is switched off for new entries.
-const planMessages = async (organizationId: string, event: EventKey, refId: string, manual: boolean) => {
+const planMessages = async (organizationId: string, event: EventKey, refId: string, manual: boolean, params: ShareParams = {}) => {
   const def = EVENT_DEFS.find((d) => d.key === event)!;
   const setting = (await getEventSettings(organizationId))[event];
   if (!manual && (!setting.enabled || !setting.recipients.length)) return null;
-  const built = await build(organizationId, event, refId);
+  const built = await build(organizationId, event, refId, params);
   if (!built) return null;
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true, ownerName: true } });
   const base = { ...built.values, company: org?.name ?? '' };
@@ -421,8 +466,8 @@ const sendForEvent = async (organizationId: string, event: EventKey, refId: stri
 };
 
 // ---------------------------------------------------------------- WhatsApp button on an entry
-export const previewShare = async (organizationId: string, event: EventKey, refId: string) => {
-  const plan = await planMessages(organizationId, event, refId, true);
+export const previewShare = async (organizationId: string, event: EventKey, refId: string, params: ShareParams = {}) => {
+  const plan = await planMessages(organizationId, event, refId, true, params);
   if (!plan) throw notFound('Entry not found');
   return { enabled: await repo.isEnabled(organizationId), messages: plan.messages };
 };
@@ -433,10 +478,10 @@ export const shareEntry = async (
   organizationId: string,
   event: EventKey,
   refId: string,
-  input: { keys?: string[]; mediaUrl?: string | null },
+  input: { keys?: string[]; mediaUrl?: string | null; params?: ShareParams },
 ) => {
   if (!(await repo.isEnabled(organizationId))) throw badRequest('WhatsApp is off. Turn it on in Settings → WhatsApp first.');
-  const plan = await planMessages(organizationId, event, refId, true);
+  const plan = await planMessages(organizationId, event, refId, true, input.params);
   if (!plan) throw notFound('Entry not found');
   const chosen = plan.messages.filter((m) => !input.keys || input.keys.includes(m.key));
   const sendable = chosen.filter((m) => m.number);

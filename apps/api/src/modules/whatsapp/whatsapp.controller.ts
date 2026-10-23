@@ -6,6 +6,7 @@ import {
   saveEventSettingsSchema,
   saveWhatsappConfigSchema,
   shareEventSchema,
+  shareParamsSchema,
   shareSchema,
   testMessageSchema,
 } from './whatsapp.schema';
@@ -50,13 +51,14 @@ export const processNow = async (req: Request, res: Response) => {
 
 export const sharePreview = async (req: Request, res: Response) => {
   const event = shareEventSchema.parse(req.params.event);
-  ok(res, await events.previewShare(req.auth!.organizationId, event, z.string().uuid().parse(req.params.refId)));
+  ok(res, await events.previewShare(req.auth!.organizationId, event, z.string().uuid().parse(req.params.refId), shareParamsSchema.parse(req.query)));
 };
 
 export const share = async (req: Request, res: Response) => {
   const event = shareEventSchema.parse(req.params.event);
   const { keys, fileUrl } = shareSchema.parse(req.body);
+  const params = shareParamsSchema.parse(req.body?.params ?? {});
   // The WhatsApp service downloads the file itself, so it needs the full public link.
   const mediaUrl = fileUrl ? `${req.protocol}://${req.get('host')}${fileUrl}` : null;
-  ok(res, await events.shareEntry(req.auth!.organizationId, event, z.string().uuid().parse(req.params.refId), { keys, mediaUrl }));
+  ok(res, await events.shareEntry(req.auth!.organizationId, event, z.string().uuid().parse(req.params.refId), { keys, mediaUrl, params }));
 };

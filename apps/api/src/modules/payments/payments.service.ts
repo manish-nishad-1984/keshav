@@ -73,6 +73,14 @@ export const createPayment = async (organizationId: string, input: CreatePayment
   const now = await nowInTimezone(organizationId);
   const base = { ...now, karigarId: input.karigarId, paymentMode: input.paymentMode, remarks: input.remarks };
 
+  // Upad: money a Fixed karigar takes during the month. A plain payment; it comes off the next salary
+  // because the salary payout pays only what is still owed.
+  if (isFixedKarigar(karigar) && input.kind === 'ADVANCE') {
+    if (!input.amount) throw badRequest('Enter the upad amount');
+    await assertNotDuplicate(organizationId, input.karigarId, input.amount, input.paymentMode, input.confirmed);
+    return repo.createPayment(organizationId, { ...base, amount: input.amount }, actorId);
+  }
+
   if (isFixedKarigar(karigar)) {
     if (!karigar.monthlySalary) {
       throw badRequest(`Set the monthly salary of ${karigar.fullName} in Karigar Master first`);
@@ -82,11 +90,20 @@ export const createPayment = async (organizationId: string, input: CreatePayment
     const overtimeHours = input.overtimeHours ?? 0;
     const salaryAmount = computeSalary(perDayRate, input.presentDays, overtimeHours);
     if (salaryAmount <= 0) throw badRequest('The salary works out to ₹0 — enter present days or overtime');
+    // Paid now = what is owed after this salary: earlier balance (minus the upad already taken) + salary.
+    const owed = round2(Math.max((await getKarigarPending(organizationId, input.karigarId)) + salaryAmount, 0));
+    const paidNow = input.paidNow !== undefined ? round2(input.paidNow) : owed;
+    if (paidNow > owed + 0.005 && !input.confirmed) {
+      throw conflict(
+        `After the upad already taken, ${inr(owed)} is owed. Paying ${inr(paidNow)} gives ${inr(paidNow - owed)} extra as an advance.`,
+        'ADVANCE_CONFIRM',
+      );
+    }
     return repo.createPayment(
       organizationId,
       {
         ...base,
-        amount: salaryAmount,
+        amount: paidNow,
         presentDays: input.presentDays,
         absentDays: input.absentDays ?? 0,
         overtimeHours,
@@ -110,26 +127,36 @@ export const updatePayment = async (
   actorId: string | null,
 ) => {
   const existing = await getPayment(organizationId, id);
-  const { presentDays, absentDays, overtimeHours, confirmed, ...rest } = input;
+  const { presentDays, absentDays, overtimeHours, confirmed, paidNow, ...rest } = input;
 
   if (existing.perDayRate !== null) {
-    // A salary payment is worked out from attendance; its amount is never typed.
-    if (rest.amount !== undefined) throw badRequest('This is a salary payment — change the present days or overtime instead of the amount');
-  } else if (rest.amount !== undefined) {
-    await assertAdvanceConfirmed(organizationId, existing.karigarId, rest.amount, confirmed, id);
-  }
-
-  // A salary payment is recomputed from its attendance at the per-day rate it was made with.
-  if (existing.perDayRate !== null && (presentDays !== undefined || overtimeHours !== undefined)) {
+    // A salary payment: the salary (earned) comes from attendance; "paid now" is the money handed over.
+    if (rest.amount !== undefined) throw badRequest('This is a salary payment — change the attendance or the amount paid now');
     const present = presentDays ?? existing.presentDays ?? 0;
     const overtime = overtimeHours ?? Number(existing.overtimeHours ?? 0);
     const salaryAmount = computeSalary(Number(existing.perDayRate), present, overtime);
     if (salaryAmount <= 0) throw badRequest('The salary works out to ₹0 — enter present days or overtime');
+    const oldSalary = Number(existing.salaryAmount ?? 0);
+    const oldPaid = Number(existing.amount);
+    // Not typed: an old-style payment (paid = salary) follows the new salary; otherwise paid stays.
+    const amount = paidNow !== undefined ? round2(paidNow) : Math.abs(oldPaid - oldSalary) < 0.005 ? salaryAmount : oldPaid;
+    if (!confirmed) {
+      const owed = round2(Math.max((await getKarigarPending(organizationId, existing.karigarId, id)) + salaryAmount, 0));
+      if (amount > owed + 0.005) {
+        throw conflict(`${inr(owed)} is owed with this salary. Paying ${inr(amount)} gives ${inr(amount - owed)} extra as an advance.`, 'ADVANCE_CONFIRM');
+      }
+    }
     return repo.updatePayment(
       id,
-      { ...rest, presentDays: present, absentDays: absentDays ?? existing.absentDays, overtimeHours: overtime, salaryAmount, amount: salaryAmount },
+      { ...rest, presentDays: present, absentDays: absentDays ?? existing.absentDays, overtimeHours: overtime, salaryAmount, amount },
       actorId,
     );
+  }
+
+  if (rest.amount !== undefined) {
+    if (!(rest.amount > 0)) throw badRequest('Enter the payment amount');
+    // An upad of a Fixed karigar is an advance by design; no warning for it.
+    if (!isFixedKarigar(existing.karigar)) await assertAdvanceConfirmed(organizationId, existing.karigarId, rest.amount, confirmed, id);
   }
   return repo.updatePayment(id, { ...rest, ...(absentDays !== undefined ? { absentDays } : {}) }, actorId);
 };

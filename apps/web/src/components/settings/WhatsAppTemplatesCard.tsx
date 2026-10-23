@@ -52,6 +52,12 @@ const VARIABLE_LABELS: Record<string, string> = {
   mode: 'Payment mode',
   salary: 'Salary detail (days / OT)',
   pending: 'Pending balance',
+  period: 'Period',
+  opening: 'Opening balance',
+  earned: 'Earned',
+  pieces: 'Total pcs',
+  paid: 'Money taken',
+  times: 'Times taken',
 };
 
 const VAR = /\{\{\s*(\w+)\s*\}\}/g;

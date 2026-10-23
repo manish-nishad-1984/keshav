@@ -4,6 +4,7 @@ import { ok, okList } from '../../lib/response';
 import { notifyWhatsapp } from '../whatsapp/whatsapp.events';
 import { createPaymentSchema, listPaymentsQuerySchema, updatePaymentSchema } from './payments.schema';
 import * as service from './payments.service';
+import { getKarigarAccount, getKarigarStatement } from './karigar-statement';
 
 export const list = async (req: Request, res: Response) => {
   const query = listPaymentsQuerySchema.parse(req.query);
@@ -41,4 +42,18 @@ export const remove = async (req: Request, res: Response) => {
 
 export const history = async (req: Request, res: Response) => {
   ok(res, await service.getPaymentHistory(req.auth!.organizationId, z.string().uuid().parse(req.params.id)));
+};
+
+const statementQuerySchema = z.object({
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+});
+
+export const account = async (req: Request, res: Response) => {
+  ok(res, await getKarigarAccount(req.auth!.organizationId, z.string().uuid().parse(req.params.karigarId)));
+};
+
+export const statement = async (req: Request, res: Response) => {
+  const range = statementQuerySchema.parse(req.query);
+  ok(res, await getKarigarStatement(req.auth!.organizationId, z.string().uuid().parse(req.params.karigarId), range));
 };

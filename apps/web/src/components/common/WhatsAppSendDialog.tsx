@@ -7,7 +7,7 @@ import { FormAlert } from '../ui/form-alert';
 import { LoadingState } from '../ui/loading-state';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 
-export type WhatsAppEvent = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT';
+export type WhatsAppEvent = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT' | 'KARIGAR_STATEMENT';
 
 interface PlannedMessage {
   key: string;
@@ -30,20 +30,22 @@ interface WhatsAppSendDialogProps {
   title?: string;
   /** Makes a file to attach (the challan PDF); called only when sending. */
   makeAttachment?: () => Promise<File>;
+  /** Extra input for the message, e.g. the report card period { dateFrom, dateTo }. */
+  params?: Record<string, string>;
 }
 
 const errorText = (err: unknown) => (err instanceof ApiRequestError ? err.message : 'Something went wrong. Please try again.');
 
 // Sends an entry's message through the company WhatsApp number (Settings → WhatsApp): shows who gets
 // what, lets the user untick people, then queues the messages. Works for old entries too.
-export const WhatsAppSendDialog = ({ event, refId, onOpenChange, title, makeAttachment }: WhatsAppSendDialogProps) => {
+export const WhatsAppSendDialog = ({ event, refId, onOpenChange, title, makeAttachment, params }: WhatsAppSendDialogProps) => {
   const open = Boolean(refId);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['whatsapp', 'share', event, refId],
-    queryFn: () => apiClient.get<Preview>(`/whatsapp/share/${event}/${refId}`),
+    queryKey: ['whatsapp', 'share', event, refId, params],
+    queryFn: () => apiClient.get<Preview>(`/whatsapp/share/${event}/${refId}`, params),
     enabled: open,
     staleTime: 0,
   });
@@ -60,7 +62,7 @@ export const WhatsAppSendDialog = ({ event, refId, onOpenChange, title, makeAtta
         const file = await makeAttachment();
         fileUrl = (await apiClient.upload<{ url: string }>('/uploads', file)).url;
       }
-      return apiClient.post<{ queued: number; skipped: string[] }>(`/whatsapp/share/${event}/${refId}`, { keys: [...picked], fileUrl });
+      return apiClient.post<{ queued: number; skipped: string[] }>(`/whatsapp/share/${event}/${refId}`, { keys: [...picked], fileUrl, params });
     },
     onSuccess: (r) =>
       setResult({

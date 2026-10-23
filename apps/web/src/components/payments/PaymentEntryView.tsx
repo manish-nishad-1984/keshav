@@ -11,6 +11,7 @@ import { FormAlert } from '../ui/form-alert';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '../../lib/utils';
+import { formatDate } from '../../lib/date';
 import type { Karigar } from '../karigars/karigar-constants';
 import { NEW_PAYMENT_MODES, PAYMENT_MODE_LABELS } from './payment-constants';
 
@@ -24,7 +25,18 @@ const emptyForm = () => ({
   absentDays: '',
   overtimeHours: '',
   remarks: '',
+  // Fixed karigar: UPAD = money taken during the month; SALARY = month-end payout.
+  kind: 'SALARY' as 'SALARY' | 'UPAD',
+  // Salary payout: what is handed over now; empty = all that is owed.
+  paidNow: '',
 });
+
+interface KarigarAccount {
+  pending: number;
+  lastSalary: { date: string; salary: number; paid: number } | null;
+  advances: { id: string; date: string; entryTime: string | null; amount: number; paymentMode: string; remarks: string | null }[];
+  advanceTotal: number;
+}
 
 const money = (value: number) => value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -69,6 +81,17 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
   const overtimePay = (overtime * perDay) / 8;
   const salary = round2(presentPay + overtimePay);
 
+  // What the karigar is owed right now and the upad taken since the last salary (Fixed karigar).
+  const { data: account } = useQuery({
+    queryKey: ['payments', 'account', form.karigarId],
+    queryFn: () => apiClient.get<KarigarAccount>(`/payments/karigar/${form.karigarId}/account`),
+    enabled: Boolean(form.karigarId),
+  });
+  const upad = fixed && form.kind === 'UPAD';
+  // Owed after this salary = balance till now (negative after upad) + this salary.
+  const owed = round2(Math.max((account?.pending ?? 0) + salary, 0));
+  const paidNow = form.paidNow === '' ? owed : Number(form.paidNow) || 0;
+
   // Set when the server warns (advance / possible duplicate) and the user must confirm.
   const [warning, setWarning] = useState<string | null>(null);
 
@@ -79,13 +102,17 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
         karigarId: form.karigarId,
         paymentMode: form.paymentMode,
         remarks: form.remarks || undefined,
-        ...(fixed
-          ? {
-              presentDays: present,
-              absentDays: Number(form.absentDays) || 0,
-              overtimeHours: overtime,
-            }
-          : { amount: Number(form.amount) }),
+        ...(upad
+          ? { kind: 'ADVANCE', amount: Number(form.amount) }
+          : fixed
+            ? {
+                kind: 'SALARY',
+                presentDays: present,
+                absentDays: Number(form.absentDays) || 0,
+                overtimeHours: overtime,
+                paidNow: form.paidNow === '' ? undefined : paidNow,
+              }
+            : { amount: Number(form.amount) }),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['payments'] });
@@ -100,7 +127,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
     },
   });
 
-  const isValid = Boolean(form.karigarId && (fixed ? monthly > 0 && salary > 0 : Number(form.amount) > 0));
+  const isValid = Boolean(form.karigarId && (upad || !fixed ? Number(form.amount) > 0 : monthly > 0 && salary > 0));
 
   const dateText = now.toLocaleDateString('en-GB');
   const timeText = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -163,6 +190,52 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
           </div>
 
           {fixed ? (
+            <div className="space-y-2">
+              <div role="radiogroup" aria-label="Payment type" className="inline-flex h-9 rounded-md border border-border bg-muted p-0.5 max-sm:h-11">
+                {(
+                  [
+                    ['SALARY', 'Salary (month end)'],
+                    ['UPAD', 'Upad (advance)'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.kind === key}
+                    onClick={() => set({ kind: key })}
+                    className={cn(
+                      'rounded px-4 text-sm transition-colors',
+                      form.kind === key ? 'bg-card font-semibold text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {account ? (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-50">
+                  <p className="font-medium">
+                    Upad taken {account.lastSalary ? `since last salary (${formatDate(account.lastSalary.date)})` : 'so far'}:{' '}
+                    <span className="numeric">₹ {money(account.advanceTotal)}</span> ({account.advances.length} times)
+                  </p>
+                  {account.advances.length ? (
+                    <p className="mt-0.5 text-xs opacity-80">
+                      {account.advances.map((a) => `${formatDate(a.date)} ₹${money(a.amount)}`).join(' · ')}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 text-xs">
+                    Balance now:{' '}
+                    <span className="numeric font-semibold">
+                      {account.pending < 0 ? `₹ ${money(-account.pending)} taken in advance` : `₹ ${money(account.pending)} to pay`}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {fixed && !upad ? (
             <section aria-labelledby="salary-heading" className="space-y-2.5 rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 id="salary-heading" className="text-sm font-semibold">
@@ -229,10 +302,51 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
                   Salary <output aria-live="polite" className="numeric text-base text-primary">₹ {money(salary)}</output>
                 </span>
               </div>
+              {salary > 0 && account ? (
+                <div className="space-y-1 rounded-md border border-border px-3 py-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Salary</span>
+                    <span className="numeric">₹ {money(salary)}</span>
+                  </div>
+                  {account.pending !== 0 ? (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>{account.pending < 0 ? '− Upad / advance already taken' : '+ Earlier balance'}</span>
+                      <span className="numeric">
+                        {account.pending < 0 ? '−' : '+'} ₹ {money(Math.abs(account.pending))}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between border-t border-border pt-1 font-semibold">
+                    <span>Remaining to pay</span>
+                    <span className="numeric text-primary">₹ {money(owed)}</span>
+                  </div>
+                  {(account.pending ?? 0) + salary < 0 ? (
+                    <p className="text-xs text-muted-foreground">Upad is more than this salary: ₹ {money(-((account.pending ?? 0) + salary))} stays as advance for next month.</p>
+                  ) : null}
+                  <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
+                    <FormField label="Paying now (₹)" htmlFor="pay-now" hint="Leave empty to pay the full remaining amount" className="w-56">
+                      <Input
+                        id="pay-now"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        inputMode="decimal"
+                        className="numeric text-right"
+                        placeholder={money(owed)}
+                        value={form.paidNow}
+                        onChange={(e) => set({ paidNow: e.target.value })}
+                      />
+                    </FormField>
+                    {paidNow < owed - 0.005 ? (
+                      <span className="text-xs text-muted-foreground">₹ {money(owed - paidNow)} stays pending</span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : (
             <div className="grid gap-x-3 sm:grid-cols-2 lg:grid-cols-3">
-              <FormField label="Payment Amount (₹)" required htmlFor="pay-amount">
+              <FormField label={upad ? 'Upad Amount (₹)' : 'Payment Amount (₹)'} required htmlFor="pay-amount">
                 <Input
                   id="pay-amount"
                   type="number"
@@ -254,7 +368,7 @@ export const PaymentEntryView = ({ onDone, onCancel }: PaymentEntryViewProps) =>
           <div className="flex items-center gap-2 pt-1">
             <Button type="submit" loading={mutation.isPending} disabled={!isValid}>
               <Save />
-              {fixed && salary > 0 ? `Pay Salary ₹ ${money(salary)}` : 'Save Payment'}
+              {upad ? 'Save Upad' : fixed && salary > 0 ? `Pay Salary ₹ ${money(paidNow)}` : 'Save Payment'}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel

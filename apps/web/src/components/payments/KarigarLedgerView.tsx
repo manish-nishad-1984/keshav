@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Eye, Plus } from 'lucide-react';
+import { Search, Eye, Plus, FileText } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -9,6 +9,7 @@ import { Input } from '../ui/input';
 import { LoadingState } from '../ui/loading-state';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { KarigarPaymentHistoryDialog } from './KarigarPaymentHistoryDialog';
+import { KarigarStatementView } from './KarigarStatementView';
 import type { LedgerRow } from './payment-constants';
 import { formatMoney } from '../../lib/format';
 
@@ -20,6 +21,7 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('ALL');
   const [historyTarget, setHistoryTarget] = useState<LedgerRow | null>(null);
+  const [reportKarigarId, setReportKarigarId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['payments', 'ledger'],
@@ -38,6 +40,8 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
     }),
     { totalAmount: 0, paidAmount: 0, pending: 0 },
   );
+
+  if (reportKarigarId) return <KarigarStatementView karigarId={reportKarigarId} onBack={() => setReportKarigarId(null)} />;
 
   return (
     <>
@@ -93,11 +97,14 @@ export const KarigarLedgerView = ({ onAddPayment }: KarigarLedgerViewProps) => {
                     <td className="numeric px-4 py-2.5 text-right">{formatMoney(row.paidAmount)}</td>
                     <td className="numeric px-4 py-2.5 font-medium text-right">{formatMoney(row.pending)}</td>
                     <td className="px-4 py-2.5">
-                      <Badge variant={row.pending > 0 ? 'danger' : 'success'}>
-                        {row.pending > 0 ? 'Due' : 'Settled'}
+                      <Badge variant={row.pending > 0 ? 'danger' : row.pending < -0.005 ? 'info' : 'success'}>
+                        {row.pending > 0 ? 'Due' : row.pending < -0.005 ? 'Advance' : 'Settled'}
                       </Badge>
                     </td>
-                    <td className="px-2 py-2.5 text-right">
+                    <td className="whitespace-nowrap px-2 py-2.5 text-right">
+                      <Button variant="ghost" size="icon" title="Report card" aria-label={`Report card for ${row.karigarName}`} onClick={() => setReportKarigarId(row.karigarId)}>
+                        <FileText />
+                      </Button>
                       <Button variant="ghost" size="icon" aria-label={`Payment history for ${row.karigarName}`} onClick={() => setHistoryTarget(row)}>
                         <Eye />
                       </Button>

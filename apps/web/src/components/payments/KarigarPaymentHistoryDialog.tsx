@@ -136,7 +136,9 @@ export const KarigarPaymentHistoryDialog = ({ karigar, onOpenChange }: KarigarPa
                           <td className="px-3 py-2 text-muted-foreground">
                             {payment.salaryAmount
                               ? `${payment.presentDays ?? 0} present · ${payment.absentDays ?? 0} absent · ${Number(payment.overtimeHours ?? 0)} h OT`
-                              : '—'}
+                              : payment.karigar?.salaryType === 'FIXED'
+                                ? 'Upad (advance)'
+                                : '—'}
                           </td>
                           <td className="px-3 py-2 text-muted-foreground">{payment.remarks || '—'}</td>
                           <td className="whitespace-nowrap px-1 py-1">

@@ -44,7 +44,13 @@ export const PaymentEditDialog = ({ payment, onOpenChange }: PaymentEditDialogPr
     mutationFn: (confirmed: boolean) =>
       apiClient.patch(`/payments/${payment!.id}`, {
         ...(isSalary
-          ? { presentDays: Number(form.presentDays || 0), absentDays: Number(form.absentDays || 0), overtimeHours: Number(form.overtimeHours || 0) }
+          ? {
+              presentDays: Number(form.presentDays || 0),
+              absentDays: Number(form.absentDays || 0),
+              overtimeHours: Number(form.overtimeHours || 0),
+              // Money handed over; sent only when changed, so the server can keep an old payment in step.
+              ...(Number(form.amount) !== Number(payment!.amount) ? { paidNow: Number(form.amount) || 0 } : {}),
+            }
           : { amount: Number(form.amount) }),
         paymentMode: form.paymentMode,
         remarks: form.remarks,
@@ -87,6 +93,7 @@ export const PaymentEditDialog = ({ payment, onOpenChange }: PaymentEditDialogPr
           {error ? <FormAlert tone="error">{error}</FormAlert> : null}
 
           {isSalary ? (
+            <>
             <div className="grid grid-cols-3 gap-2">
               <FormField label="Present days" htmlFor="pe-present">
                 <Input id="pe-present" inputMode="numeric" value={form.presentDays} onChange={set('presentDays')} />
@@ -98,6 +105,10 @@ export const PaymentEditDialog = ({ payment, onOpenChange }: PaymentEditDialogPr
                 <Input id="pe-ot" inputMode="decimal" value={form.overtimeHours} onChange={set('overtimeHours')} />
               </FormField>
             </div>
+            <FormField label="Paid amount (₹)" htmlFor="pe-paid" hint="Money handed over with this salary (salary minus upad taken)">
+              <Input id="pe-paid" inputMode="decimal" value={form.amount} onChange={set('amount')} />
+            </FormField>
+            </>
           ) : (
             <FormField label="Amount (₹)" htmlFor="pe-amount">
               <Input id="pe-amount" inputMode="decimal" value={form.amount} onChange={set('amount')} />

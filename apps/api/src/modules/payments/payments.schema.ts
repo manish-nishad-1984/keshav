@@ -32,12 +32,17 @@ export const createPaymentSchema = z.object({
   remarks: z.string().optional(),
   // The user saw the advance / duplicate warning and wants to go ahead.
   confirmed: z.boolean().optional(),
+  // Fixed karigar only: ADVANCE = upad during the month (amount typed); SALARY (default) = month-end payout.
+  kind: z.enum(['SALARY', 'ADVANCE']).optional(),
+  // Salary payout: the money handed over now (default: all that is owed after the upad).
+  paidNow: z.coerce.number().min(0).optional(),
   ...attendanceSchema,
 });
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
 
 export const updatePaymentSchema = z.object({
   amount: z.coerce.number().positive().optional(),
+  paidNow: z.coerce.number().min(0).optional(),
   paymentMode: paymentModeEnum.optional(),
   referenceNo: z.string().optional(),
   remarks: z.string().optional(),

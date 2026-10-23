@@ -8,6 +8,9 @@ export const paymentsRouter = Router();
 // Registered before /:id below so "/payments/ledger" resolves here, not as a payment id.
 paymentsRouter.get('/ledger', requirePermission('payments:view'), asyncHandler(controller.ledger));
 
+paymentsRouter.get('/karigar/:karigarId/account', requirePermission('payments:view'), asyncHandler(controller.account));
+paymentsRouter.get('/karigar/:karigarId/statement', requirePermission('payments:view'), asyncHandler(controller.statement));
+
 paymentsRouter.get('/', requirePermission('payments:view'), asyncHandler(controller.list));
 paymentsRouter.get('/:id/history', requirePermission('payments:view'), asyncHandler(controller.history));
 paymentsRouter.get('/:id', requirePermission('payments:view'), asyncHandler(controller.get));
