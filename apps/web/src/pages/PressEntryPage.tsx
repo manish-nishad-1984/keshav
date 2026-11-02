@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, RotateCcw, Save, Search, Trash2, X } from 'lucide-react';
+import { MessageCircle, Pencil, RotateCcw, Save, Search, Trash2, X } from 'lucide-react';
+import { WhatsAppSendDialog } from '../components/common/WhatsAppSendDialog';
 import { apiClient, ApiRequestError } from '../lib/api-client';
 import { PageLayout } from '../components/layout/PageLayout';
 import { Card, CardContent } from '../components/ui/card';
@@ -71,6 +72,7 @@ export const PressEntryPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState<PressEntry | null>(null);
   const [toDelete, setToDelete] = useState<PressEntry | null>(null);
+  const [whatsappId, setWhatsappId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [search, setSearch] = useState('');
@@ -362,6 +364,16 @@ export const PressEntryPage = () => {
                       {entry.remarks || '—'}
                     </td>
                     <td className="whitespace-nowrap px-2 py-2.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Send on WhatsApp"
+                        aria-label={`WhatsApp press entry of ${entry.karigar.fullName}`}
+                        className="hover:text-emerald-600"
+                        onClick={() => setWhatsappId(entry.id)}
+                      >
+                        <MessageCircle />
+                      </Button>
                       <Button variant="ghost" size="icon" aria-label={`Edit press entry of ${entry.karigar.fullName}`} disabled={!canUpdate} onClick={() => startEdit(entry)}>
                         <Pencil />
                       </Button>
@@ -415,6 +427,7 @@ export const PressEntryPage = () => {
         isSubmitting={deleteMutation.isPending}
         onConfirm={() => toDelete && deleteMutation.mutate(toDelete.id)}
       />
+      <WhatsAppSendDialog event="PRESS" refId={whatsappId} onOpenChange={(o) => !o && setWhatsappId(null)} />
     </PageLayout>
   );
 };

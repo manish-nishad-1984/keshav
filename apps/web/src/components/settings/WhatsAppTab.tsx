@@ -67,6 +67,7 @@ const EVENT_LABELS: Record<string, string> = {
   DELIVERY: 'Delivery',
   PAYMENT: 'Payment',
   KARIGAR_STATEMENT: 'Report card',
+  PRESS: 'Press',
 };
 
 const CONFIG_KEY = ['whatsapp', 'config'] as const;

@@ -28,6 +28,7 @@ const SHARE_PERMISSION: Record<string, PermissionKey> = {
   DELIVERY: 'deliveries:view',
   PAYMENT: 'payments:view',
   KARIGAR_STATEMENT: 'payments:view',
+  PRESS: 'press_entries:view',
 };
 const canShare = (req: Request, res: Response, next: NextFunction) =>
   requirePermission(SHARE_PERMISSION[req.params.event] ?? 'company_settings:manage')(req, res, next);

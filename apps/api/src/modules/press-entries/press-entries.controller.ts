@@ -7,6 +7,7 @@ import {
   updatePressEntrySchema,
 } from './press-entries.schema';
 import * as service from './press-entries.service';
+import { notifyWhatsapp } from '../whatsapp/whatsapp.events';
 
 // The list also returns the filtered totals (pieces and amount) for the footer.
 export const list = async (req: Request, res: Response) => {
@@ -21,7 +22,9 @@ export const get = async (req: Request, res: Response) => {
 
 export const create = async (req: Request, res: Response) => {
   const input = createPressEntrySchema.parse(req.body);
-  ok(res, await service.createPressEntry(req.auth!.organizationId, input, req.auth!.userId), 201);
+  const entry = await service.createPressEntry(req.auth!.organizationId, input, req.auth!.userId);
+  ok(res, entry, 201);
+  notifyWhatsapp(req.auth!.organizationId, 'PRESS', entry.id);
 };
 
 export const update = async (req: Request, res: Response) => {

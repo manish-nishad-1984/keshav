@@ -58,6 +58,7 @@ const VARIABLE_LABELS: Record<string, string> = {
   pieces: 'Total pcs',
   paid: 'Money taken',
   times: 'Times taken',
+  press: 'Online / Offline',
 };
 
 const VAR = /\{\{\s*(\w+)\s*\}\}/g;

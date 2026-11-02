@@ -11,7 +11,7 @@ import { enqueue, normalizeNumber } from './whatsapp.service';
 // Which entries send a WhatsApp message, to whom, and with what text — all set by the admin in
 // Settings → WhatsApp → Messages. The text is a template: {{lot}}, {{qty}} ... are filled in per message.
 
-export type EventKey = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT' | 'KARIGAR_STATEMENT';
+export type EventKey = 'DISTRIBUTION' | 'PRODUCTION' | 'ACCESSORY_ISSUE' | 'ACCESSORY_RETURN' | 'DELIVERY' | 'PAYMENT' | 'KARIGAR_STATEMENT' | 'PRESS';
 
 // Extra input for a message that is not one entry: the period of a karigar report card.
 export interface ShareParams {
@@ -87,6 +87,14 @@ export const EVENT_DEFS: EventDef[] = [
       'Namaste {{name}},\nLot {{lot}} ({{design}}) ke {{qty}} pcs deliver kiye gaye.\nChallan No: {{challan}}\nDate: {{date}}\n{{details}}\n\n- {{company}}',
   },
   {
+    key: 'PRESS',
+    label: 'Press entry',
+    recipients: [{ key: 'karigar', label: 'Press karigar' }, EXTRA],
+    variables: ['name', 'company', 'date', 'qty', 'press', 'rate', 'amount', 'remarks'],
+    defaultRecipients: ['karigar'],
+    defaultTemplate: 'Namaste {{name}},\nPress ({{press}}): {{qty}} pcs jama hue.\nDate: {{date}}\n\n- {{company}}',
+  },
+  {
     key: 'PAYMENT',
     label: 'Payment to karigar',
     recipients: [{ key: 'karigar', label: 'Karigar' }, EXTRA],
@@ -128,6 +136,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   mode: 'Cash',
   salary: 'Present 26 days, Absent 4, OT 6 h',
   pending: '3,500',
+  press: 'Online',
   period: '01-10-2026 se 23-10-2026 tak',
   opening: '1,200',
   earned: '9,800',
@@ -336,6 +345,23 @@ const build = async (organizationId: string, event: EventKey, refId: string, par
         pending: rs(s.totals.closing),
       },
       people: [{ kind: 'karigar', id: s.karigar.id, name: s.karigar.name, mobile: s.karigar.mobile, karigarId: s.karigar.id }],
+    };
+  }
+
+  if (event === 'PRESS') {
+    const p = await prisma.pressEntry.findFirst({ where: { id: refId, organizationId, deletedAt: null }, include: { karigar: PERSON } });
+    if (!p) return null;
+    return {
+      refType: 'press_entry',
+      values: {
+        date: fmtDate(p.date),
+        qty: String(p.pieces),
+        press: p.isOnline ? 'Online' : 'Offline',
+        rate: money(p.rate),
+        amount: money(p.total),
+        remarks: p.remarks ?? '',
+      },
+      people: [{ kind: 'karigar', id: p.karigar.id, name: p.karigar.fullName, mobile: p.karigar.mobile, karigarId: p.karigar.id }],
     };
   }
 

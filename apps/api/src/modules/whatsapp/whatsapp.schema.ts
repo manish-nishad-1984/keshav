@@ -26,6 +26,7 @@ export const saveEventSettingsSchema = z
     DELIVERY: eventSettingSchema,
     PAYMENT: eventSettingSchema,
     KARIGAR_STATEMENT: eventSettingSchema,
+    PRESS: eventSettingSchema,
   })
   .partial();
 
@@ -40,7 +41,7 @@ export const listMessagesQuerySchema = z.object({
   status: z.enum(['PENDING', 'SENT', 'DELIVERED', 'READ', 'FAILED']).optional(),
 });
 
-export const shareEventSchema = z.enum(['DISTRIBUTION', 'PRODUCTION', 'ACCESSORY_ISSUE', 'ACCESSORY_RETURN', 'DELIVERY', 'PAYMENT', 'KARIGAR_STATEMENT']);
+export const shareEventSchema = z.enum(['DISTRIBUTION', 'PRODUCTION', 'ACCESSORY_ISSUE', 'ACCESSORY_RETURN', 'DELIVERY', 'PAYMENT', 'KARIGAR_STATEMENT', 'PRESS']);
 
 export const shareSchema = z.object({
   // Receivers ticked in the dialog (PlannedMessage.key); missing = everyone.
