@@ -19,6 +19,7 @@ import { BOOKS_QUERY_KEY, useSelectedBook } from '../../hooks/use-selected-book'
 import { usePermissions } from '../../hooks/use-permissions';
 import { localIsoDate } from '../../lib/date';
 import { cn } from '../../lib/utils';
+import { ColourThumb } from '../common/ColourThumb';
 import type { Item } from '../items/item-constants';
 import type { Party } from '../parties/party-constants';
 import type { AverageUnit, Color, CuttingEntry, CuttingRowInput, PatternType, Size } from './cutting-constants';
@@ -99,6 +100,7 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
   });
   const activePatternTypes = patternTypes?.filter((p) => p.isActive) ?? [];
   const activeItems = items?.items.filter((i) => i.isActive) ?? [];
+  const selectedItem = items?.items.find((i) => i.id === form.itemId);
   // Active options, plus whatever the entry being edited already uses (even if deactivated since).
   const usedColorIds = new Set(entry?.rows.map((r) => r.colorId));
   const colorOptions = colors?.filter((c) => c.isActive || usedColorIds.has(c.id)) ?? [];
@@ -310,18 +312,22 @@ export const CuttingFormView = ({ entry, onDone, onCancel }: CuttingFormViewProp
               </FormField>
 
               <FormField label="Design" required htmlFor="cutting-item">
-                <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
-                  <SelectTrigger id="cutting-item">
-                    <SelectValue placeholder="Select design" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeItems.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.itemName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select value={form.itemId} onValueChange={(v) => setForm((f) => ({ ...f, itemId: v }))}>
+                    <SelectTrigger id="cutting-item" className="min-w-0 flex-1">
+                      <SelectValue placeholder="Select design" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeItems.map((item) => (
+                        <SelectItem key={item.id} value={item.id}>
+                          {item.itemName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/* The photo of the chosen design (from Design Master); tap to see it big. */}
+                  {selectedItem ? <ColourThumb photoUrl={selectedItem.photoUrl} name={selectedItem.itemName} size={36} /> : null}
+                </div>
               </FormField>
 
               <FormField label="Party" required htmlFor="cutting-party">
