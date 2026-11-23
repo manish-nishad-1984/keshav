@@ -118,7 +118,7 @@ export const EVENT_DEFS: EventDef[] = [
 // Example values for the preview in Settings.
 export const SAMPLE_VALUES: Record<string, string> = {
   name: 'RAMESH',
-  company: 'Keshav Trading & Co',
+  company: 'Your Company',
   lot: '125',
   design: 'KURTI 501',
   party: 'SHREE FASHION',
@@ -181,11 +181,15 @@ export const saveEventSettings = async (organizationId: string, input: Partial<E
   return getEventSettings(organizationId);
 };
 
-export const describeEvents = async (organizationId: string) => ({
-  events: EVENT_DEFS.map(({ key, label, recipients, variables, defaultTemplate }) => ({ key, label, recipients, variables, defaultTemplate })),
-  samples: SAMPLE_VALUES,
-  settings: await getEventSettings(organizationId),
-});
+export const describeEvents = async (organizationId: string) => {
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
+  return {
+    events: EVENT_DEFS.map(({ key, label, recipients, variables, defaultTemplate }) => ({ key, label, recipients, variables, defaultTemplate })),
+    // The preview shows this installation's own company name.
+    samples: { ...SAMPLE_VALUES, company: org?.name ?? SAMPLE_VALUES.company },
+    settings: await getEventSettings(organizationId),
+  };
+};
 
 const VAR = /\{\{\s*(\w+)\s*\}\}/g;
 

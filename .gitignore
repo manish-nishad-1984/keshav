@@ -18,3 +18,7 @@ web.config.fix
 
 # One-step deploy secrets
 deploy/deploy.local.env
+# Per-client deploy secrets (deploy.demo.env ...)
+deploy/deploy.*.env
+# FTP deploy cache (runtime packages, per-client upload manifest)
+deploy/.cache/

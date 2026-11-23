@@ -1,5 +1,6 @@
 import type { WhatsappStatus } from '@prisma/client';
 import { badRequest, notFound } from '../../lib/httpError';
+import { prisma } from '../../lib/prisma';
 import * as repo from './whatsapp.repository';
 import { decryptSecret, encryptSecret } from './whatsapp.crypto';
 import * as client from './whatsapp.client';
@@ -229,12 +230,15 @@ export const sendTest = async (organizationId: string, toRaw: string, message?: 
   const cfg = await anyConfig(organizationId);
   const to = normalizeNumber(toRaw);
   if (!to) throw badRequest('Enter a valid mobile number');
-  const reply = await client.sendMessage(cfg, to, message ?? 'Test message from Keshav Trading & Co — WhatsApp is connected.');
+  // Each installation's own company name (Settings → Company), never a fixed one.
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
+  const text = message ?? `Test message from ${org?.name ?? 'GarmentTrack'} — WhatsApp is connected.`;
+  const reply = await client.sendMessage(cfg, to, text);
   await repo.createMessage({
     organizationId,
     eventType: 'TEST',
     toNumber: to,
-    message: message ?? 'Test message from Keshav Trading & Co — WhatsApp is connected.',
+    message: text,
     status: reply.ok ? 'SENT' : 'FAILED',
     attempts: 1,
     sentAt: reply.ok ? new Date() : null,
