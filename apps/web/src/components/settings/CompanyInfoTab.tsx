@@ -69,6 +69,7 @@ export const CompanyInfoTab = () => {
       setError(null);
       setSaved(true);
       void queryClient.invalidateQueries({ queryKey: ['organization'] });
+      void queryClient.invalidateQueries({ queryKey: ['brand'] });
       setTimeout(() => setSaved(false), 2500);
     },
     onError: (err) => setError(err instanceof ApiRequestError ? err.message : 'Could not save company info.'),

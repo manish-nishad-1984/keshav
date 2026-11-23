@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate';
+import { prisma } from '../lib/prisma';
 import { authRouter } from '../modules/auth/auth.routes';
 import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
 import { usersRouter } from '../modules/users/users.routes';
@@ -59,6 +60,21 @@ const protectedRoutes: ProtectedRoute[] = [
 export const apiRouter = Router();
 
 apiRouter.get('/health', (_req, res) => res.json({ success: true, data: { status: 'ok' } }));
+
+// The company name for the login page, title bar and footer (one company per installation). Public:
+// the login page needs it before anyone signs in. Only the name, nothing else.
+apiRouter.get('/brand', async (_req, res, next) => {
+  try {
+    const org = await prisma.organization.findFirst({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      select: { name: true },
+    });
+    res.json({ success: true, data: { name: org?.name ?? '' } });
+  } catch (err) {
+    next(err);
+  }
+});
 
 apiRouter.use('/auth', authRouter);
 

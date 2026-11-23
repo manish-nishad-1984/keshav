@@ -22,7 +22,7 @@ export const nextTheme = (theme: Theme): Theme => {
 // [data-palette] blocks in index.css).
 export const PALETTES: readonly { key: Palette; label: string; swatch: string }[] = [
   { key: 'royal', label: 'Royal Indigo', swatch: 'hsl(246 60% 25%)' },
-  { key: 'blue', label: 'KESHAV Blue', swatch: 'hsl(206 92.5% 41.6%)' },
+  { key: 'blue', label: 'Classic Blue', swatch: 'hsl(206 92.5% 41.6%)' },
   { key: 'teal', label: 'Teal', swatch: 'hsl(180 82% 29%)' },
   { key: 'green', label: 'Emerald', swatch: 'hsl(152 68% 31%)' },
   { key: 'indigo', label: 'Indigo', swatch: 'hsl(234 60% 52%)' },

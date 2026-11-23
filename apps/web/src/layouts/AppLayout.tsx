@@ -3,9 +3,11 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Topbar } from '../components/layout/Topbar';
 import { CommandPalette } from '../components/common/CommandPalette';
+import { useBrand } from '../hooks/use-brand';
 
 export const AppLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const brand = useBrand();
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,7 +33,7 @@ export const AppLayout = () => {
           </main>
 
           <footer className="border-t border-border px-5 py-2.5 text-2xs text-muted-foreground">
-            KESHAV Trading & Co. &copy; {new Date().getFullYear()}
+            {brand.name} &copy; {new Date().getFullYear()}
           </footer>
         </div>
       </div>

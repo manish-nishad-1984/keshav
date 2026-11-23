@@ -70,6 +70,7 @@ export const GeneralSettingsTab = () => {
       setError(null);
       setSaved(true);
       void queryClient.invalidateQueries({ queryKey: ["organization"] });
+      void queryClient.invalidateQueries({ queryKey: ["brand"] });
       setTimeout(() => setSaved(false), 2500);
     },
     onError: (err) =>

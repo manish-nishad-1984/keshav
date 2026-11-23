@@ -5,6 +5,7 @@ import { resolveIcon } from '../../lib/icons';
 import { shortLabel, useNavigation } from '../../lib/navigation';
 import { useUiStore } from '../../store/ui.store';
 import { cn } from '../../lib/utils';
+import { useBrand } from '../../hooks/use-brand';
 
 // Collapsed (default): a narrow rail with icon + short label per section; the section's pages
 // appear as tabs in the page header (see PageLayout).
@@ -86,6 +87,7 @@ interface SidebarProps {
 
 export const Sidebar = ({ mobileOpen, onMobileOpenChange }: SidebarProps) => {
   const collapsed = useUiStore((state) => state.navCollapsed);
+  const brand = useBrand();
 
   return (
     <>
@@ -108,7 +110,7 @@ export const Sidebar = ({ mobileOpen, onMobileOpenChange }: SidebarProps) => {
           >
             <div className="flex h-topbar shrink-0 items-center justify-between bg-primary pl-4 pr-1 text-primary-foreground">
               <DialogPrimitive.Title className="text-base font-bold tracking-wide">
-                KESHAV <span className="font-normal text-primary-foreground/80">Trading & Co</span>
+                {brand.first} <span className="font-normal text-primary-foreground/80">{brand.rest}</span>
               </DialogPrimitive.Title>
               <DialogPrimitive.Close
                 aria-label="Close navigation"

@@ -9,6 +9,7 @@ import { PALETTES, THEMES } from '../../lib/themes';
 import { cn } from '../../lib/utils';
 import { BookSelector } from './BookSelector';
 import { LotLookup } from './LotLookup';
+import { useBrand } from '../../hooks/use-brand';
 
 const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 const SHORTCUT = isMac ? '⌘K' : 'Ctrl+K';
@@ -30,6 +31,7 @@ const initials = (name?: string) =>
 const openSearch = () => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT));
 
 export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
+  const brand = useBrand();
   const { user, logout } = useAuth();
   const toggleNavCollapsed = useUiStore((state) => state.toggleNavCollapsed);
   const navCollapsed = useUiStore((state) => state.navCollapsed);
@@ -59,8 +61,8 @@ export const Topbar = ({ onOpenMobile }: { onOpenMobile: () => void }) => {
         to="/dashboard"
         className="flex items-baseline gap-2 rounded-md px-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
       >
-        <span className="text-lg font-bold tracking-wide">KESHAV</span>
-        <span className="hidden text-sm text-primary-foreground/80 sm:inline">Trading & Co</span>
+        <span className="text-lg font-bold tracking-wide">{brand.first}</span>
+        <span className="hidden text-sm text-primary-foreground/80 sm:inline">{brand.rest}</span>
       </Link>
 
       <div className="ml-1 sm:ml-3">
