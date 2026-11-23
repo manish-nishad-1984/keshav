@@ -140,7 +140,7 @@ for (let i = 0; i < changed.length; i += BATCH) {
   const conf = path.join(tmp, 'curl.cfg');
   fs.writeFileSync(
     conf,
-    [`user = ${quote(`${cfg.FTP_USER}:${cfg.FTP_PASSWORD}`)}`, 'ftp-create-dirs', 'silent', 'show-error', 'retry = 3', ...batch.flatMap(([l, r]) => [`upload-file = ${quote(l)}`, `url = ${quote(ftpBase + enc(r))}`])].join('\n'),
+    [`user = ${quote(`${cfg.FTP_USER}:${cfg.FTP_PASSWORD}`)}`, 'ftp-create-dirs', 'silent', 'show-error', 'retry = 3', 'fail-early', ...batch.flatMap(([l, r]) => [`upload-file = ${quote(l)}`, `url = ${quote(ftpBase + enc(r))}`])].join('\n'),
   );
   const r = spawnSync('curl', ['-K', conf], { stdio: 'inherit' });
   fs.rmSync(conf, { force: true });
